@@ -67,6 +67,33 @@ Le contexte Docker utilise une liste d’autorisation : seuls le POM et les sour
 Le cache Node local, les dépendances installées, les builds précédents et la configuration
 personnelle sont exclus. Ne jamais placer de clé personnelle dans les sources ou un `ARG` Docker.
 
+## Docker Compose
+
+[compose.yaml](compose.yaml) permet de construire et de lancer l’application avec Docker Compose v2.
+Copier [.env.example](.env.example) vers `.env`, renseigner `WALLET_XPUB`, puis lancer :
+
+```sh
+docker compose up -d --build
+docker compose logs -f wallet-viewer
+docker compose down
+```
+
+Compose charge automatiquement `.env` pour les variables du service et refuse de démarrer si
+`WALLET_XPUB` est vide. La configuration locale Java n’est pas montée dans le conteneur.
+L’interface est accessible sur <http://localhost:8080> ; `WALLET_VIEWER_PORT` permet de changer le port hôte.
+Le conteneur redémarre automatiquement, utilise un système de fichiers en lecture seule avec un
+répertoire temporaire en mémoire, et limite la taille des journaux. Aucun volume persistant n’est nécessaire.
+
+Pour utiliser une image déjà publiée, définir `WALLET_VIEWER_IMAGE=ghcr.io/<propriétaire>/<dépôt>:latest`
+dans `.env`, puis utiliser ces commandes **à la place du build local** :
+
+```sh
+docker compose pull
+docker compose up -d --no-build
+```
+
+Une authentification préalable au registre est nécessaire si l’image est privée.
+
 ## GitHub Actions / GHCR
 
 [Le workflow](.github/workflows/docker.yml) :
@@ -93,6 +120,9 @@ Le workflow publie l’image, mais ne déploie pas l’application.
 
 ## Sécurité et limites
 
+- L’audit npm signale encore deux dépendances de développement vulnérables : Vite (élevée)
+  et esbuild (modérée). Leur correction nécessite une migration majeure de Vite, non incluse ici.
+  Ne pas exposer le serveur de développement. Ces outils ne sont pas embarqués dans l’image JRE finale.
 - L’application n’intègre pas d’authentification : ne pas exposer directement son API sur Internet.
   Utiliser un réseau privé ou un reverse proxy avec authentification et HTTPS.
 - Une xpub ne permet pas de dépenser les fonds, mais révèle l’historique et les adresses du compte.
