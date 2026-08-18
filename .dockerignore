@@ -1,0 +1,12 @@
+# Allow only build inputs. In particular, never send local wallet configuration.
+**
+!pom.xml
+!src/
+!src/**
+!Dockerfile
+!.dockerignore
+**/node_modules/
+**/dist/
+**/.env
+**/.env.*
+**/*.log
