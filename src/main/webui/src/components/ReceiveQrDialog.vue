@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref } from 'vue';
-import { useClipboard } from '../composables/useClipboard';
 import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
+import CopyAddressButton from './CopyAddressButton.vue';
 
 const dialog = ref<HTMLDialogElement | null>(null);
 const receive = ref<(ReceiveAddress & { url: string }) | null>(null);
-const { copied, error, copy, reset } = useClipboard();
+const copyButton = ref<InstanceType<typeof CopyAddressButton> | null>(null);
 let savedOverflow: { value: string; priority: string } | null = null;
 let disposed = false;
 let opening = false;
@@ -17,7 +17,7 @@ async function open(address: ReceiveAddress, trigger: HTMLButtonElement): Promis
   opening = true;
   // Freeze the address, derivation index and image URL as one snapshot.
   receive.value = { ...address, url: walletApi.qrAtUrl(address.index) };
-  reset();
+  copyButton.value?.reset();
   try {
     await nextTick();
     if (disposed || !element.isConnected || element.open) return;
@@ -43,7 +43,7 @@ function restoreScrolling(): void {
 function onClose(): void {
   if (dialog.value?.open) return;
   restoreScrolling();
-  reset();
+  copyButton.value?.reset();
 }
 
 function closeOnBackdrop(event: MouseEvent): void {
@@ -82,7 +82,7 @@ defineExpose({ open });
         type="button"
         autofocus
         @click="dialog?.close()"
-        class="shrink-0 rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm transition hover:border-accent"
+        class="button-secondary shrink-0 rounded-lg px-3 text-sm"
       >Close</button>
     </div>
     <p id="receive-qr-description" class="mb-4 text-sm text-slate-400">Scan this QR code to receive Bitcoin at the address below.</p>
@@ -90,14 +90,7 @@ defineExpose({ open });
       <img :src="receive.url" alt="Receive address QR code" class="mx-auto aspect-square w-full max-w-96 rounded-xl bg-white p-3" />
       <p class="mt-4 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-3 font-mono text-sm">{{ receive.address }}</p>
       <p class="mt-2 break-all font-mono text-xs text-slate-400">Path: {{ receive.path }}</p>
-      <button
-        type="button"
-        @click="copy(receive.address)"
-        class="mt-4 rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm transition hover:border-accent"
-      >{{ copied ? '✓ Copied' : 'Copy address' }}</button>
-      <p role="status" class="mt-2 text-xs" :class="error ? 'text-rose-400' : 'text-slate-400'">
-        {{ error || (copied ? 'Address copied.' : '') }}
-      </p>
+      <CopyAddressButton ref="copyButton" :address="receive.address" />
     </template>
   </dialog>
 </template>

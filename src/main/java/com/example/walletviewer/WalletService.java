@@ -46,6 +46,13 @@ public class WalletService {
     private record Coverage(int receiveIndex, int changeIndex, int nextReceiveIndex) {
     }
 
+    /** History is private to one scan, never attached to cached derivation data. */
+    private record ScannedAddress(AddressInfo address, JsonArray history) {
+        boolean used() {
+            return history != null && !history.isEmpty();
+        }
+    }
+
     @PostConstruct
     void validateConfiguration() {
         if (gapLimit <= 0 || maxAddresses <= 0) {
@@ -66,37 +73,41 @@ public class WalletService {
         Coverage previous = coverage;
         Uni<Integer> tipUni = electrum.call("blockchain.headers.subscribe")
                 .map(r -> r.getJsonObject("result").getInteger("height"));
-        Uni<List<AddressInfo>> recvUni = scanChain(0, previous.receiveIndex());
-        Uni<List<AddressInfo>> changeUni = scanChain(1, previous.changeIndex());
+        Uni<List<ScannedAddress>> recvUni = scanChain(0, previous.receiveIndex());
+        Uni<List<ScannedAddress>> changeUni = scanChain(1, previous.changeIndex());
 
         return Uni.combine().all().unis(tipUni, recvUni, changeUni).asTuple()
                 .flatMap(t -> {
                     int tip = t.getItem1();
-                    List<AddressInfo> receive = t.getItem2();
-                    List<AddressInfo> change = t.getItem3();
+                    List<ScannedAddress> receive = t.getItem2();
+                    List<ScannedAddress> change = t.getItem3();
 
-                    List<AddressInfo> all = new ArrayList<>();
-                    all.addAll(receive);
+                    List<ScannedAddress> all = new ArrayList<>(receive);
                     all.addAll(change);
 
                     Set<String> ourScripts = new HashSet<>();
                     List<AddressInfo> used = new ArrayList<>();
-                    for (AddressInfo a : all) {
-                        ourScripts.add(a.scriptHex);
+                    Map<String, Integer> txHeights = new LinkedHashMap<>();
+                    for (ScannedAddress a : all) {
+                        ourScripts.add(a.address().scriptHex);
                         if (a.used()) {
-                            used.add(a);
+                            used.add(a.address());
+                            for (int i = 0; i < a.history().size(); i++) {
+                                JsonObject entry = a.history().getJsonObject(i);
+                                txHeights.put(entry.getString("tx_hash"), entry.getInteger("height"));
+                            }
                         }
                     }
 
                     // Do not reuse holes or regress an exposed receive index after history shrinks.
                     int nextIndex = previous.nextReceiveIndex();
-                    for (AddressInfo a : receive) {
+                    for (ScannedAddress a : receive) {
                         if (a.used()) {
-                            nextIndex = Math.max(nextIndex, a.index + 1);
+                            nextIndex = Math.max(nextIndex, a.address().index + 1);
                         }
                     }
                     AddressInfo recv = nextIndex < receive.size()
-                            ? receive.get(nextIndex) : wallet.address(0, nextIndex);
+                            ? receive.get(nextIndex).address() : wallet.address(0, nextIndex);
                     ReceiveAddressDto recvDto = new ReceiveAddressDto(recv.index, recv.address, recv.path);
                     // maxAddresses caps history scans per chain, not the watch count. When the
                     // cap is fully used, watch exactly one extra receive address (without history).
@@ -104,25 +115,12 @@ public class WalletService {
                             ? Uni.createFrom().voidItem()
                             : electrum.call("blockchain.scripthash.subscribe", recv.scripthash).replaceWithVoid();
 
-                    // Collect tx ids + heights from address histories
-                    Map<String, Integer> txHeights = new LinkedHashMap<>();
-                    for (AddressInfo a : used) {
-                        for (int i = 0; i < a.history.size(); i++) {
-                            JsonObject e = a.history.getJsonObject(i);
-                            txHeights.put(e.getString("tx_hash"), e.getInteger("height"));
-                        }
-                    }
-
-                    Uni<long[]> balanceUni = sumBalances(used);
+                    Uni<BalanceDto> balanceUni = sumBalances(used);
                     Uni<List<UtxoDto>> utxoUni = fetchUtxos(used, tip);
                     Uni<List<TransactionDto>> txUni = fetchTransactions(txHeights, ourScripts, tip);
 
                     return receiveWatch.flatMap(ignored -> Uni.combine().all().unis(balanceUni, utxoUni, txUni).asTuple()
-                            .map(r -> {
-                                long[] bal = r.getItem1();
-                                BalanceDto balance = new BalanceDto(bal[0], bal[1], bal[0] + bal[1]);
-                                return new WalletSnapshot(balance, r.getItem2(), r.getItem3(), recvDto);
-                            }))
+                            .map(r -> new WalletSnapshot(r.getItem1(), r.getItem2(), r.getItem3(), recvDto)))
                             .invoke(snapshot -> rememberCoverage(receive.size() - 1, change.size() - 1, recv.index));
                 });
     }
@@ -136,26 +134,20 @@ public class WalletService {
 
     // ---- address scanning (gap-limit) -------------------------------------
 
-    private Uni<List<AddressInfo>> scanChain(int chain, int highestIndex) {
+    private Uni<List<ScannedAddress>> scanChain(int chain, int highestIndex) {
         return scanFrom(chain, 0, highestIndex, new ArrayList<>());
     }
 
-    private Uni<List<AddressInfo>> scanFrom(int chain, int start, int highestIndex, List<AddressInfo> acc) {
-        List<Uni<AddressInfo>> batch = new ArrayList<>();
+    private Uni<List<ScannedAddress>> scanFrom(int chain, int start, int highestIndex, List<ScannedAddress> acc) {
+        List<Uni<ScannedAddress>> batch = new ArrayList<>();
         int batchSize = Math.min(gapLimit, maxAddresses - start);
         for (int i = 0; i < batchSize; i++) {
-            AddressInfo derived = wallet.address(chain, start + i);
-            // Histories belong to this subscription, even if the wallet reuses derivation objects.
-            AddressInfo ai = new AddressInfo(derived.chain, derived.index, derived.address,
-                    derived.scripthash, derived.scriptHex, derived.path);
+                AddressInfo ai = wallet.address(chain, start + i);
             // Reissue on every scan: the transport is not a persistent subscription registry.
             // Only the public script hash is sent, never the address, derivation path or key.
             batch.add(electrum.call("blockchain.scripthash.subscribe", ai.scripthash)
                     .flatMap(ignored -> electrum.call("blockchain.scripthash.get_history", ai.scripthash))
-                    .map(r -> {
-                        ai.history = r.getJsonArray("result");
-                        return ai;
-                    }));
+                    .map(r -> new ScannedAddress(ai, r.getJsonArray("result"))));
         }
         return Uni.join().all(batch).andFailFast().flatMap(list -> {
             acc.addAll(list);
@@ -172,25 +164,25 @@ public class WalletService {
 
     // ---- balance ----------------------------------------------------------
 
-    private Uni<long[]> sumBalances(List<AddressInfo> used) {
+    private Uni<BalanceDto> sumBalances(List<AddressInfo> used) {
         if (used.isEmpty()) {
-            return Uni.createFrom().item(new long[]{0, 0});
+            return Uni.createFrom().item(new BalanceDto(0, 0));
         }
-        List<Uni<long[]>> unis = new ArrayList<>();
+        List<Uni<BalanceDto>> unis = new ArrayList<>();
         for (AddressInfo a : used) {
             unis.add(electrum.call("blockchain.scripthash.get_balance", a.scripthash)
                     .map(r -> {
                         JsonObject o = r.getJsonObject("result");
-                        return new long[]{o.getLong("confirmed", 0L), o.getLong("unconfirmed", 0L)};
+                        return new BalanceDto(o.getLong("confirmed", 0L), o.getLong("unconfirmed", 0L));
                     }));
         }
         return Uni.join().all(unis).andFailFast().map(list -> {
-            long c = 0, u = 0;
-            for (long[] b : list) {
-                c += b[0];
-                u += b[1];
+            long confirmed = 0, unconfirmed = 0;
+            for (BalanceDto balance : list) {
+                confirmed += balance.confirmed();
+                unconfirmed += balance.unconfirmed();
             }
-            return new long[]{c, u};
+            return new BalanceDto(confirmed, unconfirmed);
         });
     }
 
@@ -239,8 +231,7 @@ public class WalletService {
         }
         NetworkParameters params = wallet.params();
 
-        List<Integer> heights = new ArrayList<>(new HashSet<>(txHeights.values()));
-        heights.removeIf(h -> h <= 0);
+        List<Integer> heights = txHeights.values().stream().filter(h -> h > 0).distinct().toList();
         List<Uni<Long>> headerUnis = new ArrayList<>();
         for (int h : heights) {
             headerUnis.add(electrum.call("blockchain.block.header", h)

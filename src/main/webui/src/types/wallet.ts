@@ -33,6 +33,33 @@ export interface ReceiveAddress {
   path: string;
 }
 
+export interface TransactionInput {
+  txid: string | null;
+  vout: number;
+  address: string | null;
+  value: number | null;
+  coinbase: boolean;
+}
+
+export interface TransactionOutput {
+  index: number;
+  address: string | null;
+  value: number;
+  scriptHex: string;
+}
+
+export interface TransactionDetails {
+  txid: string;
+  version: number;
+  lockTime: number;
+  size: number;
+  inputs: TransactionInput[];
+  outputs: TransactionOutput[];
+  totalInput: number | null;
+  totalOutput: number;
+  fee: number | null;
+}
+
 export interface WalletSnapshot {
   balance: Balance;
   utxos: Utxo[];
