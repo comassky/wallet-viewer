@@ -46,19 +46,41 @@ export interface RequestOptions {
 }
 
 const BASE = '/api/wallet';
+const REQUEST_TIMEOUT_MS = 120_000;
 
 async function request<T>(path: string, { signal }: RequestOptions = {}): Promise<T> {
-  let res: Response;
+  const controller = new AbortController();
+  const abort = () => controller.abort(signal?.reason);
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
   try {
-    res = await fetch(BASE + path, { headers: { Accept: 'application/json' }, signal });
+    let res: Response;
+    try {
+      res = await fetch(BASE + path, {
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+    } catch (e) {
+      if (controller.signal.aborted) throw e;
+      throw new Error(`Réseau injoignable : ${e instanceof Error ? e.message : String(e)}`);
+    }
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`HTTP ${res.status}${body ? ` — ${body}` : ''}`);
+    }
+    return (await res.json()) as T;
   } catch (e) {
-    throw new Error(`Réseau injoignable : ${e instanceof Error ? e.message : String(e)}`);
+    if (timedOut) throw new Error('Le serveur met trop de temps à répondre. Réessayez.');
+    throw e;
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
   }
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status}${body ? ` — ${body}` : ''}`);
-  }
-  return (await res.json()) as T;
 }
 
 export const walletApi = {
