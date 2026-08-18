@@ -5,6 +5,14 @@
 @layer base {
   html {
     @apply bg-slate-950 text-slate-100 antialiased;
+    color-scheme: dark;
+    background-image: radial-gradient(ellipse at 5% 0%, rgb(247 147 26 / 7%), transparent 45%),
+      radial-gradient(ellipse at 95% 10%, rgb(56 189 248 / 5%), transparent 40%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    @apply bg-accent/30 text-white;
   }
 
   button {
@@ -18,6 +26,41 @@
 }
 
 @layer components {
+  .wallet-panel {
+    @apply rounded-2xl border border-slate-700/40 bg-slate-900/80;
+    box-shadow: 0 8px 32px rgb(0 0 0 / 10%), inset 0 1px 0 rgb(255 255 255 / 3%);
+  }
+
+  .balance-card {
+    background: radial-gradient(ellipse at 100% 0%, rgb(247 147 26 / 12%), transparent 65%), rgb(15 23 42 / 90%);
+  }
+
+  .section-title {
+    @apply text-xs font-semibold uppercase tracking-[0.16em] text-slate-400;
+  }
+
+  .button-secondary {
+    @apply border border-slate-700/70 bg-slate-800/70 text-slate-200 transition hover:border-accent/60 hover:bg-slate-800 hover:text-white;
+  }
+
+  .detail-stat {
+    @apply rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 sm:p-4;
+  }
+
+  .transaction-dialog {
+    width: min(76rem, calc(100% - 1.5rem));
+    max-height: calc(100vh - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+    margin: auto;
+    overscroll-behavior: contain;
+    @apply overflow-y-auto rounded-3xl border border-slate-700 bg-slate-900 p-0 text-slate-100 shadow-2xl;
+  }
+
+  .transaction-dialog::backdrop {
+    background: rgb(2 6 23 / 85%);
+    backdrop-filter: blur(8px);
+  }
+
   .wallet-shell {
     min-width: 0;
     overflow-wrap: anywhere;

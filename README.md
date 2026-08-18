@@ -20,7 +20,8 @@ View balances, transactions, unspent outputs and a receiving address from an acc
 - **Live updates:** Electrum subscriptions rebuild a shared snapshot and push versioned state over WebSocket. Last-known data remains visible with a stale/offline status during outages.
 - **HD account support:** legacy BIP44, wrapped SegWit BIP49, SegWit BIP84 and Taproot BIP86, with separate receive/change scans.
 - **Receive view:** address, derivation path, copy feedback and a QR code tied to the displayed address index. The receiving address follows the last used receiving address found by the scan.
-- **One currency selector:** EUR, USD, BTC or SATS across balances, transactions and UTXOs, with the preference saved in the browser.
+- **Currency on the balance:** click the total balance to choose EUR, USD, SAT or BTC. The preference is saved immediately in localStorage and restored on reload; no currency buttons in the header.
+- **Transaction explorer:** select a transaction to inspect its inputs, outputs, scripts and network fee, with a scrollable input → transaction → output graph. Data comes from your configured Electrum server, not an external explorer.
 - **Responsive interface:** a full-width desktop dashboard, mobile transaction/UTXO cards, wrapping addresses and touch-friendly controls.
 - **Enlarged QR popup:** click or tap the receiving QR to view a larger image and copy its address. Close with the button, Escape or a click outside the popup; keyboard focus returns to the QR button.
 - **Self-hosted deployment:** one multi-stage Docker build, a non-root Java runtime and a localhost-bound Compose service.
@@ -56,7 +57,7 @@ The service restarts unless stopped, runs with a read-only filesystem and an in-
 
 ## Currencies and price estimates
 
-The **EUR / USD / BTC / SATS** selector applies to confirmed/unconfirmed balances, transaction amounts and UTXOs. BTC is the default; the browser remembers the selected unit when local storage is available. Wallet data stays in satoshis on the backend — display conversions do not change it.
+Click the **total balance** to reveal the **EUR / USD / SAT / BTC** selector. It applies to balances, transactions, UTXOs and the transaction detail graph. BTC is the default; the browser immediately saves the selected unit under `wallet-viewer.currency` in localStorage and restores it on reload. SAT is stored as `SATS` for compatibility with earlier preferences. Storage restrictions do not prevent changing the display. Wallet data stays in satoshis on the backend — display conversions do not change it.
 
 For EUR or USD:
 
@@ -66,7 +67,7 @@ For EUR or USD:
 - Conversions are **estimates at the current price**, including amounts on old transactions. They are **not historical valuations**. The quote timestamp is displayed.
 - If fetching fails, the browser retains its last known quote **with a warning**. That retained estimate can age; rejecting stale incoming quotes does not discard an already displayed quote. Without a previous quote, fiat amounts show a dash. BTC and SATS remain available without the price service.
 
-**No wallet key, address or transaction is sent to the price provider.** This is separate from Electrum queries and any explorer links you open.
+**No wallet key, address or transaction is sent to the price provider.** This is separate from Electrum queries.
 
 `WALLET_PRICES_URL` can override the provider. The response must contain positive numeric `EUR` and `USD` values and a `time` Unix timestamp in seconds. See the Compose forwarding caveat below.
 
@@ -117,6 +118,14 @@ Keep the complete Quarkus application directory together, not just the runner JA
 Regression areas include BIP86 derivation through production code, wallet scanning and receiving address selection, REST error handling, Electrum protocol behavior using a local server, price validation/cache behavior, frontend currency conversion, HTTP/clipboard utilities and the wallet stream. Tests have not been run for this documentation/configuration update; no passing result or test count is claimed. Build verification is not a substitute for checking your own account settings, server connectivity and deployment security.
 
 ## Frontend architecture
+
+### Transaction details
+
+Click a transaction ID or **Explore** in Activity to open the native detail dialog. It shows every input's previous output, output addresses and scripts, total amounts and the network fee. The SVG graph includes every input and output and can be scrolled on small screens or for large transactions. Connections show structure, not which input funded which output. Full addresses remain selectable in the lists below.
+
+`GET /api/wallet/transactions/{txid}` accepts only a valid transaction ID present in the current cached wallet history (400 for malformed IDs, 404 for unknown transactions, 503 before initialization). Details are fetched on demand without rescanning the wallet or enlarging WebSocket messages. The server fetches and verifies the raw transaction and its distinct parents through Electrum, with at most eight concurrent parent lookups and a 30-second overall timeout. Fees are the sum of **all** resolved input values minus output values, never the wallet's net balance change. Coinbase inputs and fees are explicitly marked not applicable. Scripts with no supported address retain their script hex.
+
+If a transaction or ancestor cannot be retrieved or validated, the endpoint returns 502 instead of inventing amounts. The dialog offers a retry; closing it cancels the browser request. Confirmation status is captured when opening the dialog; reopen to see updated confirmations. There are no external explorer requests or links. No ownership is inferred from the input/output graph.
 
 The Vue application separates presentation, state/lifecycle and transport without a global store:
 
@@ -246,7 +255,7 @@ The Docker build runs verification before producing an image: test or compilatio
 - **Read-only is not anonymous:** an extended public key cannot spend funds, but it reveals account addresses and history. The Electrum server can correlate the queried addresses. Use a server you trust.
 - **Never supply spending secrets:** only use an account-level extended public key at runtime. Never enter a seed phrase, xprv or any other private key.
 - **TLS defaults differ:** Compose uses TLS; the base development configuration uses plain TCP. For a server with a self-signed certificate, configure a JVM truststore that trusts it. Certificate and hostname checks are not silently disabled.
-- **Explorer links are mainnet-only:** transaction links currently point to mempool.space **mainnet**, even when the wallet is configured for testnet. Opening a link also discloses that transaction lookup to the explorer.
+- **Transaction details depend on Electrum history availability:** all previous outputs must be retrievable to compute fees. Addresses use the configured Bitcoin network. Details stay in the local dashboard; no external explorer is contacted.
 - **Results depend on scan settings and Electrum:** a wrong script type, wrong network or insufficient gap/maximum can hide activity. A watched receive address beyond the history cap is not enough to account for its funds. Cached snapshots may lag the server or remain stale during outages; REST serves the last-known snapshot while WebSocket status exposes staleness. There is no scheduled full reconciliation. A per-request timeout does not impose a single deadline on the entire scan.
 - **Fiat amounts are estimates:** current-price conversions are not historical accounting values. A retained last-known quote is explicitly marked when refreshing fails; use BTC/SATS when prices are unavailable or unsuitable.
 - **Previously reported development dependency issues:** an earlier npm audit reported **two vulnerabilities**, Vite (**high**) and esbuild (**moderate**). The proposed remediation required a major Vite migration that is not included here. This is a prior finding, not a fresh audit result. Do not expose the development server; those build tools are not shipped in the final JRE image.
