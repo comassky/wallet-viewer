@@ -10,10 +10,12 @@ import io.vertx.core.net.NetClientOptions;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.parsetools.RecordParser;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,6 +34,8 @@ public class ElectrumClient {
     int port;
     @ConfigProperty(name = "electrum.ssl", defaultValue = "false")
     boolean ssl;
+    @ConfigProperty(name = "electrum.request-timeout", defaultValue = "30s")
+    Duration requestTimeout;
 
     @Inject
     Vertx vertx;
@@ -43,13 +47,25 @@ public class ElectrumClient {
 
     @PostConstruct
     void init() {
+        if (requestTimeout.isZero() || requestTimeout.isNegative()) {
+            throw new IllegalArgumentException("electrum.request-timeout must be positive");
+        }
         NetClientOptions opts = new NetClientOptions()
+                .setConnectTimeout(10_000)
                 .setReconnectAttempts(3)
                 .setReconnectInterval(500);
         if (ssl) {
-            opts.setSsl(true).setTrustAll(true).setHostnameVerificationAlgorithm("");
+            opts.setSsl(true).setHostnameVerificationAlgorithm("HTTPS");
         }
         client = vertx.createNetClient(opts);
+    }
+
+    @PreDestroy
+    void close() {
+        if (client != null) {
+            client.close();
+        }
+        failAll(new IllegalStateException("Electrum client stopped"));
     }
 
     private Uni<NetSocket> socket() {
@@ -84,10 +100,10 @@ public class ElectrumClient {
                 return;
             }
             Object idVal = resp.getValue("id");
-            if (idVal == null) {
+            if (!(idVal instanceof Number number)) {
                 return; // subscription notification, ignore
             }
-            int id = ((Number) idVal).intValue();
+            int id = number.intValue();
             UniEmitter<? super JsonObject> em = pending.remove(id);
             if (em == null) {
                 return;
@@ -105,8 +121,8 @@ public class ElectrumClient {
             failAll(new RuntimeException("Electrum connection closed"));
         });
         sock.exceptionHandler(t -> {
-            socketUni = null;
             failAll(t);
+            sock.close();
         });
     }
 
@@ -123,20 +139,21 @@ public class ElectrumClient {
      * Sends a JSON-RPC request and returns the full response object.
      */
     public Uni<JsonObject> call(String method, Object... params) {
-        int id = counter.incrementAndGet();
-        JsonObject req = new JsonObject()
-                .put("id", id)
-                .put("method", method)
-                .put("params", new JsonArray(List.of(params)));
-        String payload = req.encode() + "\n";
-        return socket().flatMap(sock ->
-                Uni.createFrom().<JsonObject>emitter(em -> {
-                    pending.put(id, em);
-                    sock.write(payload).onFailure(err -> {
-                        pending.remove(id);
-                        em.fail(err);
-                    });
-                })
-        );
+        // Each subscription needs a fresh id and the current connection (including retries).
+        return Uni.createFrom().deferred(() -> {
+            int id = counter.incrementAndGet();
+            String payload = new JsonObject()
+                    .put("id", id)
+                    .put("method", method)
+                    .put("params", new JsonArray(List.of(params)))
+                    .encode() + "\n";
+            return socket().flatMap(sock ->
+                    Uni.createFrom().<JsonObject>emitter(em -> {
+                        pending.put(id, em);
+                        em.onTermination(() -> pending.remove(id, em));
+                        sock.write(payload).onFailure(em::fail);
+                    })
+            );
+        }).ifNoItem().after(requestTimeout).fail();
     }
 }
