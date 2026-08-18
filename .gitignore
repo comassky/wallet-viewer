@@ -1,0 +1,13 @@
+target/
+.mvn/
+*.class
+
+# Frontend
+node_modules/
+src/main/webui/dist/
+src/main/webui/node_modules/
+
+# IDE
+.idea/
+*.iml
+.vscode/
