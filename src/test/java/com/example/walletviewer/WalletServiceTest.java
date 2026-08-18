@@ -24,76 +24,220 @@ class WalletServiceTest {
     @Test
     void scansAreLazyAndRespectANonMultipleAddressLimit() {
         StubElectrum electrum = new StubElectrum(index -> true);
-        WalletService service = service(electrum, 0);
-        Uni<WalletSnapshot> snapshot = service.snapshot();
+        WalletService service = service(electrum);
+        Uni<WalletSnapshot> scan = service.scan();
+        assertTrue(electrum.calls.isEmpty());
         assertTrue(electrum.scanned.isEmpty());
 
-        WalletSnapshot result = snapshot.await().atMost(Duration.ofSeconds(5));
+        WalletSnapshot result = await(scan);
         assertEquals(5, result.receiveAddress().index());
         assertEquals(10, electrum.scanned.size()); // Five addresses per chain, not six.
         assertFalse(electrum.scanned.contains("0:5"));
         assertFalse(electrum.scanned.contains("1:5"));
+        assertEquals(11, electrum.subscribed.size()); // Scan cap is not a watch cap.
+        assertTrue(electrum.subscribed.contains("0:5"));
+        assertFalse(electrum.subscribed.contains("1:5"));
+        assertSubscriptionsBeforeHistory(electrum);
 
-        electrum.scanned.clear();
-        snapshot.await().atMost(Duration.ofSeconds(5));
+        electrum.resetCalls();
+        assertNotSame(result, await(scan));
         assertEquals(10, electrum.scanned.size()); // Fresh accumulator for each subscription.
+        assertEquals(11, electrum.subscribed.size()); // Reissue even the extra watch.
+        assertSubscriptionsBeforeHistory(electrum);
     }
 
     @Test
-    void cachesSnapshotsWithinTtl() {
+    void separateScansNeverCacheSnapshotsAndResubscribeAllHashes() {
         StubElectrum electrum = new StubElectrum(index -> false);
-        WalletService service = service(electrum, 30);
-        WalletSnapshot first = service.snapshot().await().atMost(Duration.ofSeconds(5));
-        WalletSnapshot second = service.snapshot().await().atMost(Duration.ofSeconds(5));
-        assertSame(first, second);
+        WalletService service = service(electrum);
+        WalletSnapshot first = await(service.scan());
         assertEquals(4, electrum.scanned.size());
+        assertEquals(4, electrum.subscribed.size());
         assertEquals(0, first.receiveAddress().index());
+        assertSubscriptionsBeforeHistory(electrum);
+
+        electrum.resetCalls();
+        WalletSnapshot second = await(service.scan());
+        assertNotSame(first, second);
+        assertEquals(first, second);
+        assertEquals(4, electrum.scanned.size());
+        assertTrue(electrum.scanned.containsAll(List.of("0:0", "0:1", "1:0", "1:1")));
+        assertEquals(4, electrum.subscribed.size());
+        assertSubscriptionsBeforeHistory(electrum);
     }
 
     @Test
-    void expiredCacheRebuildsTheWholeScan() {
+    void eachSubscriptionHasFreshHistoriesAndAccumulators() {
         StubElectrum electrum = new StubElectrum(index -> true);
-        WalletService service = service(electrum, 1);
-        Uni<WalletSnapshot> snapshot = service.snapshot();
-        WalletSnapshot first = snapshot.await().atMost(Duration.ofSeconds(5));
-        electrum.scanned.clear();
+        WalletService service = service(electrum);
+        Uni<WalletSnapshot> scan = service.scan();
+        WalletSnapshot first = await(scan);
+        assertEquals(10_000L, first.balance().total());
+        assertEquals(10, first.utxos().size());
+        assertEquals(1, first.transactions().size());
 
-        Uni.createFrom().voidItem().onItem().delayIt().by(Duration.ofMillis(1100))
-                .await().atMost(Duration.ofSeconds(5));
-        WalletSnapshot refreshed = snapshot.await().atMost(Duration.ofSeconds(5));
+        electrum.used = index -> false;
+        electrum.resetCalls();
+        WalletSnapshot refreshed = await(scan);
         assertNotSame(first, refreshed);
+        assertEquals(0L, refreshed.balance().total());
+        assertTrue(refreshed.utxos().isEmpty());
+        assertTrue(refreshed.transactions().isEmpty());
         assertEquals(10, electrum.scanned.size());
         assertEquals(5, refreshed.receiveAddress().index());
+        assertEquals(11, electrum.subscribed.size());
+        assertTrue(electrum.subscribed.contains("0:5"));
+        assertSubscriptionsBeforeHistory(electrum);
+        assertEquals(10_000L, first.balance().total()); // Earlier snapshots remain detached.
+        assertEquals(10, first.utxos().size());
+        assertEquals(1, first.transactions().size());
     }
 
     @Test
-    void receiveAddressFollowsLastUsedAddressInsteadOfReusingAHole() {
-        WalletService service = service(new StubElectrum(index -> index == 1), 0);
-        WalletSnapshot result = service.snapshot().await().atMost(Duration.ofSeconds(5));
+    void useExtendsBothChainGapsAndReceiveAddressDoesNotReuseAHole() {
+        StubElectrum electrum = new StubElectrum(index -> index == 1);
+        WalletSnapshot result = await(service(electrum).scan());
         assertEquals(2, result.receiveAddress().index());
+        for (int chain = 0; chain < 2; chain++) {
+            for (int index = 0; index < 4; index++) {
+                assertTrue(electrum.scanned.contains(chain + ":" + index));
+            }
+            assertFalse(electrum.scanned.contains(chain + ":4"));
+        }
+        assertEquals(8, electrum.scanned.size());
+        assertEquals(8, electrum.subscribed.size());
+        assertSubscriptionsBeforeHistory(electrum);
+    }
+
+    @Test
+    void successfulScanCoverageAndReceiveIndexSurviveHistoryShrink() {
+        StubElectrum electrum = new StubElectrum(index -> index == 1);
+        WalletService service = service(electrum);
+        assertEquals(2, await(service.scan()).receiveAddress().index());
+
+        electrum.used = index -> false;
+        electrum.resetCalls(); // Simulate a connection with no remembered subscriptions.
+        WalletSnapshot shrunk = await(service.scan());
+        assertEquals(2, shrunk.receiveAddress().index());
+        assertEquals(8, electrum.scanned.size());
+        assertTrue(electrum.subscribed.containsAll(List.of("0:3", "1:3")));
+        assertSubscriptionsBeforeHistory(electrum);
+
+        electrum.used = index -> index == 3;
+        electrum.resetCalls();
+        assertEquals(4, await(service.scan()).receiveAddress().index());
+        assertEquals(10, electrum.scanned.size());
+        assertEquals(10, electrum.subscribed.size());
+        assertSubscriptionsBeforeHistory(electrum);
+    }
+
+    @Test
+    void failedScanDoesNotCommitCoverageOrReceiveIndex() {
+        StubElectrum electrum = new StubElectrum(index -> true);
+        WalletService service = service(electrum);
+        electrum.failMethod = "blockchain.transaction.get";
+        assertThrows(IllegalStateException.class, () -> await(service.scan()));
+        assertTrue(electrum.subscribed.contains("0:5"));
+
+        electrum.failMethod = null;
+        electrum.used = index -> false;
+        electrum.resetCalls();
+        assertEquals(0, await(service.scan()).receiveAddress().index());
+        assertEquals(4, electrum.scanned.size());
+        assertEquals(4, electrum.subscribed.size());
+        assertSubscriptionsBeforeHistory(electrum);
+    }
+
+    @Test
+    void failedSubscriptionPreventsHistoryRequest() {
+        StubElectrum electrum = new StubElectrum(index -> false);
+        electrum.failMethod = "blockchain.scripthash.subscribe";
+        electrum.failHash = "0:0";
+        assertThrows(IllegalStateException.class, () -> await(service(electrum).scan()));
+        assertFalse(electrum.scanned.contains("0:0"));
+    }
+
+    @Test
+    void extraReceiveSubscriptionMustSucceedBeforePublishingSnapshot() {
+        StubElectrum electrum = new StubElectrum(index -> true);
+        WalletService service = service(electrum);
+        electrum.failMethod = "blockchain.scripthash.subscribe";
+        electrum.failHash = "0:5";
+        assertThrows(IllegalStateException.class, () -> await(service.scan()));
+        assertEquals(10, electrum.scanned.size());
+        assertFalse(electrum.scanned.contains("0:5"));
+
+        electrum.failMethod = null;
+        electrum.used = index -> false;
+        electrum.resetCalls();
+        assertEquals(0, await(service.scan()).receiveAddress().index());
+        assertEquals(4, electrum.subscribed.size());
+    }
+
+    @Test
+    void snapshotListsAreDefensiveImmutableCopies() {
+        WalletSnapshot result = await(service(new StubElectrum(index -> true)).scan());
+        List<UtxoDto> utxos = new ArrayList<>(result.utxos());
+        List<TransactionDto> transactions = new ArrayList<>(result.transactions());
+        WalletSnapshot copy = new WalletSnapshot(result.balance(), utxos, transactions, result.receiveAddress());
+        utxos.clear();
+        transactions.clear();
+        assertEquals(result, copy);
+        assertThrows(UnsupportedOperationException.class, () -> copy.utxos().clear());
+        assertThrows(UnsupportedOperationException.class, () -> copy.transactions().clear());
+    }
+
+    @Test
+    void deriveRemainsLocalAndDoesNotStartAScan() {
+        StubElectrum electrum = new StubElectrum(index -> false);
+        AddressInfo address = service(electrum).derive(1, 7);
+        assertEquals(1, address.chain);
+        assertEquals(7, address.index);
+        assertEquals("address:1:7", address.address);
+        assertTrue(electrum.calls.isEmpty());
     }
 
     @Test
     void validatesScanConfiguration() {
-        WalletService service = service(new StubElectrum(index -> false), 0);
-        service.gapLimit = 0;
-        assertThrows(IllegalArgumentException.class, service::validateConfiguration);
-        service.gapLimit = 2;
-        service.maxAddresses = 0;
-        assertThrows(IllegalArgumentException.class, service::validateConfiguration);
-        service.maxAddresses = 5;
-        service.cacheTtl = -1;
-        assertThrows(IllegalArgumentException.class, service::validateConfiguration);
+        StubElectrum electrum = new StubElectrum(index -> false);
+        WalletService service = service(electrum);
+        for (int invalid : new int[]{0, -1}) {
+            service.gapLimit = invalid;
+            assertThrows(IllegalArgumentException.class, service::validateConfiguration);
+            service.gapLimit = 2;
+            service.maxAddresses = invalid;
+            assertThrows(IllegalArgumentException.class, service::validateConfiguration);
+            service.maxAddresses = 5;
+        }
+        service.maxAddresses = 1; // A gap larger than the per-chain cap is valid.
+        assertDoesNotThrow(service::validateConfiguration);
+        assertEquals(0, await(service.scan()).receiveAddress().index());
+        assertEquals(2, electrum.scanned.size());
+        assertEquals(2, electrum.subscribed.size());
     }
 
-    private static WalletService service(StubElectrum electrum, int ttl) {
+    private static WalletSnapshot await(Uni<WalletSnapshot> scan) {
+        return scan.await().atMost(Duration.ofSeconds(5));
+    }
+
+    private static void assertSubscriptionsBeforeHistory(StubElectrum electrum) {
+        for (String hash : electrum.scanned) {
+            int subscribed = electrum.calls.indexOf("blockchain.scripthash.subscribe " + hash);
+            int history = electrum.calls.indexOf("blockchain.scripthash.get_history " + hash);
+            assertTrue(subscribed >= 0 && subscribed < history, hash);
+        }
+        assertEquals(electrum.subscribed.size(), electrum.subscribed.stream().distinct().count());
+        assertEquals(electrum.scanned.size(), electrum.scanned.stream().distinct().count());
+    }
+
+    private static WalletService service(StubElectrum electrum) {
         WalletService service = new WalletService();
         service.electrum = electrum;
         service.wallet = new HdWallet() {
             @Override
             public AddressInfo address(int chain, int index) {
                 String id = chain + ":" + index;
-                return new AddressInfo(chain, index, id, id, "51", "m/" + chain + "/" + index);
+                return new AddressInfo(chain, index, "address:" + id, id, "51", "m/" + chain + "/" + index);
             }
 
             @Override
@@ -103,13 +247,16 @@ class WalletServiceTest {
         };
         service.gapLimit = 2;
         service.maxAddresses = 5;
-        service.cacheTtl = ttl;
         service.validateConfiguration();
         return service;
     }
 
     private static class StubElectrum extends ElectrumClient {
-        private final IntPredicate used;
+        private IntPredicate used;
+        private String failMethod;
+        private String failHash;
+        private final List<String> calls = new ArrayList<>();
+        private final List<String> subscribed = new ArrayList<>();
         private final List<String> scanned = new ArrayList<>();
         private final Transaction transaction;
 
@@ -120,20 +267,43 @@ class WalletServiceTest {
             transaction.addOutput(Coin.valueOf(1000), new Script(new byte[]{0x51}));
         }
 
+        void resetCalls() {
+            calls.clear();
+            subscribed.clear();
+            scanned.clear();
+        }
+
         @Override
         public Uni<JsonObject> call(String method, Object... params) {
             return Uni.createFrom().item(() -> {
+                if (method.startsWith("blockchain.scripthash.")) {
+                    assertEquals(1, params.length);
+                    assertInstanceOf(String.class, params[0]);
+                    // Deliberately fake hashes: no address, path or key may be transmitted.
+                    assertTrue(((String) params[0]).matches("[01]:\\d+"));
+                }
+                calls.add(method + (params.length == 0 ? "" : " " + params[0]));
+                if (method.equals(failMethod) && (failHash == null || failHash.equals(params[0]))) {
+                    throw new IllegalStateException("Simulated RPC failure");
+                }
                 Object result = switch (method) {
                     case "blockchain.headers.subscribe" -> new JsonObject().put("height", 100);
+                    case "blockchain.scripthash.subscribe" -> {
+                        subscribed.add((String) params[0]);
+                        yield null; // Null status is valid for an unused script.
+                    }
                     case "blockchain.scripthash.get_history" -> {
                         String id = (String) params[0];
+                        assertTrue(subscribed.contains(id), "History must wait for subscribe response: " + id);
                         scanned.add(id);
                         int index = Integer.parseInt(id.split(":")[1]);
                         yield used.test(index) ? new JsonArray().add(new JsonObject()
                                 .put("tx_hash", transaction.getTxId().toString()).put("height", 0)) : new JsonArray();
                     }
-                    case "blockchain.scripthash.get_balance" -> new JsonObject();
-                    case "blockchain.scripthash.listunspent" -> new JsonArray();
+                    case "blockchain.scripthash.get_balance" -> new JsonObject().put("confirmed", 1000L);
+                    case "blockchain.scripthash.listunspent" -> new JsonArray().add(new JsonObject()
+                            .put("tx_hash", transaction.getTxId().toString()).put("tx_pos", 0)
+                            .put("value", 1000L).put("height", 0));
                     case "blockchain.transaction.get" -> Utils.HEX.encode(transaction.bitcoinSerialize());
                     default -> throw new AssertionError("Unexpected RPC: " + method);
                 };
