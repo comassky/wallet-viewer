@@ -1,6 +1,13 @@
 target/
 .mvn/
+.quinoa/
 *.class
+
+# Local wallet configuration (never include in an image)
+.env
+.env.*
+!.env.example
+config/application.properties
 
 # Frontend
 node_modules/
