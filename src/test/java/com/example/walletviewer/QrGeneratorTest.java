@@ -1,6 +1,7 @@
 package com.example.walletviewer;
 
 import com.google.zxing.BinaryBitmap;
+import com.google.zxing.DecodeHintType;
 import com.google.zxing.MultiFormatReader;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import javax.imageio.ImageIO;
 import java.io.ByteArrayInputStream;
 import java.util.Arrays;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -25,7 +27,11 @@ class QrGeneratorTest {
             assertEquals(size, image.getWidth());
             assertEquals(size, image.getHeight());
             var bitmap = new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(image)));
-            assertEquals(address, new MultiFormatReader().decode(bitmap).getText());
+                // This is a pristine, axis-aligned generated image, not a camera capture.
+                // Bypass detector heuristics while still decoding and validating the QR payload.
+                assertEquals(address, new MultiFormatReader()
+                    .decode(bitmap, Map.of(DecodeHintType.PURE_BARCODE, true)).getText(),
+                    "QR payload at size " + size);
         }
     }
 

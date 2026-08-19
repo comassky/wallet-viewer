@@ -209,7 +209,7 @@ Environment variables override the tracked [application defaults](src/main/resou
 [Dockerfile](Dockerfile) uses two stages:
 
 1. **Build:** Maven 3.9.12 with Eclipse Temurin 25 runs `mvn verify`; Quinoa installs Node and builds the frontend.
-2. **Runtime:** Eclipse Temurin **25 JRE** on Jammy runs the packaged Quarkus application as **UID/GID `10001:10001`**, listening on port 8080.
+2. **Runtime:** Distroless **Java 25** on Debian 13 (`gcr.io/distroless/java25-debian13:nonroot`) runs the packaged Quarkus application as **UID/GID `65532:65532`**, listening on port 8080. The runtime contains no shell or package manager; it uses the image's built-in Java entrypoint.
 
 ```sh
 docker build -t wallet-viewer:local .
