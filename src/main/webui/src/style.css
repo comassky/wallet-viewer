@@ -47,20 +47,6 @@
     @apply rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 sm:p-4;
   }
 
-  .transaction-dialog {
-    width: min(76rem, calc(100% - 1.5rem));
-    max-height: calc(100vh - 1.5rem);
-    max-height: calc(100dvh - 1.5rem);
-    margin: auto;
-    overscroll-behavior: contain;
-    @apply overflow-y-auto rounded-3xl border border-slate-700 bg-slate-900 p-0 text-slate-100 shadow-2xl;
-  }
-
-  .transaction-dialog::backdrop {
-    background: rgb(2 6 23 / 85%);
-    backdrop-filter: blur(8px);
-  }
-
   .wallet-shell {
     min-width: 0;
     overflow-wrap: anywhere;
