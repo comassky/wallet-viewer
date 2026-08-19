@@ -82,7 +82,7 @@ For EUR or USD:
 | Quarkus | **3.39.2** |
 | Quinoa | **2.9.0** |
 | Wallet cache | Caffeine, one in-memory live state per application instance; no TTL eviction or persistence |
-| Node.js | **22.22.0**, installed and managed automatically by Quinoa |
+| Node.js | **24.20.0 (LTS)**, installed and managed automatically by Quinoa |
 | Frontend | Vue 3, TypeScript, Vite and Tailwind CSS |
 
 No global Node installation is required for the Maven workflow. Quinoa uses a version-specific local Node cache. The runtime remains Java 25 on the JVM; live updates do not introduce a native build.
