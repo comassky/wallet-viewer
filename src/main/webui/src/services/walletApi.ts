@@ -1,5 +1,5 @@
 import { requestJson, type RequestOptions } from './http.ts';
-import type { Balance, PriceRates, ReceiveAddress, Transaction, Utxo, WalletSnapshot } from '../types/wallet';
+import type { Balance, PriceRates, ReceiveAddress, Transaction, TransactionDetails, Utxo, WalletSnapshot } from '../types/wallet';
 
 const BASE = '/api/wallet';
 
@@ -9,6 +9,7 @@ export const walletApi = {
   snapshot: (options?: RequestOptions) => requestJson<WalletSnapshot>(BASE, options),
   balance: (options?: RequestOptions) => requestJson<Balance>(`${BASE}/balance`, options),
   transactions: (options?: RequestOptions) => requestJson<Transaction[]>(`${BASE}/transactions`, options),
+  transactionDetails: (txid: string, options?: RequestOptions) => requestJson<TransactionDetails>(`${BASE}/transactions/${encodeURIComponent(txid)}`, options),
   utxos: (options?: RequestOptions) => requestJson<Utxo[]>(`${BASE}/utxos`, options),
   receive: (options?: RequestOptions) => requestJson<ReceiveAddress>(`${BASE}/receive`, options),
   receiveAt: (index: number, options?: RequestOptions) => requestJson<ReceiveAddress>(`${BASE}/receive/${index}`, options),

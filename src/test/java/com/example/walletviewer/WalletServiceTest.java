@@ -14,7 +14,9 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.IntPredicate;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,6 +72,7 @@ class WalletServiceTest {
     void eachSubscriptionHasFreshHistoriesAndAccumulators() {
         StubElectrum electrum = new StubElectrum(index -> true);
         WalletService service = service(electrum);
+        assertSame(service.derive(0, 0), service.derive(0, 0)); // Reused derivations must never carry scan state.
         Uni<WalletSnapshot> scan = service.scan();
         WalletSnapshot first = await(scan);
         assertEquals(10_000L, first.balance().total());
@@ -198,6 +201,14 @@ class WalletServiceTest {
     }
 
     @Test
+    void balanceIncludesNegativeUnconfirmedAmounts() {
+        StubElectrum electrum = new StubElectrum(index -> index == 0);
+        electrum.unconfirmed = -250L;
+        BalanceDto balance = await(service(electrum).scan()).balance();
+        assertEquals(new BalanceDto(2_000L, -500L, 1_500L), balance);
+    }
+
+    @Test
     void validatesScanConfiguration() {
         StubElectrum electrum = new StubElectrum(index -> false);
         WalletService service = service(electrum);
@@ -234,10 +245,13 @@ class WalletServiceTest {
         WalletService service = new WalletService();
         service.electrum = electrum;
         service.wallet = new HdWallet() {
+            private final Map<String, AddressInfo> addresses = new HashMap<>();
+
             @Override
             public AddressInfo address(int chain, int index) {
                 String id = chain + ":" + index;
-                return new AddressInfo(chain, index, "address:" + id, id, "51", "m/" + chain + "/" + index);
+                return addresses.computeIfAbsent(id,
+                        ignored -> new AddressInfo(chain, index, "address:" + id, id, "51", "m/" + chain + "/" + index));
             }
 
             @Override
@@ -255,6 +269,7 @@ class WalletServiceTest {
         private IntPredicate used;
         private String failMethod;
         private String failHash;
+        private long unconfirmed;
         private final List<String> calls = new ArrayList<>();
         private final List<String> subscribed = new ArrayList<>();
         private final List<String> scanned = new ArrayList<>();
@@ -300,7 +315,8 @@ class WalletServiceTest {
                         yield used.test(index) ? new JsonArray().add(new JsonObject()
                                 .put("tx_hash", transaction.getTxId().toString()).put("height", 0)) : new JsonArray();
                     }
-                    case "blockchain.scripthash.get_balance" -> new JsonObject().put("confirmed", 1000L);
+                        case "blockchain.scripthash.get_balance" -> new JsonObject()
+                            .put("confirmed", 1000L).put("unconfirmed", unconfirmed);
                     case "blockchain.scripthash.listunspent" -> new JsonArray().add(new JsonObject()
                             .put("tx_hash", transaction.getTxId().toString()).put("tx_pos", 0)
                             .put("value", 1000L).put("height", 0));

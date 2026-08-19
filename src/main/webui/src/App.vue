@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { useWallet } from './composables/useWallet';
 import { useCurrency } from './composables/useCurrency';
-import type { ReceiveAddress } from './types/wallet';
+import type { ReceiveAddress, Transaction } from './types/wallet';
 import DashboardHeader from './components/DashboardHeader.vue';
 import PriceNotice from './components/PriceNotice.vue';
 import BalanceCard from './components/BalanceCard.vue';
@@ -11,10 +11,12 @@ import TransactionsSection from './components/TransactionsSection.vue';
 import UtxosSection from './components/UtxosSection.vue';
 import ReceiveQrDialog from './components/ReceiveQrDialog.vue';
 import WalletLiveStatus from './components/WalletLiveStatus.vue';
+import TransactionDetailsDialog from './components/TransactionDetailsDialog.vue';
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, rates, ratesLoading, ratesError, fiat, refreshRates, amount } = useCurrency();
 const qrDialog = ref<InstanceType<typeof ReceiveQrDialog> | null>(null);
+const transactionDialog = ref<InstanceType<typeof TransactionDetailsDialog> | null>(null);
 
 function refreshDashboard(): void {
   void refresh();
@@ -24,11 +26,15 @@ function refreshDashboard(): void {
 function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): void {
   void qrDialog.value?.open(address, trigger);
 }
+
+function inspectTransaction(transaction: Transaction, trigger: HTMLButtonElement): void {
+  transactionDialog.value?.open(transaction, trigger);
+}
 </script>
 
 <template>
-  <main lang="en-US" class="wallet-shell w-full px-4 pb-16 pt-6 sm:px-6 lg:px-8">
-    <DashboardHeader v-model:currency="currency" :loading="loading" @refresh="refreshDashboard" />
+  <main lang="en-US" class="wallet-shell w-full px-4 pb-16 pt-6 sm:px-6 lg:px-10 lg:pt-9">
+    <DashboardHeader :loading="loading" @refresh="refreshDashboard" />
     <WalletLiveStatus :connection="connection" :status="status" :message="message" :has-data="!!data" @retry="refresh" />
     <PriceNotice
       v-if="fiat"
@@ -41,11 +47,11 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
     />
 
     <template v-if="data">
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <BalanceCard :balance="data.balance" :currency="currency" :estimated="fiat && !!rates" :amount="amount" />
+      <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <BalanceCard v-model:currency="currency" :balance="data.balance" :estimated="fiat && !!rates" :amount="amount" />
         <ReceiveAddressCard :receive="data.receiveAddress" @enlarge="enlargeReceive" />
       </div>
-      <TransactionsSection :transactions="data.transactions" :currency="currency" :amount="amount" />
+      <TransactionsSection :transactions="data.transactions" :currency="currency" :amount="amount" @inspect="inspectTransaction" />
       <UtxosSection :utxos="data.utxos" :currency="currency" :amount="amount" />
     </template>
     <div v-else-if="loading" class="py-20 text-center text-slate-400">
@@ -61,4 +67,5 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
 
   <!-- Keep the native dialog and its snapshot alive across loading and error states. -->
   <ReceiveQrDialog ref="qrDialog" />
+  <TransactionDetailsDialog ref="transactionDialog" :currency="currency" :amount="amount" />
 </template>

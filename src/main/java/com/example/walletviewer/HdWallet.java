@@ -33,7 +33,15 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class HdWallet {
 
-    enum ScriptType {P2PKH, P2SH_P2WPKH, P2WPKH, P2TR}
+    enum ScriptType {
+        P2PKH(44), P2SH_P2WPKH(49), P2WPKH(84), P2TR(86);
+
+        final int purpose;
+
+        ScriptType(int purpose) {
+            this.purpose = purpose;
+        }
+    }
 
     // xpub mainnet version bytes (0x0488B21E)
     private static final byte[] XPUB_VERSION = {0x04, (byte) 0x88, (byte) 0xB2, 0x1E};
@@ -65,46 +73,24 @@ public class HdWallet {
         String xpub = segwitPrefix ? toXpub(p) : p;
 
         String override = scriptTypeCfg == null ? "auto" : scriptTypeCfg.trim().toLowerCase();
-        if (!override.equals("auto")) {
-            switch (override) {
-                case "p2tr":
-                case "taproot":
-                    scriptType = ScriptType.P2TR;
-                    basePath = "m/86'/0'/0'";
-                    break;
-                case "p2wpkh":
-                case "bech32":
-                    scriptType = ScriptType.P2WPKH;
-                    basePath = "m/84'/0'/0'";
-                    break;
-                case "p2sh-p2wpkh":
-                case "p2sh":
-                    scriptType = ScriptType.P2SH_P2WPKH;
-                    basePath = "m/49'/0'/0'";
-                    break;
-                default:
-                    scriptType = ScriptType.P2PKH;
-                    basePath = "m/44'/0'/0'";
-            }
-        } else {
-            switch (prefix) {
-                case "zpub":
-                case "vpub":
-                    scriptType = ScriptType.P2WPKH;
-                    basePath = "m/84'/0'/0'";
-                    break;
-                case "ypub":
-                case "upub":
-                    scriptType = ScriptType.P2SH_P2WPKH;
-                    basePath = "m/49'/0'/0'";
-                    break;
-                default:
-                    scriptType = ScriptType.P2PKH;
-                    basePath = "m/44'/0'/0'";
-            }
-        }
+        scriptType = resolveScriptType(prefix, override);
+        basePath = "m/" + scriptType.purpose + "'/0'/0'";
         account = DeterministicKey.deserializeB58(null, xpub, params);
         initialized = true;
+    }
+
+    static ScriptType resolveScriptType(String prefix, String override) {
+        return switch (override) {
+            case "auto" -> switch (prefix) {
+                case "zpub", "vpub" -> ScriptType.P2WPKH;
+                case "ypub", "upub" -> ScriptType.P2SH_P2WPKH;
+                default -> ScriptType.P2PKH;
+            };
+            case "p2tr", "taproot" -> ScriptType.P2TR;
+            case "p2wpkh", "bech32" -> ScriptType.P2WPKH;
+            case "p2sh-p2wpkh", "p2sh" -> ScriptType.P2SH_P2WPKH;
+            default -> ScriptType.P2PKH;
+        };
     }
 
     /** Re-encodes a zpub/ypub as an xpub so bitcoinj can parse it (only the version bytes differ). */
@@ -137,23 +123,16 @@ public class HdWallet {
                 c -> HDKeyDerivation.deriveChildKey(account, new ChildNumber(c, false)));
         DeterministicKey key = HDKeyDerivation.deriveChildKey(chainKey, new ChildNumber(index, false));
 
-        Address addr;
-        switch (scriptType) {
-            case P2WPKH:
-                addr = SegwitAddress.fromKey(params, key);
-                break;
-            case P2TR:
-                addr = taprootAddress(key);
-                break;
-            case P2SH_P2WPKH: {
+        Address addr = switch (scriptType) {
+            case P2WPKH -> SegwitAddress.fromKey(params, key);
+            case P2TR -> taprootAddress(key);
+            case P2SH_P2WPKH -> {
                 byte[] h160 = key.getPubKeyHash();
                 Script redeem = new ScriptBuilder().smallNum(0).data(h160).build();
-                addr = LegacyAddress.fromScriptHash(params, Utils.sha256hash160(redeem.getProgram()));
-                break;
+                yield LegacyAddress.fromScriptHash(params, Utils.sha256hash160(redeem.getProgram()));
             }
-            default:
-                addr = LegacyAddress.fromKey(params, key);
-        }
+            case P2PKH -> LegacyAddress.fromKey(params, key);
+        };
 
         byte[] program = ScriptBuilder.createOutputScript(addr).getProgram();
         String scripthash = Utils.HEX.encode(Utils.reverseBytes(Sha256Hash.hash(program)));
