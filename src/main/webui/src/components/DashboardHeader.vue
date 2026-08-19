@@ -1,34 +1,26 @@
 <script setup lang="ts">
-import { currencies, type Currency } from '../currency';
-
-defineProps<{ currency: Currency; loading: boolean }>();
-defineEmits<{ 'update:currency': [value: Currency]; refresh: [] }>();
+defineProps<{ loading: boolean }>();
+defineEmits<{ refresh: [] }>();
 </script>
 
 <template>
-  <header class="mb-6 flex flex-wrap items-center justify-between gap-4">
-    <h1 class="flex items-center gap-2 text-xl font-semibold">
-      <span class="text-2xl text-accent">₿</span> Wallet Viewer
-    </h1>
-    <div class="flex min-w-0 flex-wrap items-center gap-3">
-      <div role="group" aria-label="Display currency" class="flex flex-wrap rounded-lg border border-slate-700 bg-slate-900 p-1">
-        <button
-          v-for="unit in currencies"
-          :key="unit"
-          type="button"
-          :aria-pressed="currency === unit"
-          @click="$emit('update:currency', unit)"
-          class="rounded-md px-3 py-1.5 text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-          :class="currency === unit ? 'bg-accent text-slate-950' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'"
-        >{{ unit }}</button>
+  <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3.5">
+      <span class="flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/30 bg-accent/10 text-3xl text-accent" aria-hidden="true">₿</span>
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">Wallet <span class="font-normal text-slate-400">Viewer</span></h1>
+        <p class="mt-0.5 text-xs tracking-wide text-slate-500">Your Bitcoin. A clearer picture.</p>
       </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="hidden rounded-full border border-slate-700/60 px-3 py-1.5 text-[11px] uppercase tracking-widest text-slate-400 sm:inline-flex">Read-only wallet</span>
       <button
         type="button"
         @click="$emit('refresh')"
         :disabled="loading"
         title="Replay the wallet cache and refresh fiat quotes (does not rescan the wallet)"
-        class="rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2 text-sm text-slate-100 transition hover:border-accent disabled:opacity-50"
-      >{{ loading ? 'Loading…' : '↻ Refresh' }}</button>
+        class="button-secondary rounded-xl px-4 py-2 text-sm disabled:opacity-50"
+      ><span aria-hidden="true">↻</span> {{ loading ? 'Loading…' : 'Refresh' }}</button>
     </div>
   </header>
 </template>

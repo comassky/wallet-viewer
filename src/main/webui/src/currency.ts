@@ -1,8 +1,28 @@
 import type { PriceRates } from './types/wallet';
 
-export const currencies = ['EUR', 'USD', 'BTC', 'SATS'] as const;
+export const currencies = ['EUR', 'USD', 'SATS', 'BTC'] as const;
 export type Currency = typeof currencies[number];
 export const currencyStorageKey = 'wallet-viewer.currency';
+
+export function currencyLabel(currency: Currency): string {
+  return currency === 'SATS' ? 'SAT' : currency;
+}
+
+export function readCurrency(): Currency {
+  try {
+    const saved = localStorage.getItem(currencyStorageKey);
+    if (saved === 'SAT') return 'SATS';
+    return isCurrency(saved) ? saved : 'BTC';
+  } catch {
+    return 'BTC';
+  }
+}
+
+export function saveCurrency(currency: Currency): void {
+  try {
+    localStorage.setItem(currencyStorageKey, currency);
+  } catch { /* Display preferences still work when storage is blocked. */ }
+}
 
 export function isCurrency(value: unknown): value is Currency {
   return currencies.some(currency => currency === value);

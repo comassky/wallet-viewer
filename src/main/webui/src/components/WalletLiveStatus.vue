@@ -23,7 +23,7 @@ const label = computed(() => {
 </script>
 
 <template>
-  <section class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
+  <section class="wallet-panel mb-4 flex flex-wrap items-center justify-between gap-3 px-4 py-3">
     <div role="status" aria-live="polite" aria-atomic="true" class="min-w-0 text-sm">
       <span class="inline-flex items-center gap-2 font-medium" :class="live ? 'text-emerald-400' : 'text-amber-300'">
         <span aria-hidden="true" class="h-2 w-2 rounded-full" :class="live ? 'bg-emerald-400' : 'bg-amber-300'" />

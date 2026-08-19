@@ -1,16 +1,7 @@
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { PriceRates } from '../types/wallet';
-import { currencyStorageKey, formatAmount, isCurrency, isFiat, validRates, type Currency } from '../currency';
-
-function readCurrency(): Currency {
-  try {
-    const saved = localStorage.getItem(currencyStorageKey);
-    return isCurrency(saved) ? saved : 'BTC';
-  } catch {
-    return 'BTC';
-  }
-}
+import { formatAmount, isFiat, readCurrency, saveCurrency, validRates, type Currency } from '../currency';
 
 /** Display preference and fiat quote lifecycle, independent of wallet snapshot loading. */
 export function useCurrency() {
@@ -38,12 +29,8 @@ export function useCurrency() {
     }
   }
 
-  watch(currency, value => {
-    try {
-      localStorage.setItem(currencyStorageKey, value);
-    } catch { /* Preferences still work when browser storage is unavailable. */ }
-    void refreshRates();
-  });
+  watch(currency, saveCurrency, { flush: 'sync' });
+  watch(currency, () => void refreshRates());
   onMounted(() => {
     void refreshRates();
     timer = setInterval(() => void refreshRates(), 60_000);
