@@ -1,0 +1,16 @@
+import { requestJson, type RequestOptions } from './http.ts';
+import type { Balance, PriceRates, ReceiveAddress, Transaction, Utxo, WalletSnapshot } from '../types/wallet';
+
+const BASE = '/api/wallet';
+
+/** Endpoint definitions only: no Vue state or component lifecycle. */
+export const walletApi = {
+  prices: (options?: RequestOptions) => requestJson<PriceRates>(`${BASE}/prices`, options),
+  snapshot: (options?: RequestOptions) => requestJson<WalletSnapshot>(BASE, options),
+  balance: (options?: RequestOptions) => requestJson<Balance>(`${BASE}/balance`, options),
+  transactions: (options?: RequestOptions) => requestJson<Transaction[]>(`${BASE}/transactions`, options),
+  utxos: (options?: RequestOptions) => requestJson<Utxo[]>(`${BASE}/utxos`, options),
+  receive: (options?: RequestOptions) => requestJson<ReceiveAddress>(`${BASE}/receive`, options),
+  receiveAt: (index: number, options?: RequestOptions) => requestJson<ReceiveAddress>(`${BASE}/receive/${index}`, options),
+  qrAtUrl: (index: number) => `${BASE}/receive/${index}/qr`,
+};

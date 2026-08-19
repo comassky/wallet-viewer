@@ -6,4 +6,35 @@
   html {
     @apply bg-slate-950 text-slate-100 antialiased;
   }
+
+  button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  :where(button, a):focus-visible {
+    @apply outline outline-2 outline-offset-4 outline-accent;
+  }
+}
+
+@layer components {
+  .wallet-shell {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .receive-qr-dialog {
+    width: min(32rem, calc(100% - 2rem));
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    overflow-wrap: anywhere;
+  }
+
+  .receive-qr-dialog::backdrop {
+    background: rgb(2 6 23 / 85%);
+    backdrop-filter: blur(4px);
+  }
 }
