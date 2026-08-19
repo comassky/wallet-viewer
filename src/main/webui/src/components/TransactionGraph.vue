@@ -6,6 +6,7 @@ import { shortId } from '../utils/format';
 import { transactionGraphLayout } from '../utils/transactionGraph';
 
 const props = defineProps<{
+  idPrefix: string;
   details: TransactionDetails;
   currency: Currency;
   amount: (sats: number, signed?: boolean) => string;
@@ -14,9 +15,9 @@ const graph = computed(() => transactionGraphLayout(props.details.inputs.length,
 </script>
 
 <template>
-  <section aria-labelledby="transaction-graph-title">
+  <section :aria-labelledby="`${idPrefix}-graph-heading`">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <h3 id="transaction-graph-title" class="section-title">Transaction flow</h3>
+      <h4 :id="`${idPrefix}-graph-heading`" class="section-title">Transaction flow</h4>
       <p class="text-xs text-slate-500">All inputs & outputs · scroll to explore</p>
     </div>
     <div class="mb-2 flex justify-between px-2 text-xs font-medium">
@@ -24,9 +25,9 @@ const graph = computed(() => transactionGraphLayout(props.details.inputs.length,
       <span class="text-emerald-400">{{ details.outputs.length }} outputs</span>
     </div>
     <div class="max-h-[28rem] overflow-auto rounded-2xl border border-slate-700/50 bg-slate-950/60" tabindex="0" role="region" aria-label="Scrollable transaction graph; full values are listed below">
-      <svg :viewBox="`0 0 ${graph.width} ${graph.height}`" :style="{ height: `${graph.height}px` }" class="w-full min-w-[960px]" role="img" aria-labelledby="graph-title graph-description">
-        <title id="graph-title">Inputs to transaction to outputs</title>
-        <desc id="graph-description">{{ details.inputs.length }} inputs connect to transaction {{ details.txid }}, then to {{ details.outputs.length }} outputs. Connections indicate structure, not an allocation of particular inputs to particular outputs. Full addresses and amounts are listed below.</desc>
+      <svg :viewBox="`0 0 ${graph.width} ${graph.height}`" :style="{ height: `${graph.height}px` }" class="w-full min-w-[960px]" role="img" :aria-labelledby="`${idPrefix}-graph-title ${idPrefix}-graph-description`">
+        <title :id="`${idPrefix}-graph-title`">Inputs to transaction to outputs</title>
+        <desc :id="`${idPrefix}-graph-description`">{{ details.inputs.length }} inputs connect to transaction {{ details.txid }}, then to {{ details.outputs.length }} outputs. Connections indicate structure, not an allocation of particular inputs to particular outputs. Full addresses and amounts are listed below.</desc>
         <path v-for="(node, index) in graph.inputs" :key="`in-${index}`" :d="node.path" fill="none" stroke="#38bdf8" stroke-opacity="0.35" stroke-width="2" />
         <path v-for="(node, index) in graph.outputs" :key="`out-${index}`" :d="node.path" fill="none" stroke="#34d399" stroke-opacity="0.35" stroke-width="2" />
         <g v-for="(input, index) in details.inputs" :key="index" :transform="`translate(16, ${graph.inputs[index].y - 28})`">
