@@ -10,18 +10,17 @@ RUN --mount=type=cache,target=/root/.m2 \
     --mount=type=cache,target=/workspace/.quinoa \
     mvn --batch-mode --no-transfer-progress verify -Dquarkus.quinoa.ci=true
 
-FROM eclipse-temurin:25-jre-jammy AS runtime
+FROM gcr.io/distroless/java25-debian13:nonroot AS runtime
 WORKDIR /app
-RUN groupadd --gid 10001 wallet \
-    && useradd --uid 10001 --gid wallet --no-create-home --shell /usr/sbin/nologin wallet
 
 # Keep dependencies separate from application code for efficient image layers.
-COPY --from=build --chown=10001:10001 /workspace/target/quarkus-app/lib/ ./lib/
-COPY --from=build --chown=10001:10001 /workspace/target/quarkus-app/*.jar ./
-COPY --from=build --chown=10001:10001 /workspace/target/quarkus-app/app/ ./app/
-COPY --from=build --chown=10001:10001 /workspace/target/quarkus-app/quarkus/ ./quarkus/
+COPY --from=build --chown=65532:65532 /workspace/target/quarkus-app/lib/ ./lib/
+COPY --from=build --chown=65532:65532 /workspace/target/quarkus-app/*.jar ./
+COPY --from=build --chown=65532:65532 /workspace/target/quarkus-app/app/ ./app/
+COPY --from=build --chown=65532:65532 /workspace/target/quarkus-app/quarkus/ ./quarkus/
 
 ENV QUARKUS_HTTP_HOST=0.0.0.0
-USER 10001:10001
+USER 65532:65532
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "quarkus-run.jar"]
+# Distroless provides the Java -jar entrypoint; no shell is required.
+CMD ["quarkus-run.jar"]
