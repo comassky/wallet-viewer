@@ -2,6 +2,7 @@
 import { nextTick, onMounted, onScopeDispose, ref } from 'vue';
 import { currencies, currencyLabel, type Currency } from '../currency';
 import type { Balance } from '../types/wallet';
+import UiIcon from './UiIcon.vue';
 
 defineProps<{
   balance: Balance;
@@ -43,7 +44,7 @@ onScopeDispose(() => document.removeEventListener('click', outside));
 <template>
   <section ref="root" class="wallet-panel balance-card relative min-w-0 p-6 sm:p-8" @keydown.esc.stop.prevent="close">
     <div class="mb-6 flex items-center justify-between gap-3">
-      <h2 class="section-title">Total balance</h2>
+      <h2 class="section-title flex items-center gap-2"><UiIcon name="coins" class="text-accent" />Total balance</h2>
       <span class="rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-accent">Bitcoin</span>
     </div>
     <button
