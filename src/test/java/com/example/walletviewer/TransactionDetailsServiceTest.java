@@ -2,6 +2,7 @@ package com.example.walletviewer;
 
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
+import jakarta.enterprise.inject.Vetoed;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.ServiceUnavailableException;
@@ -314,6 +315,8 @@ class TransactionDetailsServiceTest {
 
     private static String raw(Transaction tx) { return Utils.HEX.encode(tx.bitcoinSerialize()); }
 
+    // Manually instantiated unit-test stub, never a CDI bean in @QuarkusTest.
+    @Vetoed
     private static class StubLive extends WalletLiveService {
         WalletSnapshot snapshot;
         int calls;
