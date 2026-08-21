@@ -17,11 +17,58 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.IntPredicate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class WalletServiceTest {
+
+    @Test
+    void watchMappingPrecedesSubscriptionsAndStaysBoundedAcrossScans() throws Exception {
+        StubElectrum electrum = new StubElectrum(index -> true);
+        WalletService service = service(electrum);
+        electrum.beforeSubscribe = hash -> {
+            // Simulate a notification on another thread before the subscribe reply,
+            // including the extra receive watch outside the history scan cap.
+            String address = CompletableFuture.supplyAsync(() -> service.knownAddressForScripthash(hash))
+                    .orTimeout(5, TimeUnit.SECONDS).join();
+            assertEquals("address:" + hash, address);
+        };
+        assertNull(service.knownAddressForScripthash("0:0"));
+        for (int pass = 0; pass < 3; pass++) {
+            electrum.resetCalls();
+            await(service.scan());
+            for (int chain = 0; chain < 2; chain++) {
+                for (int index = 0; index < service.maxAddresses; index++) {
+                    String hash = chain + ":" + index;
+                    assertEquals("address:" + hash, service.knownAddressForScripthash(hash));
+                }
+            }
+            assertEquals("address:0:5", service.knownAddressForScripthash("0:5"));
+            assertEquals(11, electrum.subscribed.size());
+            assertFalse(electrum.scanned.contains("0:5"));
+            electrum.used = index -> false; // Mapping survives history shrink / fresh connections.
+        }
+        assertNull(service.knownAddressForScripthash("1:5"));
+        assertNull(service.knownAddressForScripthash(electrum.transaction.getTxId().toString()));
+        service.derive(0, 1000); // Public derivation must not grow the watch registry.
+        assertNull(service.knownAddressForScripthash("0:1000"));
+
+        // Lookup remains purely local even when neither dependency is available.
+        service.wallet = null;
+        service.electrum = null;
+        assertEquals("address:0:5", service.knownAddressForScripthash("0:5"));
+        assertNull(service.knownAddressForScripthash(null));
+        for (int i = 0; i < 1000; i++) {
+            assertNull(service.knownAddressForScripthash("remote-" + i));
+        }
+        var field = WalletService.class.getDeclaredField("knownAddresses");
+        field.setAccessible(true);
+        assertEquals(2 * service.maxAddresses + 1, ((Map<?, ?>) field.get(service)).size());
+    }
 
     @Test
     void scansAreLazyAndRespectANonMultipleAddressLimit() {
@@ -141,6 +188,8 @@ class WalletServiceTest {
         electrum.failMethod = "blockchain.transaction.get";
         assertThrows(IllegalStateException.class, () -> await(service.scan()));
         assertTrue(electrum.subscribed.contains("0:5"));
+        assertEquals("address:0:5", service.knownAddressForScripthash("0:5"),
+            "A failed scan must retain identities of already issued watches");
 
         electrum.failMethod = null;
         electrum.used = index -> false;
@@ -270,6 +319,7 @@ class WalletServiceTest {
         private String failMethod;
         private String failHash;
         private long unconfirmed;
+        private Consumer<String> beforeSubscribe = ignored -> { };
         private final List<String> calls = new ArrayList<>();
         private final List<String> subscribed = new ArrayList<>();
         private final List<String> scanned = new ArrayList<>();
@@ -290,6 +340,9 @@ class WalletServiceTest {
 
         @Override
         public Uni<JsonObject> call(String method, Object... params) {
+            if (method.equals("blockchain.scripthash.subscribe")) {
+                beforeSubscribe.accept((String) params[0]);
+            }
             return Uni.createFrom().item(() -> {
                 if (method.startsWith("blockchain.scripthash.")) {
                     assertEquals(1, params.length);

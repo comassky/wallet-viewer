@@ -45,6 +45,7 @@ public class LiveWalletTestResource implements QuarkusTestResourceLifecycleManag
     private int scans;
     private int histories;
     private int notifications;
+    private int versions;
     private Throwable protocolFailure;
 
     @Override
@@ -123,6 +124,13 @@ public class LiveWalletTestResource implements QuarkusTestResourceLifecycleManag
         boolean funded = credited && scriptHash.equals(hash);
         Object result;
         switch (method) {
+            case "server.version" -> {
+                if (!new JsonArray().add("Wallet Viewer").add("1.4").equals(params)) {
+                    throw new IllegalStateException("Unexpected version negotiation parameters");
+                }
+                versions++;
+                result = new JsonArray().add("fixture 1.0").add("1.4");
+            }
             case "server.ping" -> result = null;
             case "blockchain.headers.subscribe" -> {
                 scans++;
@@ -185,6 +193,8 @@ public class LiveWalletTestResource implements QuarkusTestResourceLifecycleManag
     public synchronized int scanCount() { return scans; }
     public synchronized int historyCount() { return histories; }
     public synchronized int notificationCount() { return notifications; }
+    public synchronized int versionCount() { return versions; }
+    public int port() { return server.actualPort(); }
     public synchronized String transactionId() { return transactionId; }
 
     public synchronized void assertHealthy() {

@@ -2,8 +2,11 @@ package com.example.walletviewer;
 
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import jakarta.ws.rs.ServiceUnavailableException;
+import org.bitcoinj.crypto.HDKeyDerivation;
+import org.bitcoinj.params.MainNetParams;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +23,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -299,6 +304,169 @@ class WalletLiveServiceTest {
         assertTrue(worker.isTerminated());
     }
 
+    @Test
+    void addressNotificationsLogOnlyLocallyKnownAddressesAndTolerateInvalidParams() throws Exception {
+        WalletSnapshot previous = startWithSnapshot();
+        electrum.connection(false);
+        next("offline", previous);
+        // Populate the real registry using real local derivations, not notification data.
+        WalletService watched = watchedAddresses();
+        AddressInfo receive = watched.derive(0, 0);
+        AddressInfo change = watched.derive(1, 0);
+        watched.wallet = null;
+        watched.electrum = null; // The callback must neither derive nor perform RPCs.
+        live.scanner = watched;
+        AtomicLong changes = (AtomicLong) field("changes").get(live);
+        long revision = changes.get();
+        String payload = "remote-status\r\nforged-log tx-secret zpub-secret balance=987654321";
+        String unknownHash = "f".repeat(64);
+
+        try (TestLogCapture logs = new TestLogCapture(WalletLiveService.class)) {
+            electrum.notifyWallet(new JsonArray().add(receive.scripthash).add(payload));
+            electrum.notifyWallet(new JsonArray().add(change.scripthash).add(null));
+            assertEquals(List.of("Electrum address notification: address=" + receive.address,
+                    "Electrum address notification: address=" + change.address), logs.messages());
+
+            List<JsonObject> malformedOrUnknown = List.of(
+                    walletNotification(new JsonArray().add(unknownHash).add(payload)),
+                    walletNotification(new JsonArray().add(payload).add(null)),
+                    walletNotification(new JsonArray().add("a".repeat(63) + "\n").add(null)),
+                    walletNotification(new JsonArray().add("a".repeat(65)).add(null)),
+                    walletNotification(null), // Existing method-only stubs remain valid callbacks.
+                    walletNotification(payload),
+                    walletNotification(new JsonObject().put("address", payload)),
+                    walletNotification(new JsonArray()),
+                    walletNotification(new JsonArray().add(receive.scripthash)),
+                    walletNotification(new JsonArray().add(receive.scripthash).add(null).add(payload)),
+                    walletNotification(new JsonArray().add(null).add(null)),
+                    walletNotification(new JsonArray().add(123).add(null)),
+                    walletNotification(new JsonArray().add(new JsonObject().put("address", payload)).add(null)),
+                    walletNotification(new JsonArray().add(receive.scripthash).add(new JsonObject())),
+                    walletNotification(new JsonArray().add(receive.scripthash).add(123)));
+            for (JsonObject notification : malformedOrUnknown) {
+                assertDoesNotThrow(() -> electrum.notifications.forEach(listener -> listener.accept(notification)));
+            }
+            assertEquals(malformedOrUnknown.size(), logs.messages().stream()
+                    .filter(m -> m.equals("Electrum address notification: address=unknown")).count());
+            assertEquals(2 + malformedOrUnknown.size(), logs.entries().size());
+            assertEquals(revision + 2 + malformedOrUnknown.size(), changes.get(),
+                    "Address resolution must not change notification revision tracking");
+            assertNull(watched.knownAddressForScripthash(unknownHash), "Never learn remote identities");
+
+            // Headers and invalid method types must not produce an address log.
+            electrum.notifications.forEach(listener -> {
+                listener.accept(new JsonObject().put("method", "blockchain.headers.subscribe"));
+                listener.accept(new JsonObject().put("method", new JsonArray().add(payload)));
+                listener.accept(new JsonObject());
+                listener.accept(null);
+            });
+            assertEquals(2 + malformedOrUnknown.size(), logs.entries().size());
+            assertTrue(logs.entries().stream().allMatch(entry -> entry.level() == Level.INFO.intValue()
+                    && entry.thrown() == null));
+            assertTrue(logs.messages().stream().noneMatch(m -> m.contains(payload) || m.contains(unknownHash)
+                    || m.contains(receive.scripthash) || m.contains(change.scripthash)
+                    || m.contains("tx-secret") || m.contains("zpub-secret") || m.contains("987654321")
+                    || m.contains("\r") || m.contains("\n")));
+            // Only the two intentional address logs may contain a wallet address.
+            assertTrue(logs.messages().stream().skip(2)
+                    .noneMatch(m -> m.contains(receive.address) || m.contains(change.address)));
+        }
+        idle();
+        assertNull(scheduled(), "Offline notifications must still not schedule scans");
+        assertEquals(1, scanner.calls.get());
+    }
+
+    @Test
+    void confirmationChangesDoNotCountHistoricalTransactionIdsAsNew() throws Exception {
+        WalletSnapshot previous = startWithSnapshot();
+        TransactionDto historical = previous.transactions().getFirst();
+        WalletSnapshot confirmed = new WalletSnapshot(previous.balance(), previous.utxos(),
+                List.of(new TransactionDto(historical.txid(), 100, 100, 0, 11, 2, 123L, "received")),
+                previous.receiveAddress());
+        try (TestLogCapture logs = new TestLogCapture(WalletLiveService.class)) {
+            electrum.notifyWallet(); // No params: must still rescan as before.
+            next("syncing", previous);
+            take(scanner.pending).complete(confirmed);
+            next("live", confirmed);
+            idle();
+            assertTrue(logs.messages().contains("Electrum address notification: address=unknown"));
+            assertTrue(logs.messages().stream().anyMatch(m -> m.endsWith("outcome=success newTransactions=0")));
+            assertTrue(logs.messages().stream().noneMatch(m -> m.contains(historical.txid())
+                    || m.contains("test-address") || m.contains("test-path")));
+        }
+    }
+
+    @Test
+    void scanLogsCountOnlyNewTransactionIdsAfterAnExistingSnapshotAndHideFailures() throws Exception {
+        try (TestLogCapture logs = new TestLogCapture(WalletLiveService.class)) {
+            WalletSnapshot previous = startWithSnapshot();
+            List<String> initial = logs.messages().stream().filter(m -> m.startsWith("Wallet scan completed:")).toList();
+            assertEquals(1, initial.size());
+            assertTrue(initial.getFirst().contains("durationMs="));
+            assertTrue(initial.getFirst().endsWith("outcome=success"));
+            assertFalse(initial.getFirst().contains("newTransactions="), "First load has no comparison baseline");
+
+            electrum.notifyWallet();
+            next("syncing", previous);
+            WalletSnapshot updated = snapshot(200);
+            take(scanner.pending).complete(updated);
+            next("live", updated);
+            idle();
+            assertTrue(logs.messages().stream().anyMatch(m -> m.endsWith("outcome=success newTransactions=1")));
+
+            electrum.notifyWallet();
+            next("syncing", updated);
+            take(scanner.pending).complete(updated);
+            next("live", updated);
+            idle();
+            assertTrue(logs.messages().stream().anyMatch(m -> m.endsWith("outcome=success newTransactions=0")));
+
+            electrum.notifyWallet();
+            next("syncing", updated);
+            take(scanner.pending).completeExceptionally(new IllegalStateException("secret-server-payload"));
+            next("error", updated);
+            idle();
+            assertTrue(logs.messages().contains("Wallet sync failure: type=IllegalStateException"));
+            assertTrue(logs.messages().stream().anyMatch(m -> m.endsWith("outcome=failure")));
+            assertEquals(4, logs.messages().stream().filter(m -> m.equals("Wallet scan started")).count());
+            assertTrue(logs.messages().stream().noneMatch(m -> m.contains("secret-server-payload")
+                    || m.contains("tx-") || m.contains("test-address") || m.contains("test-path")));
+            assertTrue(logs.entries().stream().allMatch(entry -> entry.thrown() == null));
+        }
+    }
+
+    private static JsonObject walletNotification(Object params) {
+        JsonObject notification = new JsonObject().put("method", "blockchain.scripthash.subscribe");
+        if (params != null) notification.put("params", params);
+        return notification;
+    }
+
+    private static WalletService watchedAddresses() {
+        WalletService service = new WalletService();
+        HdWallet wallet = new HdWallet();
+        wallet.extPub = HDKeyDerivation.createMasterPrivateKey(new byte[32]).serializePubB58(MainNetParams.get());
+        wallet.network = "mainnet";
+        wallet.scriptTypeCfg = "p2wpkh";
+        service.wallet = wallet;
+        service.gapLimit = 1;
+        service.maxAddresses = 1;
+        service.validateConfiguration();
+        service.electrum = new ElectrumClient() {
+            @Override
+            public Uni<JsonObject> call(String method, Object... params) {
+                Object result = switch (method) {
+                    case "blockchain.headers.subscribe" -> new JsonObject().put("height", 100);
+                    case "blockchain.scripthash.subscribe" -> null;
+                    case "blockchain.scripthash.get_history" -> new JsonArray();
+                    default -> throw new AssertionError("Unexpected RPC: " + method);
+                };
+                return Uni.createFrom().item(new JsonObject().put("result", result));
+            }
+        };
+        service.scan().await().atMost(TIMEOUT);
+        return service;
+    }
+
     private WalletSnapshot startWithSnapshot() throws Exception {
         next("loading", null);
         live.start(new StartupEvent());
@@ -402,7 +570,11 @@ class WalletLiveServiceTest {
         }
 
         void notifyWallet() {
-            JsonObject notification = new JsonObject().put("method", "blockchain.scripthash.subscribe");
+            notifyWallet(null);
+        }
+
+        void notifyWallet(JsonArray params) {
+            JsonObject notification = walletNotification(params);
             notifications.forEach(listener -> listener.accept(notification));
         }
     }
