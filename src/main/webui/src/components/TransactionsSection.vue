@@ -1,48 +1,61 @@
 <script setup lang="ts">
+import { toRef } from 'vue';
 import { currencyLabel, type Currency } from '../currency';
 import type { Transaction } from '../types/wallet';
 import { shortId, formatDate } from '../utils/format';
+import { useExpandedTransaction } from '../composables/useExpandedTransaction';
 import ConfirmationStatus from './ConfirmationStatus.vue';
 import TransactionBadge from './TransactionBadge.vue';
+import TransactionDetails from './TransactionDetails.vue';
 
-defineProps<{
+const props = defineProps<{
   transactions: Transaction[];
   currency: Currency;
   amount: (sats: number, signed?: boolean) => string;
 }>();
-const emit = defineEmits<{ inspect: [transaction: Transaction, trigger: HTMLButtonElement] }>();
-
-function inspect(transaction: Transaction, event: MouseEvent): void {
-  emit('inspect', transaction, event.currentTarget as HTMLButtonElement);
-}
+const { expandedTxid, details, loading, error, toggle, retry } = useExpandedTransaction(toRef(props, 'transactions'));
 </script>
 
 <template>
-  <section class="mt-9">
+  <section>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-lg font-semibold tracking-tight">Activity <span class="ml-2 rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-400">{{ transactions.length }}</span></h2>
-      <p class="text-xs text-slate-500">Select a transaction to explore its flow</p>
+      <h2 class="sr-only">Activity</h2>
+      <p class="text-xs text-slate-500">Select a transaction to expand or collapse its details</p>
     </div>
     <ul v-if="transactions.length" class="grid min-w-0 gap-3 lg:hidden" aria-label="Transactions">
-      <li v-for="tx in transactions" :key="tx.txid" class="wallet-panel min-w-0 p-4">
-        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <li v-for="tx in transactions" :key="tx.txid" class="wallet-panel min-w-0">
+        <button
+          :id="`transaction-mobile-toggle-${tx.txid}`"
+          type="button"
+          class="block w-full rounded-2xl p-4 text-left transition hover:bg-slate-800/50"
+          :class="{ 'bg-accent/5': expandedTxid === tx.txid }"
+          :aria-expanded="expandedTxid === tx.txid"
+          :aria-controls="`transaction-mobile-details-${tx.txid}`"
+          :aria-label="`${expandedTxid === tx.txid ? 'Collapse' : 'Expand'} transaction ${tx.txid}`"
+          @click="toggle(tx.txid)"
+        >
+        <span class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <TransactionBadge :type="tx.type" />
           <span class="text-sm font-semibold tabular-nums" :class="tx.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'">
             {{ amount(tx.amount, true) }} {{ currencyLabel(currency) }}
           </span>
+        </span>
+        <span class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
+          <span class="text-slate-400">Transaction</span>
+          <span class="break-all text-right font-mono text-sky-400">{{ shortId(tx.txid) }}</span>
+          <span class="text-slate-400">Date</span>
+          <span class="text-right text-slate-300">{{ formatDate(tx.timestamp) }}</span>
+          <span class="text-slate-400">Confirmations</span>
+          <span class="text-right"><ConfirmationStatus :confirmations="tx.confirmations" /></span>
+        </span>
+        <span class="mt-3 flex items-center justify-end gap-2 text-xs text-accent">
+          {{ expandedTxid === tx.txid ? 'Hide details' : 'Show details' }}
+          <span aria-hidden="true" class="inline-block transition-transform motion-reduce:transition-none" :class="{ 'rotate-180': expandedTxid === tx.txid }">⌄</span>
+        </span>
+        </button>
+        <div :id="`transaction-mobile-details-${tx.txid}`" :hidden="expandedTxid !== tx.txid" role="region" :aria-labelledby="`transaction-mobile-toggle-${tx.txid}`" class="border-t border-slate-700/50 bg-slate-950/30">
+          <TransactionDetails v-if="expandedTxid === tx.txid" :id-prefix="`transaction-mobile-${tx.txid}`" :transaction="tx" :details="details" :loading="loading" :error="error" :currency="currency" :amount="amount" @retry="retry" />
         </div>
-        <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
-          <dt class="text-slate-400">Transaction</dt>
-          <dd class="text-right">
-            <button type="button" @click="inspect(tx, $event)" aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`View transaction ${tx.txid}`" class="break-all rounded-lg font-mono text-sky-400 hover:text-sky-300 hover:underline">
-              {{ shortId(tx.txid) }}
-            </button>
-          </dd>
-          <dt class="text-slate-400">Date</dt>
-          <dd class="text-right text-slate-300">{{ formatDate(tx.timestamp) }}</dd>
-          <dt class="text-slate-400">Confirmations</dt>
-          <dd class="text-right"><ConfirmationStatus :confirmations="tx.confirmations" /></dd>
-        </dl>
       </li>
     </ul>
     <div v-if="transactions.length" class="wallet-panel hidden lg:block">
@@ -58,20 +71,32 @@ function inspect(transaction: Transaction, event: MouseEvent): void {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="tx in transactions" :key="tx.txid" class="border-t border-slate-800 hover:bg-slate-800/50">
+          <template v-for="tx in transactions" :key="tx.txid">
+          <tr class="cursor-pointer border-t border-slate-800 transition hover:bg-slate-800/50" :class="{ 'bg-accent/5': expandedTxid === tx.txid }" @click="toggle(tx.txid)">
             <td class="px-3 py-2.5"><TransactionBadge :type="tx.type" /></td>
             <td class="px-3 py-2.5">
-              <button type="button" @click="inspect(tx, $event)" aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`View transaction ${tx.txid}`" class="rounded-lg font-mono text-sky-400 hover:text-sky-300 hover:underline">
-                {{ shortId(tx.txid) }}
-              </button>
+              <span class="font-mono text-sky-400">{{ shortId(tx.txid) }}</span>
             </td>
             <td class="px-3 py-2.5 text-slate-300">{{ formatDate(tx.timestamp) }}</td>
             <td class="px-3 py-2.5 text-right tabular-nums" :class="tx.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'">
               {{ amount(tx.amount, true) }}
             </td>
             <td class="px-3 py-2.5 text-right"><ConfirmationStatus :confirmations="tx.confirmations" compact /></td>
-            <td class="px-3 py-2.5 text-right"><button type="button" @click="inspect(tx, $event)" aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Explore transaction ${tx.txid}`" class="rounded-lg px-2 text-xs text-slate-400 transition hover:bg-accent/10 hover:text-accent">Explore <span aria-hidden="true">↗</span></button></td>
+            <td class="px-3 py-2.5 text-right">
+              <button :id="`transaction-desktop-toggle-${tx.txid}`" type="button" @click.stop="toggle(tx.txid)" :aria-expanded="expandedTxid === tx.txid" :aria-controls="`transaction-desktop-details-${tx.txid}`" :aria-label="`${expandedTxid === tx.txid ? 'Collapse' : 'Expand'} transaction ${tx.txid}`" class="inline-flex items-center gap-2 rounded-lg px-2 text-xs text-accent transition hover:bg-accent/10">
+                {{ expandedTxid === tx.txid ? 'Hide' : 'Details' }}
+                <span aria-hidden="true" class="inline-block transition-transform motion-reduce:transition-none" :class="{ 'rotate-180': expandedTxid === tx.txid }">⌄</span>
+              </button>
+            </td>
           </tr>
+          <tr :hidden="expandedTxid !== tx.txid">
+            <td colspan="6" class="border-t border-slate-700/50 bg-slate-950/30 p-0">
+              <div :id="`transaction-desktop-details-${tx.txid}`" role="region" :aria-labelledby="`transaction-desktop-toggle-${tx.txid}`">
+                <TransactionDetails v-if="expandedTxid === tx.txid" :id-prefix="`transaction-desktop-${tx.txid}`" :transaction="tx" :details="details" :loading="loading" :error="error" :currency="currency" :amount="amount" @retry="retry" />
+              </div>
+            </td>
+          </tr>
+          </template>
         </tbody>
       </table>
     </div>
