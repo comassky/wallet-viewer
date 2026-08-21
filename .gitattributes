@@ -1,0 +1,4 @@
+# Keep Maven files compatible with Renovate, including Windows checkouts.
+pom.xml text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
