@@ -74,6 +74,7 @@ class LiveWalletIntegrationTest {
                 assertTrue(initialScans > 0);
                 assertTrue(initialHistories >= 4, "Both receive and change gaps must be scanned");
                 assertRestSnapshot(client, empty);
+                assertRestServer(client);
                 first.refresh();
                 assertEquals(initial, first.listener.await(state -> true), "Refresh must replay the initial cache");
                 assertEquals(initialScans, electrum.scanCount());
@@ -123,6 +124,19 @@ class LiveWalletIntegrationTest {
                 .header("Accept", "application/json").GET().build(), HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode(), response.body());
         assertEquals(expected, JSON.readTree(response.body()));
+    }
+
+    private void assertRestServer(HttpClient client) throws Exception {
+        for (int i = 0; i < 3; i++) {
+            HttpResponse<String> response = client.send(HttpRequest.newBuilder(
+                            URI.create(walletUri.toString() + "/server")).timeout(TIMEOUT)
+                    .header("Accept", "application/json").GET().build(), HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, response.statusCode());
+            assertEquals(JSON.createObjectNode().put("host", "127.0.0.1").put("port", electrum.port())
+                    .put("tls", false).put("connected", true).put("serverVersion", "fixture 1.0")
+                    .put("protocolVersion", "1.4"), JSON.readTree(response.body()));
+        }
+        assertEquals(1, electrum.versionCount(), "REST reads must never renegotiate metadata");
     }
 
     private void assertCredit(JsonNode snapshot) {

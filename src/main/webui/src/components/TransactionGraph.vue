@@ -155,22 +155,22 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
 
 <style scoped>
 .transaction-graph { container-type: inline-size; min-width: 0; }
-.graph-canvas { display: flex; flex-direction: column; gap: 1rem; border: 1px solid #334155; border-radius: 1rem; padding: .75rem; background: rgb(2 6 23 / 60%); }
+.graph-canvas { display: flex; flex-direction: column; gap: 1rem; border: 1px solid #363330; border-radius: 1rem; padding: .75rem; background: rgb(11 10 9 / 60%); }
 .graph-edges { display: none; }
 .graph-side { min-width: 0; --branch-color: #38bdf8; }
 .graph-side[data-side="inputs"] { order: 0; }
 .graph-side[data-side="outputs"] { order: 2; --branch-color: #34d399; }
 .graph-side-header { display: grid; gap: .375rem; color: var(--branch-color); }
 .graph-nodes { display: grid; gap: .5rem; margin-top: .75rem; }
-.graph-node { min-width: 0; border: 1px solid #334155; border-left: 3px solid var(--branch-color); border-radius: .75rem; padding: .375rem .625rem; background: #0f172a; overflow-wrap: anywhere; }
-.graph-node.node-active { border-color: var(--branch-color); outline: 2px solid var(--branch-color); outline-offset: 1px; background: #1e293b; }
+.graph-node { min-width: 0; border: 1px solid #363330; border-left: 3px solid var(--branch-color); border-radius: .75rem; padding: .375rem .625rem; background: #161514; overflow-wrap: anywhere; }
+.graph-node.node-active { border-color: var(--branch-color); outline: 2px solid var(--branch-color); outline-offset: 1px; background: #242220; }
 .graph-node.node-pinned { border-left-width: 6px; }
 .graph-group { border-style: dashed; }
 .branch-button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .5rem; min-height: 44px; padding: .25rem; border-radius: .375rem; text-align: left; font-size: .75rem; color: var(--branch-color); }
 .branch-button:hover { background: rgb(148 163 184 / 10%); }
-.graph-page-button { min-height: 44px; padding: .375rem .75rem; border: 1px solid #475569; border-radius: .5rem; font-size: .75rem; color: #e2e8f0; }
+.graph-page-button { min-height: 44px; padding: .375rem .75rem; border: 1px solid #57534e; border-radius: .5rem; font-size: .75rem; color: #e7e5e4; }
 .graph-page-button:disabled { opacity: .4; cursor: not-allowed; }
-.graph-page-button:not(:disabled):hover { background: #1e293b; }
+.graph-page-button:not(:disabled):hover { background: #242220; border-color: #f7931a; }
 .graph-transaction { order: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .5rem; padding: .5rem; border: 1px solid #f7931a; border-radius: 1rem; background: #261e18; min-width: 0; }
 .transaction-active { outline: 2px solid #f7931a; outline-offset: 2px; }
 /* The same HTML controls serve both layouts: no duplicated IDs, copy buttons or live regions.

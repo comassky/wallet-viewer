@@ -10,7 +10,7 @@ import ReceiveAddressCard from './components/ReceiveAddressCard.vue';
 import TransactionsSection from './components/TransactionsSection.vue';
 import UtxosSection from './components/UtxosSection.vue';
 import ReceiveQrDialog from './components/ReceiveQrDialog.vue';
-import WalletLiveStatus from './components/WalletLiveStatus.vue';
+import UiIcon from './components/UiIcon.vue';
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, rates, ratesLoading, ratesError, fiat, refreshRates, amount } = useCurrency();
@@ -49,8 +49,10 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
 
 <template>
   <main lang="en-US" class="wallet-shell w-full px-4 pb-16 pt-6 sm:px-6 lg:px-10 lg:pt-9">
-    <DashboardHeader :loading="loading" @refresh="refreshDashboard" />
-    <WalletLiveStatus :connection="connection" :status="status" :message="message" :has-data="!!data" @retry="refresh" />
+    <DashboardHeader :loading="loading" :connection="connection" :status="status" :message="message" @refresh="refreshDashboard" @retry="refresh" />
+    <p v-if="data && (connection !== 'connected' || status !== 'live')" role="status" class="mb-5 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-xs text-amber-300">
+      {{ message || 'Synchronizing wallet data.' }} Showing the last received snapshot; it may be out of date.
+    </p>
     <PriceNotice
       v-if="fiat"
       :currency="currency"
@@ -83,7 +85,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
             @click="activeTab = tab.id"
             @keydown="navigateTabs($event, index)"
           >
-            {{ tab.label }}
+            <UiIcon :name="tab.id === 'activity' ? 'activity' : 'coins'" />{{ tab.label }}
             <span class="rounded-full px-2 py-0.5 text-xs tabular-nums" :class="activeTab === tab.id ? 'bg-accent/15 text-accent' : 'bg-slate-800 text-slate-400'">
               {{ tab.id === 'activity' ? data.transactions.length : data.utxos.length }}
             </span>
