@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, ref } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
 import CopyAddressButton from './CopyAddressButton.vue';
+import CopyValue from './CopyValue.vue';
 
 const dialog = ref<HTMLDialogElement | null>(null);
 const receive = ref<(ReceiveAddress & { url: string }) | null>(null);
@@ -88,7 +89,7 @@ defineExpose({ open });
     <p id="receive-qr-description" class="mb-4 text-sm text-slate-400">Scan this QR code to receive Bitcoin at the address below.</p>
     <template v-if="receive">
       <img :src="receive.url" alt="Receive address QR code" class="mx-auto aspect-square w-full max-w-96 rounded-xl bg-white p-3" />
-      <p class="mt-4 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-3 font-mono text-sm">{{ receive.address }}</p>
+      <p class="mt-4 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-3 font-mono text-sm"><CopyValue :value="receive.address" label="address" /></p>
       <p class="mt-2 break-all font-mono text-xs text-slate-400">Path: {{ receive.path }}</p>
       <CopyAddressButton ref="copyButton" :address="receive.address" />
     </template>
