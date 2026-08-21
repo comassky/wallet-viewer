@@ -1,0 +1,68 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["maven", "npm", "dockerfile", "docker-compose", "custom.regex"],
+  "ignorePaths": ["**/node_modules/**", "**/bower_components/**", "target/**", "**/.quinoa/**", "**/dist/**", "config/**"],
+  "automerge": false,
+  "separateMajorMinor": true,
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Java libraries, Quarkus BOM and Maven plugins stay separate from frontend and images.",
+      "matchManagers": ["maven"],
+      "groupName": "Java dependencies",
+      "additionalBranchPrefix": "java-",
+      "dependencyDashboardCategory": "Java",
+      "addLabels": ["java"]
+    },
+    {
+      "description": "Frontend runtime/dev dependencies and the Quinoa-managed Node installation.",
+      "matchManagers": ["npm", "custom.regex"],
+      "groupName": "Frontend dependencies",
+      "additionalBranchPrefix": "frontend-",
+      "dependencyDashboardCategory": "Frontend",
+      "addLabels": ["frontend"]
+    },
+    {
+      "description": "Track npm updates in the manifest and regenerate the associated lockfile.",
+      "matchManagers": ["npm"],
+      "rangeStrategy": "bump"
+    },
+    {
+      "description": "Build/runtime images, including updates behind the floating Distroless nonroot tag.",
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "groupName": "Docker images",
+      "additionalBranchPrefix": "docker-",
+      "dependencyDashboardCategory": "Docker",
+      "addLabels": ["docker"],
+      "pinDigests": true
+    },
+    {
+      "description": "Keep the Maven builder on Java 25; JDK migrations require coordinated project/runtime changes.",
+      "matchDatasources": ["docker"],
+      "matchDepNames": ["maven"],
+      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+-eclipse-temurin-25$/"
+    },
+    {
+      "description": "The Compose application image is built here, not a third-party dependency.",
+      "matchManagers": ["docker-compose"],
+      "matchDepNames": ["wallet-viewer"],
+      "enabled": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update both Node version occurrences together, preserving Quinoa's version-isolated install directory.",
+      "managerFilePatterns": ["/^src/main/resources/application\\.properties$/"],
+      "matchStrings": [
+        "(?:^|\\r?\\n)quarkus\\.quinoa\\.package-manager-install\\.(?:node-version=|install-dir=\\.quinoa/node-)(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "node",
+      "packageNameTemplate": "nodejs/node",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "node",
+      "extractVersionTemplate": "^v(?<version>\\d+\\.\\d+\\.\\d+)$"
+    }
+  ]
+}
