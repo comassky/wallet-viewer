@@ -162,7 +162,7 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
 .graph-side[data-side="outputs"] { order: 2; --branch-color: #34d399; }
 .graph-side-header { display: grid; gap: .375rem; color: var(--branch-color); }
 .graph-nodes { display: grid; gap: .5rem; margin-top: .75rem; }
-.graph-node { min-width: 0; border: 1px solid #363330; border-left: 3px solid var(--branch-color); border-radius: .75rem; padding: .375rem .625rem; background: #161514; overflow-wrap: anywhere; }
+.graph-node { min-width: 0; border: 1px solid #363330; border-left: 3px solid var(--branch-color); border-radius: .75rem; padding: .25rem .625rem; background: #161514; overflow-wrap: anywhere; }
 .graph-node.node-active { border-color: var(--branch-color); outline: 2px solid var(--branch-color); outline-offset: 1px; background: #242220; }
 .graph-node.node-pinned { border-left-width: 6px; }
 .graph-group { border-style: dashed; }
