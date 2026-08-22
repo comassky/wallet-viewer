@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@lucide/vue": "1.43.0",
+    "axios": "1.20.0",
     "vue": "^3.4.21"
   },
   "devDependencies": {

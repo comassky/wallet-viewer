@@ -35,6 +35,7 @@
 | Scan coordinator | One worker coalesces notifications over **200 ms**. Updates arriving during a scan discard its result and trigger another pass; failed scans retry. |
 | Shared state | Caffeine holds one immutable, versioned snapshot/status per instance, without TTL eviction. State is committed before consumers are notified. |
 | Browser & REST | Same-origin `ws`/`wss` pushes complete states; wallet snapshot REST endpoints read the same cache. Refresh replays the cache, **not a new scan**. |
+| REST client | Shared Axios instance with JSON parsing, request deadlines and AbortSignal cancellation; no automatic retries. The native wallet WebSocket transport remains independent. |
 | Transaction details | Only transactions in cached wallet history can trigger a lookup. Raw transactions and parents are retrieved/validated on demand, without rescanning or enlarging the live stream. |
 
 **No database, no scheduled wallet polling or full reconciliation.** State and discovery watermarks are in memory, rebuilt after restart and not shared between replicas. REST returns 503 before the first snapshot, then may serve stale data during outages; use live status to judge freshness.
@@ -53,6 +54,7 @@ Versions below come from repository declarations and the npm lockfile, **not an 
 | Node.js | **24.20.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
 | Frontend (locked) | Vue **3.5.41**, TypeScript **5.9.3**, Vite **5.4.21**, Tailwind CSS **3.4.19** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
 | Icons | Lucide Vue **1.43.0** (`@lucide/vue`), explicit imports of the icons used by the UI |
+| REST transport | Axios **1.20.0**; default deadline **120 s**, server-info requests **5 s** |
 | Runtime image | Distroless Java **25**, Debian **13**, `nonroot` — [Dockerfile](Dockerfile) |
 
 [src/main/webui/package.json](src/main/webui/package.json) declares caret ranges; the table reports resolved lockfile versions. The Docker build runs Maven verification, frontend tests, TypeScript checking and asset compilation before packaging. Local development uses JDK 25 and `mvn quarkus:dev`; Quinoa manages Node automatically.
@@ -86,6 +88,14 @@ docker compose up -d --no-build
 ```
 
 Prefer a release tag or digest for reproducibility; private packages require registry authentication. [.github/workflows/docker.yml](.github/workflows/docker.yml) verifies/builds **linux/amd64** images on pull requests without publishing, and publishes GHCR images on `main` or `v*` pushes (or manual runs on those refs). It uses `GITHUB_TOKEN`, needs no wallet key, and **does not deploy**.
+
+## Dependency updates
+
+[renovate.json](renovate.json) keeps update PRs in three independent groups: **Java** (Maven libraries, BOM and plugins), **Frontend** (npm dependencies/lockfile and Quinoa's Node version), and **Docker** (build/runtime images and digests). Major upgrades are separated from minor/patch upgrades; **automerge is disabled**. The Dependency Dashboard categorizes updates the same way.
+
+Node's version and version-specific install directory are updated together. Docker digest pinning also tracks rebuilds of the floating Distroless `nonroot` tag. Java stays on **25**: changing the JDK or Distroless Java/Debian image family requires a coordinated manual migration. The local Compose application image and generated build directories are excluded; GitHub Actions versions are outside these three scopes.
+
+**Activate:** install/authorize the [Renovate GitHub App](https://github.com/apps/renovate) for this repository and merge this configuration into the default branch. No extra workflow or repository token is needed for the hosted app; existing Docker PR checks verify proposed updates. The npm lockfile currently contains corporate registry URLs: the bot needs access to that registry (use an appropriately configured self-hosted runner if it is private), or the lockfile must first be regenerated against an accessible registry. Never commit registry credentials.
 
 ## Configuration
 
