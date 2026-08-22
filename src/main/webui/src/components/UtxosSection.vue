@@ -12,10 +12,9 @@ defineProps<{
 </script>
 
 <template>
-  <section class="mt-9">
-    <h2 class="mb-4 text-lg font-semibold tracking-tight">
-      Unspent outputs <span class="ml-2 rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-400">{{ utxos.length }}</span>
-    </h2>
+  <section>
+    <h2 class="sr-only">Unspent outputs</h2>
+    <p class="mb-4 text-xs text-slate-500">Unspent outputs available in this wallet</p>
     <ul v-if="utxos.length" class="grid min-w-0 gap-3 lg:hidden" aria-label="UTXOs">
       <li v-for="u in utxos" :key="`${u.txid}:${u.vout}`" class="wallet-panel min-w-0 p-4">
         <p class="mb-3 text-sm font-semibold tabular-nums">{{ amount(u.value) }} {{ currencyLabel(currency) }}</p>
