@@ -20,12 +20,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Builds a wallet snapshot (balance, UTXOs, transactions, next receive address)
  * by scanning derived addresses against the Electrum server. Every subscription
  * performs a fresh scan; caching, retries and live events belong to the coordinator.
- * Only monotonic address coverage is retained, never snapshots or scan accumulators.
+ * Only monotonic address coverage and locally derived watch identities are retained,
+ * never snapshots or scan accumulators.
  */
 @ApplicationScoped
 public class WalletService {
@@ -42,6 +44,11 @@ public class WalletService {
 
     // Process-local watermarks, committed only after an entire scan succeeds.
     private volatile Coverage coverage = new Coverage(-1, -1, 0);
+
+    // Written only by subscribeAddress, never learned from remote notifications or public
+    // derive requests. Scan indices are [0, cap) on each chain, plus receive index cap:
+    // at most 2 * maxAddresses + 1 identities, retained across failures and reconnects.
+    private final Map<String, String> knownAddresses = new ConcurrentHashMap<>();
 
     private record Coverage(int receiveIndex, int changeIndex, int nextReceiveIndex) {
     }
@@ -67,6 +74,17 @@ public class WalletService {
 
     public AddressInfo derive(int chain, int index) {
         return wallet.address(chain, index);
+    }
+
+    /** Thread-safe O(1) local lookup; no RPC, derivation or registration. Null means unknown. */
+    public String knownAddressForScripthash(String scripthash) {
+        return scripthash == null ? null : knownAddresses.get(scripthash);
+    }
+
+    private Uni<JsonObject> subscribeAddress(AddressInfo address) {
+        // Publish before even constructing the RPC: a notification may precede its reply.
+        knownAddresses.put(address.scripthash, address.address);
+        return electrum.call("blockchain.scripthash.subscribe", address.scripthash);
     }
 
     private Uni<WalletSnapshot> build() {
@@ -113,7 +131,7 @@ public class WalletService {
                     // cap is fully used, watch exactly one extra receive address (without history).
                     Uni<Void> receiveWatch = nextIndex < receive.size()
                             ? Uni.createFrom().voidItem()
-                            : electrum.call("blockchain.scripthash.subscribe", recv.scripthash).replaceWithVoid();
+                            : subscribeAddress(recv).replaceWithVoid();
 
                     Uni<BalanceDto> balanceUni = sumBalances(used);
                     Uni<List<UtxoDto>> utxoUni = fetchUtxos(used, tip);
@@ -142,10 +160,10 @@ public class WalletService {
         List<Uni<ScannedAddress>> batch = new ArrayList<>();
         int batchSize = Math.min(gapLimit, maxAddresses - start);
         for (int i = 0; i < batchSize; i++) {
-                AddressInfo ai = wallet.address(chain, start + i);
+            AddressInfo ai = wallet.address(chain, start + i);
             // Reissue on every scan: the transport is not a persistent subscription registry.
             // Only the public script hash is sent, never the address, derivation path or key.
-            batch.add(electrum.call("blockchain.scripthash.subscribe", ai.scripthash)
+            batch.add(subscribeAddress(ai)
                     .flatMap(ignored -> electrum.call("blockchain.scripthash.get_history", ai.scripthash))
                     .map(r -> new ScannedAddress(ai, r.getJsonArray("result"))));
         }

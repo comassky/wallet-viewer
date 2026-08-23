@@ -27,6 +27,15 @@ public class WalletResource {
     @Inject
     TransactionDetailsService transactionDetails;
 
+    @Inject
+    ElectrumClient electrum;
+
+    @GET
+    @Path("/server")
+    public ElectrumServerDto server() {
+        return electrum.serverInfo();
+    }
+
     @GET
     @Path("/prices")
     public Uni<PriceRatesDto> prices() {
