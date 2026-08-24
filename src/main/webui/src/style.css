@@ -1,6 +1,21 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-accent: #f7931a;
+  /* Neutral charcoal rather than blue slate: Bitcoin orange stays the primary accent. */
+  --color-slate-50: #fafaf9;
+  --color-slate-100: #f5f5f4;
+  --color-slate-200: #e7e5e4;
+  --color-slate-300: #d6d3d1;
+  --color-slate-400: #a8a29e;
+  --color-slate-500: #78716c;
+  --color-slate-600: #57534e;
+  --color-slate-700: #363330;
+  --color-slate-800: #242220;
+  --color-slate-900: #161514;
+  --color-slate-950: #0b0a09;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 
 @layer base {
   html {
