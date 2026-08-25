@@ -11,7 +11,9 @@ services:
       # use HTTPS/wss and timeouts greater than 90s. See README for details.
       - "127.0.0.1:${WALLET_VIEWER_PORT:-8080}:8080"
     environment:
-      WALLET_XPUB: "${WALLET_XPUB:?Define WALLET_XPUB in .env before starting}"
+      # Demo mode serves synthetic data and ignores the Electrum/xpub settings below.
+      WALLET_DEMO: "${WALLET_DEMO:-false}"
+      WALLET_XPUB: "${WALLET_XPUB:-}"
       WALLET_NETWORK: "${WALLET_NETWORK:-mainnet}"
       WALLET_SCRIPT_TYPE: "${WALLET_SCRIPT_TYPE:-auto}"
       WALLET_GAP_LIMIT: "${WALLET_GAP_LIMIT:-20}"

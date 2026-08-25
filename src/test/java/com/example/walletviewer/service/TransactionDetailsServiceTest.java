@@ -287,6 +287,7 @@ class TransactionDetailsServiceTest {
         TransactionDetailsService result = new TransactionDetailsService();
         result.electrum = electrum;
         result.live = live;
+        result.demo = new DemoService();
         result.wallet = new HdWallet() {
             @Override public NetworkParameters params() { return PARAMS; }
         };

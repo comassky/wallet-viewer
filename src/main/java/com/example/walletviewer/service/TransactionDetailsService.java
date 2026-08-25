@@ -31,12 +31,19 @@ public class TransactionDetailsService {
     @Inject WalletLiveService live;
     @Inject ElectrumClient electrum;
     @Inject HdWallet wallet;
+    @Inject DemoService demo;
 
     public Uni<TransactionDetailsDto> details(String txid) {
         if (txid == null || !txid.matches("[0-9a-fA-F]{64}")) {
             throw new BadRequestException("Transaction id must be 64 hexadecimal characters");
         }
         String normalized = txid.toLowerCase(Locale.ROOT);
+        if (demo.enabled()) {
+            TransactionDetailsDto demoDetails = demo.details(normalized);
+            return demoDetails == null
+                    ? Uni.createFrom().failure(new NotFoundException("Transaction not found"))
+                    : Uni.createFrom().item(demoDetails);
+        }
         return live.snapshot().flatMap(snapshot -> {
             boolean known = snapshot.transactions().stream()
                     .anyMatch(transaction -> normalized.equalsIgnoreCase(transaction.txid()));
