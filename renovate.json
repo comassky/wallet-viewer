@@ -4,6 +4,7 @@
   "enabledManagers": ["maven", "npm", "dockerfile", "docker-compose", "custom.regex"],
   "ignorePaths": ["**/node_modules/**", "**/bower_components/**", "target/**", "**/.quinoa/**", "**/dist/**", "config/**"],
   "automerge": false,
+  "prHourlyLimit": 10,
   "separateMajorMinor": true,
   "labels": ["dependencies"],
   "packageRules": [
