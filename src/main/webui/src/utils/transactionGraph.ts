@@ -87,7 +87,7 @@ export function transactionGraphLayout(inputCount: number, outputCount: number, 
     headerHeight,
     nodeHeight,
     centerY,
-    inputs: positions(inputs).map(y => ({ y, path: `M 400 ${y} C 420 ${y}, 420 ${centerY}, 440 ${centerY}` })),
-    outputs: positions(outputs).map(y => ({ y, path: `M 560 ${centerY} C 580 ${centerY}, 580 ${y}, 600 ${y}` })),
+    inputs: positions(inputs).map(y => ({ y, path: `M 365 ${y} C 402 ${y}, 402 ${centerY}, 440 ${centerY}` })),
+    outputs: positions(outputs).map(y => ({ y, path: `M 560 ${centerY} C 598 ${centerY}, 598 ${y}, 635 ${y}` })),
   };
 }
