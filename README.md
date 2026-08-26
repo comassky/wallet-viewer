@@ -16,7 +16,7 @@
 
 **A self-hosted, read-only Bitcoin dashboard powered by Electrum.** One extended public key, one application. No database, signing or spending.
 
-[Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Docker](#docker) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations)
+[Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Docker](#docker) · [Demo](#demo-mode) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations)
 
 > 🔒 **Local by default, not authenticated.** Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
 
@@ -91,6 +91,16 @@ docker compose up -d --no-build
 
 Prefer a release tag or digest; private GHCR images require authentication. The [Docker workflow](.github/workflows/docker.yml) runs Java/frontend tests, TypeScript checks and a **linux/amd64** build on PRs; `main` and `v*` pushes publish images without deploying them.
 
+## Demo mode
+
+Set **`WALLET_DEMO=true`** (in your `.env`) for a no-setup demo with synthetic data — ideal for screenshots and UI previews without exposing a real xpub, address or transaction:
+
+```sh
+docker compose up -d --build   # with WALLET_DEMO=true in .env
+```
+
+In demo mode the app never connects to Electrum. It serves a self-consistent synthetic wallet (balance, UTXOs, transactions and a derived receive address) from a bundled public test key, and the mock **emits a random transaction every 15 seconds** so the live view keeps updating. `WALLET_XPUB` and the Electrum settings are ignored — no real funds or identity are involved.
+
 ## Dependency updates
 
 [Renovate](renovate.json) opens separate **Java**, **Frontend** and **Docker** PRs, with major upgrades separated and **no automerge**. Node settings stay synchronized; Docker digests track image rebuilds. TypeScript is held on the **5.x** line (the native 7.x compiler is not yet supported by the Vue/Vite toolchain), and JDK/image-family migrations remain manual.
@@ -103,7 +113,8 @@ Supply wallet settings **at runtime**, never as build arguments or in source. De
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `WALLET_XPUB` | Required | Account-level extended public key, not a master key or single address |
+| `WALLET_DEMO` | `false` | Serve a synthetic demo wallet with no Electrum or xpub; the mock emits a random transaction every 15s. See [Demo mode](#demo-mode) |
+| `WALLET_XPUB` | Required unless demo | Account-level extended public key, not a master key or single address |
 | `WALLET_SCRIPT_TYPE` | `auto` | `auto`, `p2pkh`, `p2sh-p2wpkh`, `p2wpkh`, `p2tr`; explicitly select `p2tr` for BIP86 |
 | `WALLET_NETWORK` | `mainnet` | `mainnet` or `testnet`; use a compatible Electrum server on the same network |
 | `WALLET_GAP_LIMIT` | `20` | Consecutive unused addresses stopping discovery on each chain |
