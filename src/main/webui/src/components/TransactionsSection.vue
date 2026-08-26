@@ -77,7 +77,7 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
         <thead>
           <tr class="text-xs uppercase text-slate-400">
             <th v-for="column in columns" :key="column.key" scope="col" :aria-sort="ariaSort(column.key)" class="px-3 py-1 font-medium" :class="column.numeric ? 'text-right' : 'text-left'">
-              <button type="button" class="w-full rounded py-2 text-inherit transition hover:text-accent" :class="column.numeric ? 'text-right' : 'text-left'" @click="toggleSort(column.key)">
+              <button type="button" class="w-full rounded-sm py-2 text-inherit transition hover:text-accent" :class="column.numeric ? 'text-right' : 'text-left'" @click="toggleSort(column.key)">
                 {{ column.label }}{{ column.key === 'amount' ? ` (${currencyLabel(currency)})` : '' }}
                 <span aria-hidden="true" class="ml-1" :class="sortKey === column.key ? 'text-accent' : 'text-slate-600'">{{ sortKey === column.key ? (descending ? '↓' : '↑') : '↕' }}</span>
               </button>
