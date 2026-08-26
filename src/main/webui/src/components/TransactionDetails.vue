@@ -37,7 +37,7 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
 </script>
 
 <template>
-  <div class="min-w-0 space-y-6 p-4 sm:p-6">
+  <div class="min-w-0 space-y-5 p-4 sm:p-6">
     <div>
       <h3 class="mb-3 text-base font-semibold tracking-tight">Transaction details</h3>
       <div class="mb-3 flex flex-wrap items-center gap-3">
@@ -74,10 +74,10 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
           </nav>
           <ol :id="`${idPrefix}-inputs-list`" :start="inputPage.start + 1" class="space-y-2">
             <li v-for="{ item: input, index } in inputPage.entries" :key="`${details.txid}-input-${index}`" :value="index + 1" class="detail-stat">
-              <div class="mb-2 flex flex-wrap justify-between gap-2 text-sm"><span class="text-slate-500">#{{ index }}</span><b class="font-medium tabular-nums">{{ input.value === null ? (input.coinbase ? 'Not applicable (coinbase)' : 'Unknown value') : `${amount(input.value)} ${currencyLabel(currency)}` }}</b></div>
-              <CopyValue v-if="input.address" :value="input.address" label="address" class="break-all font-mono text-xs leading-relaxed text-slate-300" />
+              <div class="mb-1.5 flex flex-wrap justify-between gap-2 text-sm"><span class="text-slate-500">#{{ index }}</span><b class="font-medium tabular-nums">{{ input.value === null ? (input.coinbase ? 'Not applicable (coinbase)' : 'Unknown value') : `${amount(input.value)} ${currencyLabel(currency)}` }}</b></div>
+              <CopyValue v-if="input.address" :value="input.address" label="address" class="break-all font-mono text-xs text-slate-300" />
               <p v-else class="text-xs text-slate-300">{{ input.coinbase ? 'Coinbase · newly created bitcoin' : 'Non-address script' }}</p>
-              <p v-if="input.txid" class="mt-2 break-all font-mono text-[11px] leading-relaxed text-slate-500">Previous output: <CopyValue :value="input.txid" label="transaction ID" />:{{ input.vout }}</p>
+              <p v-if="input.txid" class="mt-1.5 break-all font-mono text-[11px] text-slate-500">Previous output: <CopyValue :value="input.txid" label="transaction ID" />:{{ input.vout }}</p>
             </li>
           </ol>
           <p v-if="!inputPage.total" class="text-xs text-slate-500">No inputs.</p>
@@ -92,10 +92,10 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
           </nav>
           <ol :id="`${idPrefix}-outputs-list`" :start="outputPage.start + 1" class="space-y-2">
             <li v-for="{ item: output, index } in outputPage.entries" :key="`${details.txid}-output-${output.index}`" :value="index + 1" class="detail-stat">
-              <div class="mb-2 flex flex-wrap justify-between gap-2 text-sm"><span class="text-slate-500">#{{ output.index }}</span><b class="font-medium tabular-nums">{{ amount(output.value) }} {{ currencyLabel(currency) }}</b></div>
-              <CopyValue v-if="output.address" :value="output.address" label="address" class="break-all font-mono text-xs leading-relaxed text-slate-300" />
+              <div class="mb-1.5 flex flex-wrap justify-between gap-2 text-sm"><span class="text-slate-500">#{{ output.index }}</span><b class="font-medium tabular-nums">{{ amount(output.value) }} {{ currencyLabel(currency) }}</b></div>
+              <CopyValue v-if="output.address" :value="output.address" label="address" class="break-all font-mono text-xs text-slate-300" />
               <p v-else class="text-xs text-slate-300">Non-address script</p>
-              <details class="mt-2 text-[11px] text-slate-500"><summary class="cursor-pointer py-1">Output script</summary><p class="mt-2 select-text break-all font-mono">{{ output.scriptHex || '(empty script)' }}</p></details>
+              <details class="mt-1.5 text-[11px] text-slate-500"><summary class="cursor-pointer py-1">Output script</summary><p class="mt-1.5 select-text break-all font-mono">{{ output.scriptHex || '(empty script)' }}</p></details>
             </li>
           </ol>
           <p v-if="!outputPage.total" class="text-xs text-slate-500">No outputs.</p>
