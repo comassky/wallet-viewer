@@ -50,12 +50,16 @@ public class WalletLiveService {
 
     @Inject WalletService scanner;
     @Inject ElectrumClient electrum;
+    @Inject DemoService demo;
 
     public WalletLiveService() {
         cache.put(KEY, new WalletState(0, "loading", "Loading wallet from Electrum…", null));
     }
 
     void start(@Observes StartupEvent event) {
+        if (demo.enabled()) {
+            return; // DemoService seeds the cache and drives the synthetic wallet; skip Electrum.
+        }
         notifications = electrum.onNotification(notification -> {
             changes.incrementAndGet();
             schedule(200);
@@ -165,7 +169,8 @@ public class WalletLiveService {
         }
     }
 
-    private synchronized void publish(String status, String message, WalletSnapshot snapshot) {
+    // Package-private so DemoService can push synthetic snapshots into the same cache.
+    synchronized void publish(String status, String message, WalletSnapshot snapshot) {
         if (stopped) return;
         WalletState previous = current();
         WalletState next = new WalletState(++version, status, message,

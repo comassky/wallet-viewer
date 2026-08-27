@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { currencies, currencyLabel, type Currency } from '../currency';
-import type { Balance } from '../types/wallet';
+import { currencies, currencyLabel, formatAmount, isFiat, type Currency } from '../currency';
+import type { Balance, PriceRates } from '../types/wallet';
+import { formatDate } from '../utils/format';
 import UiIcon from './UiIcon.vue';
 
-defineProps<{
+const props = defineProps<{
   balance: Balance;
   currency: Currency;
   estimated: boolean;
+  rates: PriceRates | null;
   amount: (sats: number, signed?: boolean) => string;
 }>();
 defineEmits<{ 'update:currency': [value: Currency] }>();
+
+// Hover hint for a fiat unit: current BTC quote, its timestamp and source.
+function priceTitle(unit: Currency): string | undefined {
+  if (!isFiat(unit) || !props.rates) return undefined;
+  return `1 BTC ≈ ${formatAmount(100_000_000, unit, props.rates)} ${unit} · As of ${formatDate(props.rates.timestamp)} · Source: mempool.space (current price, not historical)`;
+}
 </script>
 
 <template>
@@ -22,6 +30,7 @@ defineEmits<{ 'update:currency': [value: Currency] }>();
           :key="unit"
           type="button"
           :aria-pressed="currency === unit"
+          :title="priceTitle(unit)"
           class="rounded-lg px-2.5 text-xs font-semibold tracking-wide transition"
           :class="currency === unit ? 'bg-accent text-slate-950' : 'text-slate-400 hover:text-slate-200'"
           @click="$emit('update:currency', unit)"
@@ -30,7 +39,7 @@ defineEmits<{ 'update:currency': [value: Currency] }>();
     </div>
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <span class="break-all text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">{{ estimated ? '≈ ' : '' }}{{ amount(balance.total) }}</span>
-      <span class="text-lg font-medium text-accent">{{ currencyLabel(currency) }}</span>
+      <span class="text-lg font-medium text-accent" :class="isFiat(currency) ? 'cursor-help' : ''" :title="priceTitle(currency)">{{ currencyLabel(currency) }}</span>
     </div>
     <p class="mt-2 text-xs text-slate-500">Display currency · saved locally</p>
     <dl class="mt-6 grid gap-4 border-t border-slate-700/40 pt-5 sm:grid-cols-2">
