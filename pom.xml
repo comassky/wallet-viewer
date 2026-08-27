@@ -20,10 +20,10 @@
 
         <quinoa.version>2.9.0</quinoa.version>
         <bitcoinj.version>0.17.1</bitcoinj.version>
-        <zxing.version>3.5.3</zxing.version>
+        <zxing.version>3.5.4</zxing.version>
 
         <maven.compiler.parameters>true</maven.compiler.parameters>
-        <surefire-plugin.version>3.5.4</surefire-plugin.version>
+        <surefire-plugin.version>3.6.0</surefire-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -108,7 +108,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
+                <version>3.16.0</version>
             </plugin>
             <plugin>
                 <groupId>${quarkus.platform.group-id}</groupId>
