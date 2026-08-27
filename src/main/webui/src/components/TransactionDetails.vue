@@ -39,13 +39,15 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
 <template>
   <div class="min-w-0 space-y-5 p-4 sm:p-6">
     <div>
-      <h3 class="mb-3 text-base font-semibold tracking-tight">Transaction details</h3>
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <h3 class="text-base font-semibold tracking-tight">Transaction details</h3>
+        <CopyValue :value="transaction.txid" label="transaction ID" class="min-w-0 break-all font-mono text-xs leading-relaxed text-slate-400" />
+      </div>
       <div class="mb-3 flex flex-wrap items-center gap-3">
         <TransactionBadge :type="transaction.type" />
         <ConfirmationStatus :confirmations="transaction.confirmations" />
         <span class="text-xs text-slate-400">{{ formatDate(transaction.timestamp) }}</span>
       </div>
-      <CopyValue :value="transaction.txid" label="transaction ID" class="break-all font-mono text-xs leading-relaxed text-slate-400" />
     </div>
     <div v-if="loading" role="status" class="flex flex-col items-center gap-4 py-10 text-sm text-slate-400">
       <span class="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-accent motion-reduce:animate-none" aria-hidden="true" />
@@ -74,9 +76,12 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
           </nav>
           <ol :id="`${idPrefix}-inputs-list`" :start="inputPage.start + 1" class="space-y-2">
             <li v-for="{ item: input, index } in inputPage.entries" :key="`${details.txid}-input-${index}`" :value="index + 1" class="detail-stat">
-              <div class="mb-1.5 flex flex-wrap justify-between gap-2 text-sm"><span class="text-slate-500">#{{ index }}</span><b class="font-medium tabular-nums">{{ input.value === null ? (input.coinbase ? 'Not applicable (coinbase)' : 'Unknown value') : `${amount(input.value)} ${currencyLabel(currency)}` }}</b></div>
-              <CopyValue v-if="input.address" :value="input.address" label="address" class="break-all font-mono text-xs text-slate-300" />
-              <p v-else class="text-xs text-slate-300">{{ input.coinbase ? 'Coinbase · newly created bitcoin' : 'Non-address script' }}</p>
+              <div class="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span class="text-slate-500">#{{ index }}</span>
+                <CopyValue v-if="input.address" :value="input.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-300" />
+                <span v-else class="min-w-0 text-xs text-slate-300">{{ input.coinbase ? 'Coinbase · newly created bitcoin' : 'Non-address script' }}</span>
+                <b class="ml-auto font-medium tabular-nums">{{ input.value === null ? (input.coinbase ? 'Not applicable (coinbase)' : 'Unknown value') : `${amount(input.value)} ${currencyLabel(currency)}` }}</b>
+              </div>
               <p v-if="input.txid" class="mt-1.5 break-all font-mono text-[11px] text-slate-500">Previous output: <CopyValue :value="input.txid" label="transaction ID" />:{{ input.vout }}</p>
             </li>
           </ol>
@@ -92,9 +97,12 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
           </nav>
           <ol :id="`${idPrefix}-outputs-list`" :start="outputPage.start + 1" class="space-y-2">
             <li v-for="{ item: output, index } in outputPage.entries" :key="`${details.txid}-output-${output.index}`" :value="index + 1" class="detail-stat">
-              <div class="mb-1.5 flex flex-wrap justify-between gap-2 text-sm"><span class="text-slate-500">#{{ output.index }}</span><b class="font-medium tabular-nums">{{ amount(output.value) }} {{ currencyLabel(currency) }}</b></div>
-              <CopyValue v-if="output.address" :value="output.address" label="address" class="break-all font-mono text-xs text-slate-300" />
-              <p v-else class="text-xs text-slate-300">Non-address script</p>
+              <div class="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span class="text-slate-500">#{{ output.index }}</span>
+                <CopyValue v-if="output.address" :value="output.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-300" />
+                <span v-else class="min-w-0 text-xs text-slate-300">Non-address script</span>
+                <b class="ml-auto font-medium tabular-nums">{{ amount(output.value) }} {{ currencyLabel(currency) }}</b>
+              </div>
               <details class="mt-1.5 text-[11px] text-slate-500"><summary class="cursor-pointer py-1">Output script</summary><p class="mt-1.5 select-text break-all font-mono">{{ output.scriptHex || '(empty script)' }}</p></details>
             </li>
           </ol>
