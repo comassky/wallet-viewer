@@ -10,6 +10,7 @@ import TransactionsSection from './components/TransactionsSection.vue';
 import UtxosSection from './components/UtxosSection.vue';
 import ReceiveQrDialog from './components/ReceiveQrDialog.vue';
 import UiIcon from './components/UiIcon.vue';
+import ToastHost from './components/ToastHost.vue';
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, rates, fiat, refreshRates, amount } = useCurrency();
@@ -104,4 +105,5 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
 
   <!-- Keep the native dialog and its snapshot alive across loading and error states. -->
   <ReceiveQrDialog ref="qrDialog" />
+  <ToastHost />
 </template>

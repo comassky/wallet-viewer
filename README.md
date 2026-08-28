@@ -12,11 +12,12 @@
   <img alt="TypeScript 5.9" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white">
   <img alt="Tailwind CSS 4" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white">
   <img alt="Docker: self-hosted" src="https://img.shields.io/badge/Docker-self--hosted-2496ED?style=flat-square&logo=docker&logoColor=white">
+  <img alt="License: GPL-3.0" src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square&logo=gnu&logoColor=white">
 </p>
 
 **A self-hosted, read-only Bitcoin dashboard powered by Electrum.** One extended public key, one application. No database, signing or spending.
 
-[Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Docker](#docker) · [Demo](#demo-mode) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations)
+[Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Docker](#docker) · [Demo](#demo-mode) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations) · [License](#license)
 
 > 🔒 **Local by default, not authenticated.** Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
 
@@ -127,13 +128,16 @@ Supply wallet settings **at runtime**, never as build arguments or in source. De
 | `ELECTRUM_PORT` | `50002` | Server port; application-only default is `50001` |
 | `ELECTRUM_SSL` | `true` | TLS with certificate/hostname verification; application-only default is `false` |
 | `ELECTRUM_REQUEST_TIMEOUT` | `30s` | Per-RPC timeout |
+| `LOG_LEVEL` | `INFO` | Application log level for the `com.example.walletviewer` category; set `DEBUG` for Electrum/scan lifecycle logs |
 
 Inside Docker, `localhost` means the container: use a reachable server hostname. Compose forwards only declared variables and does not mount local Java configuration.
 
 ## Logs
 
-- **INFO:** Electrum connections, address notifications, scan results and new transaction counts.
-- **DEBUG:** RPC method, request ID, duration and outcome; no keys, balances or raw payloads. Enable the `com.example.walletviewer` category via [Quarkus logging configuration](https://quarkus.io/guides/logging).
+Control verbosity with **`LOG_LEVEL`** (classic Quarkus, default `INFO`); it maps to the `com.example.walletviewer` category.
+
+- **INFO (default):** startup details such as the detected wallet script type, plus warnings and errors. No keys, balances or raw payloads.
+- **DEBUG (`LOG_LEVEL=DEBUG`):** Electrum connection changes, address notifications, wallet scan lifecycle and per-RPC method/duration/outcome.
 
 **⚠️ Logs contain wallet addresses:** keep them private and redact them before sharing.
 
@@ -143,3 +147,7 @@ Inside Docker, `localhost` means the container: use a reachable server hostname.
 - 🕵️ **Privacy:** public keys expose account history; Electrum can correlate scripts. Use a trusted server and never provide spending secrets.
 - 🎯 **Bounded discovery:** funds beyond the gap/address limits may be missed. An extra receive address beyond the cap is watched without history; raise `WALLET_MAX_ADDRESSES` before relying on its balance.
 - 📊 **Estimates:** missing parent transactions prevent fee calculation; graph edges do not allocate inputs to outputs. Fiat uses current quotes, not historical prices.
+
+## License
+
+Released under the [GNU General Public License v3.0](LICENSE).
