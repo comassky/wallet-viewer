@@ -59,7 +59,7 @@
   }
 
   .detail-stat {
-    @apply rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 sm:p-4;
+    @apply rounded-xl border border-slate-700/40 bg-slate-950/40 p-3;
   }
 
   .wallet-shell {
