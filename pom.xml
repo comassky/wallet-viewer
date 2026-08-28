@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example</groupId>
+    <groupId>comassky</groupId>
     <artifactId>wallet-viewer</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
@@ -19,7 +19,7 @@
         <quarkus.platform.version>3.39.2</quarkus.platform.version>
 
         <quinoa.version>2.9.0</quinoa.version>
-        <bitcoinj.version>0.16.3</bitcoinj.version>
+        <bitcoinj.version>0.17.1</bitcoinj.version>
         <zxing.version>3.5.3</zxing.version>
 
         <maven.compiler.parameters>true</maven.compiler.parameters>
