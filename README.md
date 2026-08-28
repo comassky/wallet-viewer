@@ -20,6 +20,10 @@
 
 > 🔒 **Local by default, not authenticated.** Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
 
+<p align="center"><img src="docs/screen.png" alt="Bitcoin Wallet Viewer dashboard showing mock data" width="820"></p>
+
+> 🧪 **Screenshot from [demo mode](#demo-mode) — the wallet, balance, addresses and transactions are entirely synthetic. This wallet does not exist and holds no real funds.**
+
 ## Features
 
 - 💰 **Live wallet:** balances, confirmations, Activity / UTXO tabs, sorting and click-to-copy identifiers.
