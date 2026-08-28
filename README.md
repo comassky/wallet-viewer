@@ -1,4 +1,4 @@
-<p align="center"><img src="src/main/webui/public/logo.png" alt="Bitcoin Wallet Viewer" width="120" height="120"></p>
+<p align="center"><img src="docs/logo-full.png" alt="Bitcoin Wallet Viewer" width="160"></p>
 
 # ₿ Bitcoin Wallet Viewer
 
