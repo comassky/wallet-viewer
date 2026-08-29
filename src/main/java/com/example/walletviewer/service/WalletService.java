@@ -15,6 +15,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.bitcoinj.base.internal.ByteUtils;
+import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
@@ -341,13 +342,9 @@ public class WalletService {
         });
     }
 
-    /** Extracts the block timestamp (uint32 LE at byte offset 68) from an 80-byte header hex. */
+    /** Decodes the 80-byte block header and returns its timestamp in Unix seconds. */
     private static long headerTime(String headerHex) {
-        long b0 = Long.parseLong(headerHex.substring(136, 138), 16);
-        long b1 = Long.parseLong(headerHex.substring(138, 140), 16);
-        long b2 = Long.parseLong(headerHex.substring(140, 142), 16);
-        long b3 = Long.parseLong(headerHex.substring(142, 144), 16);
-        return b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
+        return Block.read(ByteBuffer.wrap(ByteUtils.parseHex(headerHex))).getTimeSeconds();
     }
 }
 
