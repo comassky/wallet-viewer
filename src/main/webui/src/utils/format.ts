@@ -4,8 +4,13 @@ export function shortId(id: string): string {
   return id ? `${id.slice(0, 10)}…${id.slice(-6)}` : '';
 }
 
+const dateFormat = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric', month: 'numeric', day: 'numeric',
+  hour: 'numeric', minute: 'numeric', second: 'numeric',
+});
+
 export function formatDate(timestamp: number | null): string {
-  return timestamp ? new Date(timestamp * 1000).toLocaleString('en-US') : '—';
+  return timestamp ? dateFormat.format(timestamp * 1000) : '—';
 }
 
 export const transactionLabels: Record<TxType, string> = {
