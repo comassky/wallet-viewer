@@ -4,7 +4,6 @@ import { useWallet } from './composables/useWallet';
 import { useCurrency } from './composables/useCurrency';
 import type { ReceiveAddress } from './types/wallet';
 import DashboardHeader from './components/DashboardHeader.vue';
-import PriceNotice from './components/PriceNotice.vue';
 import BalanceCard from './components/BalanceCard.vue';
 import ReceiveAddressCard from './components/ReceiveAddressCard.vue';
 import TransactionsSection from './components/TransactionsSection.vue';
@@ -13,7 +12,7 @@ import ReceiveQrDialog from './components/ReceiveQrDialog.vue';
 import UiIcon from './components/UiIcon.vue';
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
-const { currency, rates, ratesLoading, ratesError, fiat, refreshRates, amount } = useCurrency();
+const { currency, rates, fiat, refreshRates, amount } = useCurrency();
 const qrDialog = ref<InstanceType<typeof ReceiveQrDialog> | null>(null);
 const tabs = [
   { id: 'activity', label: 'Activity' },
@@ -53,19 +52,10 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
     <p v-if="data && (connection !== 'connected' || status !== 'live')" role="status" class="mb-5 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-xs text-amber-300">
       {{ message || 'Synchronizing wallet data.' }} Showing the last received snapshot; it may be out of date.
     </p>
-    <PriceNotice
-      v-if="fiat"
-      :currency="currency"
-      :rates="rates"
-      :loading="ratesLoading"
-      :error="ratesError"
-      :amount="amount"
-      @retry="refreshRates"
-    />
 
     <template v-if="data">
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <BalanceCard v-model:currency="currency" :balance="data.balance" :estimated="fiat && !!rates" :amount="amount" />
+        <BalanceCard v-model:currency="currency" :balance="data.balance" :estimated="fiat && !!rates" :rates="rates" :amount="amount" />
         <ReceiveAddressCard :receive="data.receiveAddress" @enlarge="enlargeReceive" />
       </div>
       <div class="mt-9">
