@@ -128,13 +128,13 @@ Supply wallet settings **at runtime**, never as build arguments or in source. De
 | `ELECTRUM_PORT` | `50002` | Server port; application-only default is `50001` |
 | `ELECTRUM_SSL` | `true` | TLS with certificate/hostname verification; application-only default is `false` |
 | `ELECTRUM_REQUEST_TIMEOUT` | `30s` | Per-RPC timeout |
-| `LOG_LEVEL` | `INFO` | Application log level for the `com.example.walletviewer` category; set `DEBUG` for Electrum/scan lifecycle logs |
+| `LOG_LEVEL` | `INFO` | Application log level for the `com.comassky.wallet` category; set `DEBUG` for Electrum/scan lifecycle logs |
 
 Inside Docker, `localhost` means the container: use a reachable server hostname. Compose forwards only declared variables and does not mount local Java configuration.
 
 ## Logs
 
-Control verbosity with **`LOG_LEVEL`** (classic Quarkus, default `INFO`); it maps to the `com.example.walletviewer` category.
+Control verbosity with **`LOG_LEVEL`** (classic Quarkus, default `INFO`); it maps to the `com.comassky.wallet` category.
 
 - **INFO (default):** startup details such as the detected wallet script type, plus warnings and errors. No keys, balances or raw payloads.
 - **DEBUG (`LOG_LEVEL=DEBUG`):** Electrum connection changes, address notifications, wallet scan lifecycle and per-RPC method/duration/outcome.
