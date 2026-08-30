@@ -90,12 +90,7 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
 </script>
 
 <template>
-  <section class="transaction-graph" :aria-labelledby="`${idPrefix}-graph-heading`" :aria-describedby="`${idPrefix}-graph-description`" @keydown.esc.stop="clearHighlight">
-    <h4 :id="`${idPrefix}-graph-heading`" class="section-title mb-2">Transaction structure</h4>
-    <p :id="`${idPrefix}-graph-description`" class="mb-3 text-xs leading-relaxed text-slate-400">
-      Inputs → transaction → outputs, not an allocation of inputs to outputs. Hover or focus a branch to highlight it; use its button to pin or unpin it. Escape clears the highlight.
-      Groups contain all items outside the current page, including earlier pages. Explore a group to show the next page, wrapping to the first after the last.
-    </p>
+  <section class="transaction-graph" aria-label="Transaction structure" @keydown.esc.stop="clearHighlight">
     <div class="graph-canvas" :class="{ 'has-active-branch': active !== null }" :style="{ '--graph-height': `${graph.height}px`, '--node-height': `${graph.nodeHeight}px`, '--center-y': `${graph.centerY}px` }">
       <svg class="graph-edges" :viewBox="`0 0 ${graph.width} ${graph.height}`" preserveAspectRatio="none" aria-hidden="true" focusable="false">
         <template v-for="side in sides" :key="side.key">
