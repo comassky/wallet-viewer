@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 import { currencies, currencyLabel, formatAmount, isFiat, type Currency } from '../currency';
 import type { Balance, PriceRates } from '../types/wallet';
 import { formatDate } from '../utils/format';
+import AppTooltip from './AppTooltip.vue';
 import UiIcon from './UiIcon.vue';
 
 const props = defineProps<{
@@ -34,21 +35,22 @@ function priceTitle(unit: Currency): string | undefined {
     <div class="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
       <h2 class="section-title flex items-center gap-2"><UiIcon name="coins" class="text-accent" />Total balance</h2>
       <div class="inline-flex shrink-0 rounded-xl border border-slate-700/60 bg-slate-950/60 p-0.5" role="group" aria-label="Display currency">
-        <button
-          v-for="unit in currencies"
-          :key="unit"
-          type="button"
-          :aria-pressed="currency === unit"
-          :title="priceTitle(unit)"
-          class="rounded-lg px-2.5 text-xs font-semibold tracking-wide transition"
-          :class="currency === unit ? 'bg-accent text-slate-950' : 'text-slate-400 hover:text-slate-200'"
-          @click="$emit('update:currency', unit)"
-        >{{ currencyLabel(unit) }}</button>
+        <AppTooltip v-for="unit in currencies" :key="unit" :text="priceTitle(unit)">
+          <button
+            type="button"
+            :aria-pressed="currency === unit"
+            class="rounded-lg px-2.5 py-1 text-xs font-semibold tracking-wide transition"
+            :class="currency === unit ? 'bg-accent text-slate-950' : 'text-slate-400 hover:text-slate-200'"
+            @click="$emit('update:currency', unit)"
+          >{{ currencyLabel(unit) }}</button>
+        </AppTooltip>
       </div>
     </div>
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <span class="break-all text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl" :class="{ 'value-pop': pop }" @animationend="pop = false">{{ estimated ? '≈ ' : '' }}{{ amount(balance.total) }}</span>
-      <span class="text-lg font-medium text-accent" :class="isFiat(currency) ? 'cursor-help' : ''" :title="priceTitle(currency)">{{ currencyLabel(currency) }}</span>
+      <AppTooltip :text="priceTitle(currency)">
+        <span class="text-lg font-medium text-accent" :class="isFiat(currency) ? 'cursor-help' : ''">{{ currencyLabel(currency) }}</span>
+      </AppTooltip>
     </div>
     <p class="mt-2 text-xs text-slate-500">Display currency · saved locally</p>
     <dl class="mt-6 grid gap-4 border-t border-slate-700/40 pt-5 sm:grid-cols-2">

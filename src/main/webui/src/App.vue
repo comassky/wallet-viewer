@@ -13,7 +13,7 @@ import UiIcon from './components/UiIcon.vue';
 import ToastHost from './components/ToastHost.vue';
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
-const { currency, rates, fiat, refreshRates, amount } = useCurrency();
+const { currency, rates, fiat, amount } = useCurrency();
 const qrDialog = ref<InstanceType<typeof ReceiveQrDialog> | null>(null);
 const tabs = [
   { id: 'activity', label: 'Activity' },
@@ -36,11 +36,6 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
   tabButtons.value[nextIndex]?.focus();
 }
 
-function refreshDashboard(): void {
-  void refresh();
-  void refreshRates();
-}
-
 function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): void {
   void qrDialog.value?.open(address, trigger);
 }
@@ -49,7 +44,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
 
 <template>
   <main lang="en-US" class="wallet-shell w-full px-4 pb-16 pt-6 sm:px-6 lg:px-10 lg:pt-9">
-    <DashboardHeader :loading="loading" :connection="connection" :status="status" :message="message" @refresh="refreshDashboard" @retry="refresh" />
+    <DashboardHeader :connection="connection" :status="status" :message="message" @retry="refresh" />
     <Transition name="banner">
       <p v-if="data && (connection !== 'connected' || status !== 'live')" role="status" class="mb-5 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-xs text-amber-300">
         {{ message || 'Synchronizing wallet data.' }} Showing the last received snapshot; it may be out of date.
