@@ -16,8 +16,8 @@ watch(() => props.value, reset);
       :class="statusRight ? 'min-w-0 flex-1' : ''"
       :title="`Copy ${label}: ${value}`"
       :aria-label="`Copy ${label}: ${value}`"
-      @click.stop="copy(value)"
+      @click.stop="copy(value, label)"
     >{{ display ?? value }} <UiIcon :name="copied ? 'check' : 'copy'" class="ml-1 inline-block h-3 w-3 align-middle text-accent opacity-40 group-hover:opacity-100" /></button>
-    <span role="status" class="break-words font-sans text-xs" :class="[error ? 'text-rose-400' : 'text-emerald-400', statusRight ? 'shrink-0' : 'block']">{{ error || (copied ? '✓ Copied' : '') }}</span>
+    <span v-if="error" role="status" class="break-words font-sans text-xs text-rose-400" :class="statusRight ? 'shrink-0' : 'block'">{{ error }}</span>
   </span>
 </template>
