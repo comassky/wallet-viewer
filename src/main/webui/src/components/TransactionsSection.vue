@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRef, watch } from 'vue';
+import { toRef } from 'vue';
 import { currencyLabel, type Currency } from '../currency';
 import type { Transaction } from '../types/wallet';
 import { shortId, formatDate, transactionLabels } from '../utils/format';
@@ -16,25 +16,6 @@ const props = defineProps<{
   amount: (sats: number, signed?: boolean) => string;
 }>();
 const { expandedTxid, details, loading, error, toggle, retry } = useExpandedTransaction(toRef(props, 'transactions'));
-
-// Briefly highlight transactions that arrive after the first populated snapshot.
-const flashing = ref(new Set<string>());
-let known: Set<string> | null = null;
-watch(() => props.transactions, (txs) => {
-  const ids = new Set(txs.map(tx => tx.txid));
-  if (known === null) {
-    if (ids.size === 0) return;
-    known = ids;
-    return;
-  }
-  for (const id of ids) {
-    if (!known.has(id)) {
-      flashing.value.add(id);
-      window.setTimeout(() => flashing.value.delete(id), 2400);
-    }
-  }
-  known = ids;
-}, { immediate: true });
 
 const columns: SortColumn<Transaction>[] = [
   { key: 'type', label: 'Type', value: tx => transactionLabels[tx.type] },
@@ -61,11 +42,12 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
         <button v-if="sortKey" type="button" class="button-secondary rounded-lg px-3" :aria-label="descending ? 'Sort ascending' : 'Sort descending'" @click="descending = !descending">{{ descending ? '↓' : '↑' }}</button>
       </div>
     </div>
-    <ul v-if="transactions.length" class="grid min-w-0 gap-3 lg:hidden" aria-label="Transactions">
+    <!-- v-auto-animate fades new rows in and smoothly pushes the rows below down; honors prefers-reduced-motion. -->
+    <ul v-if="transactions.length" v-auto-animate class="grid min-w-0 gap-3 lg:hidden" aria-label="Transactions">
       <li v-for="tx in sorted" :key="tx.txid" class="wallet-panel min-w-0">
         <div
           class="block w-full cursor-pointer rounded-2xl p-4 text-left transition hover:bg-slate-800/50"
-          :class="{ 'bg-accent/5': expandedTxid === tx.txid, 'row-flash': flashing.has(tx.txid) }"
+          :class="{ 'bg-accent/5': expandedTxid === tx.txid }"
           @click="toggle(tx.txid)"
         >
         <span class="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -105,9 +87,9 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
             <th class="w-24 px-3 py-3"><span class="sr-only">Details</span></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody v-auto-animate>
           <template v-for="tx in sorted" :key="tx.txid">
-          <tr class="cursor-pointer border-t border-slate-800 transition hover:bg-slate-800/50" :class="{ 'bg-accent/5': expandedTxid === tx.txid, 'row-flash': flashing.has(tx.txid) }" @click="toggle(tx.txid)">
+          <tr class="cursor-pointer border-t border-slate-800 transition hover:bg-slate-800/50" :class="{ 'bg-accent/5': expandedTxid === tx.txid }" @click="toggle(tx.txid)">
             <td class="px-3 py-2.5"><TransactionBadge :type="tx.type" /></td>
             <td class="px-3 py-2.5">
               <CopyValue :value="tx.txid" :display="shortId(tx.txid)" label="transaction ID" />
