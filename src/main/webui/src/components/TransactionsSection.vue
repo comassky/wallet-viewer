@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRef } from 'vue';
+import { ref, toRef, watch } from 'vue';
 import { currencyLabel, type Currency } from '../currency';
 import type { Transaction } from '../types/wallet';
 import { shortId, formatDate, transactionLabels } from '../utils/format';
@@ -16,6 +16,26 @@ const props = defineProps<{
   amount: (sats: number, signed?: boolean) => string;
 }>();
 const { expandedTxid, details, loading, error, toggle, retry } = useExpandedTransaction(toRef(props, 'transactions'));
+
+// Briefly highlight transactions that arrive after the first populated snapshot.
+const flashing = ref(new Set<string>());
+let known: Set<string> | null = null;
+watch(() => props.transactions, (txs) => {
+  const ids = new Set(txs.map(tx => tx.txid));
+  if (known === null) {
+    if (ids.size === 0) return;
+    known = ids;
+    return;
+  }
+  for (const id of ids) {
+    if (!known.has(id)) {
+      flashing.value.add(id);
+      window.setTimeout(() => flashing.value.delete(id), 2400);
+    }
+  }
+  known = ids;
+}, { immediate: true });
+
 const columns: SortColumn<Transaction>[] = [
   { key: 'type', label: 'Type', value: tx => transactionLabels[tx.type] },
   { key: 'txid', label: 'Transaction', value: tx => tx.txid },
@@ -45,7 +65,7 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
       <li v-for="tx in sorted" :key="tx.txid" class="wallet-panel min-w-0">
         <div
           class="block w-full cursor-pointer rounded-2xl p-4 text-left transition hover:bg-slate-800/50"
-          :class="{ 'bg-accent/5': expandedTxid === tx.txid }"
+          :class="{ 'bg-accent/5': expandedTxid === tx.txid, 'row-flash': flashing.has(tx.txid) }"
           @click="toggle(tx.txid)"
         >
         <span class="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -87,7 +107,7 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
         </thead>
         <tbody>
           <template v-for="tx in sorted" :key="tx.txid">
-          <tr class="cursor-pointer border-t border-slate-800 transition hover:bg-slate-800/50" :class="{ 'bg-accent/5': expandedTxid === tx.txid }" @click="toggle(tx.txid)">
+          <tr class="cursor-pointer border-t border-slate-800 transition hover:bg-slate-800/50" :class="{ 'bg-accent/5': expandedTxid === tx.txid, 'row-flash': flashing.has(tx.txid) }" @click="toggle(tx.txid)">
             <td class="px-3 py-2.5"><TransactionBadge :type="tx.type" /></td>
             <td class="px-3 py-2.5">
               <CopyValue :value="tx.txid" :display="shortId(tx.txid)" label="transaction ID" />

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue';
 import { currencies, currencyLabel, formatAmount, isFiat, type Currency } from '../currency';
 import type { Balance, PriceRates } from '../types/wallet';
 import { formatDate } from '../utils/format';
@@ -12,6 +13,14 @@ const props = defineProps<{
   amount: (sats: number, signed?: boolean) => string;
 }>();
 defineEmits<{ 'update:currency': [value: Currency] }>();
+
+// Pop the total whenever the balance changes (a new transaction moved funds).
+const pop = ref(false);
+watch(() => props.balance.total, (value, previous) => {
+  if (previous === undefined || value === previous) return;
+  pop.value = false;
+  requestAnimationFrame(() => { pop.value = true; });
+});
 
 // Hover hint for a fiat unit: current BTC quote, its timestamp and source.
 function priceTitle(unit: Currency): string | undefined {
@@ -38,7 +47,7 @@ function priceTitle(unit: Currency): string | undefined {
       </div>
     </div>
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <span class="break-all text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl">{{ estimated ? '≈ ' : '' }}{{ amount(balance.total) }}</span>
+      <span class="break-all text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl" :class="{ 'value-pop': pop }" @animationend="pop = false">{{ estimated ? '≈ ' : '' }}{{ amount(balance.total) }}</span>
       <span class="text-lg font-medium text-accent" :class="isFiat(currency) ? 'cursor-help' : ''" :title="priceTitle(currency)">{{ currencyLabel(currency) }}</span>
     </div>
     <p class="mt-2 text-xs text-slate-500">Display currency · saved locally</p>
