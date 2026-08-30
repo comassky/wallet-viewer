@@ -162,12 +162,14 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
 .graph-side[data-side="outputs"] { order: 2; --branch-color: #34d399; }
 .graph-side-header { display: grid; gap: .375rem; color: var(--branch-color); }
 .graph-nodes { display: grid; gap: .5rem; margin-top: .75rem; }
-.graph-node { min-width: 0; border: 1px solid #363330; border-left: 3px solid var(--branch-color); border-radius: .75rem; padding: .25rem .625rem; background: #161514; overflow-wrap: anywhere; }
+.graph-node { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: .125rem; border: 1px solid #363330; border-left: 3px solid var(--branch-color); border-radius: .75rem; padding: .375rem .75rem; background: linear-gradient(180deg, #1a1918, #131211); overflow-wrap: anywhere; transition: border-color .15s ease, background-color .15s ease; }
+.graph-node:hover { border-color: color-mix(in srgb, var(--branch-color) 40%, #363330); }
 .graph-node.node-active { border-color: var(--branch-color); outline: 2px solid var(--branch-color); outline-offset: 1px; background: #242220; }
 .graph-node.node-pinned { border-left-width: 6px; }
 .graph-group { border-style: dashed; }
-.branch-button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .5rem; min-height: 44px; padding: .25rem; border-radius: .375rem; text-align: left; font-size: .75rem; color: var(--branch-color); }
-.branch-button:hover { background: rgb(148 163 184 / 10%); }
+.branch-button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .5rem; min-height: 44px; padding: .125rem 0; border-radius: .375rem; text-align: left; font-size: .75rem; color: var(--branch-color); }
+.branch-button:hover { background: color-mix(in srgb, var(--branch-color) 10%, transparent); }
+.graph-node:not(.graph-group) .branch-button > span:first-child { flex-shrink: 0; padding: .0625rem .375rem; border-radius: .375rem; background: color-mix(in srgb, var(--branch-color) 15%, transparent); font-weight: 600; font-variant-numeric: tabular-nums; }
 .graph-page-button { min-height: 44px; padding: .375rem .75rem; border: 1px solid #57534e; border-radius: .5rem; font-size: .75rem; color: #e7e5e4; }
 .graph-page-button:disabled { opacity: .4; cursor: not-allowed; }
 .graph-page-button:not(:disabled):hover { background: #242220; border-color: #f7931a; }

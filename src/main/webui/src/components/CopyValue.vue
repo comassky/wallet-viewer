@@ -12,7 +12,7 @@ watch(() => props.value, reset);
   <span class="inline-block min-w-0 max-w-full align-middle">
     <button
       type="button"
-      class="group max-w-full select-text break-all rounded px-1 py-1 text-left font-mono text-slate-300 transition hover:bg-accent/10 hover:text-accent"
+      class="group max-w-full select-text break-all rounded-sm px-1 py-1 text-left font-mono text-slate-300 transition hover:bg-accent/10 hover:text-accent"
       :title="`Copy ${label}: ${value}`"
       :aria-label="`Copy ${label}: ${value}`"
       @click.stop="copy(value)"
