@@ -82,3 +82,12 @@ export interface PriceRates {
   usd: number;
   timestamp: number;
 }
+
+export interface ElectrumServer {
+  host: string;
+  port: number;
+  tls: boolean;
+  connected: boolean;
+  serverVersion: string | null;
+  protocolVersion: string | null;
+}

@@ -16,6 +16,7 @@ import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 import java.time.Duration;
 import java.util.List;
@@ -33,6 +34,8 @@ import java.util.function.Consumer;
  */
 @ApplicationScoped
 public class ElectrumClient {
+
+    private static final Logger LOG = Logger.getLogger(ElectrumClient.class);
 
     @ConfigProperty(name = "electrum.host", defaultValue = "127.0.0.1")
     String host = "127.0.0.1";
@@ -73,6 +76,8 @@ public class ElectrumClient {
         NetSocket socket;
         boolean connecting = true;
         boolean retired;
+        String serverVersion;
+        String protocolVersion;
     }
 
     private record Pending(Connection connection, UniEmitter<? super JsonObject> emitter) { }
@@ -103,6 +108,9 @@ public class ElectrumClient {
         IllegalStateException failure = new IllegalStateException("Electrum client stopped");
         publishConnection(false);
         if (old != null) {
+            old.retired = true;
+            old.serverVersion = null;
+            old.protocolVersion = null;
             old.ready.completeExceptionally(failure);
             failPending(old, failure);
         }
@@ -111,6 +119,14 @@ public class ElectrumClient {
         if (client != null) {
             client.close();
         }
+    }
+
+    /** Pure local read: never opens a connection, negotiates or sends an RPC. */
+    public synchronized ElectrumServerDto serverInfo() {
+        Connection current = connection;
+        boolean ready = !stopped && current != null && current.socket != null && !current.retired;
+        return new ElectrumServerDto(host, port, ssl, ready,
+                ready ? current.serverVersion : null, ready ? current.protocolVersion : null);
     }
 
     /** Registers a non-blocking notification callback. Closing the registration removes it. */
@@ -164,6 +180,10 @@ public class ElectrumClient {
                     }
                     attempt.socket = ar.result();
                     setup(attempt);
+                    // Send once on this actual socket, before releasing application callers.
+                    // Metadata is optional: never wait for it in ready or connection listeners.
+                    negotiateVersion(attempt);
+                    if (connection != attempt || stopped) return;
                     nextReconnectDelay = reconnectInitialDelayMillis;
                     publishConnection(true);
                     if (connection == attempt && !stopped) {
@@ -181,6 +201,8 @@ public class ElectrumClient {
 
     private void publishConnection(boolean state) {
         if (Objects.equals(connected, state)) return;
+        if (state) LOG.info("Electrum connection opened");
+        else if (Boolean.TRUE.equals(connected)) LOG.info("Electrum connection closed");
         connected = state;
         for (Consumer<Boolean> listener : connectionListeners) {
             try {
@@ -235,6 +257,8 @@ public class ElectrumClient {
         valid |= "blockchain.headers.subscribe".equals(method)
                 && params.size() == 1 && params.getValue(0) instanceof JsonObject;
         if (!valid) return;
+        LOG.info("blockchain.scripthash.subscribe".equals(method)
+            ? "Electrum notification: address changed" : "Electrum notification: new block");
         for (Consumer<JsonObject> listener : notificationListeners) {
             try {
                 listener.accept(message.copy());
@@ -247,6 +271,9 @@ public class ElectrumClient {
     private synchronized void lost(Connection owner, Throwable failure) {
         if (connection != owner || owner.retired) return;
         owner.retired = true;
+        owner.serverVersion = null;
+        owner.protocolVersion = null;
+        LOG.warnf("Electrum transport failure: type=%s", failure.getClass().getSimpleName());
         // Vert.x connect futures are not cancellable. Keep the attempt reserved until its
         // bounded connect completes, then discard its socket and retry without overlap.
         if (!owner.connecting) connection = null;
@@ -276,6 +303,7 @@ public class ElectrumClient {
         if (!monitoring || stopped || connection != null || reconnectTimer != -1) return;
         long delay = Math.min(nextReconnectDelay, reconnectMaxDelayMillis);
         nextReconnectDelay = Math.min(delay * 2, reconnectMaxDelayMillis);
+        LOG.infof("Electrum reconnect scheduled: delayMs=%d", delay);
         reconnectTimer = vertx.setTimer(delay, id -> {
             synchronized (ElectrumClient.this) {
                 if (reconnectTimer != id) return;
@@ -311,27 +339,56 @@ public class ElectrumClient {
         });
     }
 
-    /**
-     * Sends a JSON-RPC request and returns the full response object.
-     */
+    private void negotiateVersion(Connection owner) {
+        request(owner, Uni.createFrom().item(owner.socket), false,
+                "server.version", "Wallet Viewer", "1.4")
+                .invoke(response -> {
+                    Object value = response.getValue("result");
+                    if (!(value instanceof JsonArray versions) || versions.size() != 2
+                            || !(versions.getValue(0) instanceof String serverVersion) || serverVersion.isBlank()
+                            || !(versions.getValue(1) instanceof String protocolVersion) || protocolVersion.isBlank()) {
+                        throw new IllegalArgumentException("Invalid Electrum metadata");
+                    }
+                    synchronized (ElectrumClient.this) {
+                        if (!stopped && connection == owner && !owner.retired) {
+                            owner.serverVersion = serverVersion;
+                            owner.protocolVersion = protocolVersion;
+                        }
+                    }
+                }).subscribe().with(ignored -> { }, failure -> {
+                    // No exception message, server payload, retry or transport reset here.
+                    LOG.warnf("Electrum metadata unavailable: type=%s", failure.getClass().getSimpleName());
+                });
+    }
+
+    /** Sends a JSON-RPC request and returns the full response object. */
     public Uni<JsonObject> call(String method, Object... params) {
         // Each subscription needs a fresh id and the current connection (including retries).
         return Uni.createFrom().deferred(() -> {
             Connection owner = connection();
+            // Do not cancel the shared connect future when an individual caller cancels.
+            Uni<NetSocket> ready = Uni.createFrom().emitter(em -> owner.ready.whenComplete((sock, failure) -> {
+                if (failure != null) em.fail(failure);
+                else em.complete(sock);
+            }));
+            return request(owner, ready, true, method, params);
+        });
+    }
+
+    private Uni<JsonObject> request(Connection owner, Uni<NetSocket> socket, boolean retireOnTimeout,
+                                    String method, Object... params) {
+        return Uni.createFrom().deferred(() -> {
+            long started = System.nanoTime();
             int id = counter.incrementAndGet();
             String payload = new JsonObject()
                     .put("id", id)
                     .put("method", method)
                     .put("params", new JsonArray(List.of(params)))
                     .encode() + "\n";
-            // Do not cancel the shared connect future when an individual caller cancels.
-            return Uni.createFrom().<NetSocket>emitter(em -> owner.ready.whenComplete((sock, failure) -> {
-                if (failure != null) em.fail(failure);
-                else em.complete(sock);
-            })).flatMap(sock ->
+            return socket.flatMap(sock ->
                     Uni.createFrom().<JsonObject>emitter(em -> {
                         synchronized (ElectrumClient.this) {
-                            if (stopped || connection != owner) {
+                            if (stopped || connection != owner || owner.retired) {
                                 em.fail(new IllegalStateException("Electrum connection closed"));
                                 return;
                             }
@@ -343,10 +400,27 @@ public class ElectrumClient {
                     })
             ).ifNoItem().after(requestTimeout).fail()
                     .onFailure(TimeoutException.class).invoke(failure -> {
+                        LOG.warnf("Electrum RPC timeout: method=%s id=%d type=TimeoutException", safeMethod(method), id);
                         synchronized (ElectrumClient.this) {
-                            if (monitoring) lost(owner, failure);
+                            if (retireOnTimeout && monitoring) lost(owner, failure);
                         }
-                    });
+                    })
+                    .onItemOrFailure().invoke((response, failure) -> LOG.debugf(
+                            "Electrum RPC: method=%s id=%d durationMs=%d outcome=%s",
+                            safeMethod(method), id, (System.nanoTime() - started) / 1_000_000,
+                            failure == null ? "success" : "failure"));
         });
+    }
+
+    /** Never log arbitrary method names supplied by a caller or peer. */
+    private static String safeMethod(String method) {
+        if (method == null) return "unknown";
+        return switch (method) {
+            case "server.version", "server.ping", "blockchain.headers.subscribe",
+                    "blockchain.scripthash.subscribe", "blockchain.scripthash.get_history",
+                    "blockchain.scripthash.get_balance", "blockchain.scripthash.listunspent",
+                    "blockchain.block.header", "blockchain.transaction.get" -> method;
+            default -> "unknown";
+        };
     }
 }

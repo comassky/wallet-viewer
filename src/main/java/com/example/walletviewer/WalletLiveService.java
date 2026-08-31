@@ -4,11 +4,14 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ServiceUnavailableException;
+import org.jboss.logging.Logger;
 
 import java.time.Duration;
 import java.util.HashSet;
@@ -23,6 +26,7 @@ import java.util.function.Consumer;
 /** Single writer: scan completely, replace Caffeine state, then notify subscribers. */
 @ApplicationScoped
 public class WalletLiveService {
+    private static final Logger LOG = Logger.getLogger(WalletLiveService.class);
     private static final String KEY = "wallet";
     private final Cache<String, WalletState> cache = Caffeine.newBuilder().maximumSize(1).build();
     private final Set<Consumer<WalletState>> listeners = new HashSet<>();
@@ -51,6 +55,9 @@ public class WalletLiveService {
         notifications = electrum.onNotification(notification -> {
             changes.incrementAndGet();
             schedule(200);
+            if (notification != null && "blockchain.scripthash.subscribe".equals(notification.getValue("method"))) {
+                LOG.infof("Electrum address notification: address=%s", notificationAddress(notification));
+            }
         });
         connections = electrum.onConnectionChange(ready -> {
             synchronized (this) {
@@ -62,6 +69,19 @@ public class WalletLiveService {
             }
         });
         electrum.startMonitoring();
+    }
+
+    private String notificationAddress(JsonObject notification) {
+        // Stubs may omit params; malformed/untrusted values must never be printed or
+        // learned. Bound the key before lookup, and never inspect or log the status text.
+        if (!(notification.getValue("params") instanceof JsonArray params) || params.size() != 2
+                || !(params.getValue(0) instanceof String hash) || hash.length() != 64
+                || !hash.matches("[0-9a-fA-F]{64}")
+                || (params.getValue(1) != null && !(params.getValue(1) instanceof String))) {
+            return "unknown";
+        }
+        String address = scanner.knownAddressForScripthash(hash);
+        return address == null ? "unknown" : address;
     }
 
     /** Replay and registration are atomic with respect to cache updates. */
@@ -91,8 +111,14 @@ public class WalletLiveService {
         long epoch = connectionEpoch.get();
         long revision = changes.get();
         boolean failed = false;
+        long started = System.nanoTime();
+        boolean scanStarted = false;
+        String outcome = "discarded";
+        Long newTransactions = null;
         try {
             if (stopped || !connected) return;
+            scanStarted = true;
+            LOG.info("Wallet scan started");
             publish("syncing", "Synchronizing wallet with Electrum…", null);
             // Off the Vert.x event loop; only one scan can run at any time.
             WalletSnapshot snapshot = scanner.scan().await().atMost(Duration.ofMinutes(5));
@@ -101,12 +127,31 @@ public class WalletLiveService {
                 // A notification during the scan can make its individual RPCs inconsistent.
                 // Keep the previous complete snapshot and run another pass before publishing.
                 if (revision != changes.get()) return;
+                WalletSnapshot previous = current().snapshot();
+                if (previous != null) {
+                    Set<String> known = new HashSet<>();
+                    previous.transactions().forEach(tx -> known.add(tx.txid()));
+                    newTransactions = snapshot.transactions().stream().map(TransactionDto::txid)
+                            .distinct().filter(id -> !known.contains(id)).count();
+                }
                 publish("live", null, snapshot);
+                outcome = "success";
             }
         } catch (RuntimeException failure) {
             failed = true;
+            outcome = "failure";
+            if (!stopped) LOG.warnf("Wallet sync failure: type=%s", failure.getClass().getSimpleName());
             if (connected && !stopped) publish("error", "Wallet synchronization failed. Retrying automatically.", null);
         } finally {
+            if (scanStarted) {
+                long durationMillis = (System.nanoTime() - started) / 1_000_000;
+                if (newTransactions == null) {
+                    LOG.infof("Wallet scan completed: durationMs=%d outcome=%s", durationMillis, outcome);
+                } else {
+                    LOG.infof("Wallet scan completed: durationMs=%d outcome=%s newTransactions=%d",
+                            durationMillis, outcome, newTransactions);
+                }
+            }
             synchronized (this) {
                 scheduled = null;
                 if (!stopped && connected && (failed || revision != changes.get() || epoch != connectionEpoch.get())) {
