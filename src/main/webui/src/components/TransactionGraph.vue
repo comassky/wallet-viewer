@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { currencyLabel, type Currency } from '../currency';
 import type { TransactionDetails } from '../types/wallet';
 import { shortId } from '../utils/format';
-import { transactionGraphLayout } from '../utils/transactionGraph';
+import { paginationRange, summarizeValues, transactionGraphLayout, transactionGraphPage } from '../utils/transactionGraph';
+import CopyValue from './CopyValue.vue';
 
 const props = defineProps<{
   idPrefix: string;
@@ -11,47 +12,182 @@ const props = defineProps<{
   currency: Currency;
   amount: (sats: number, signed?: boolean) => string;
 }>();
-const graph = computed(() => transactionGraphLayout(props.details.inputs.length, props.details.outputs.length));
+
+type Side = 'inputs' | 'outputs';
+const pages = ref({ inputs: 0, outputs: 0 });
+const selected = ref<string | null>(null);
+const hovered = ref<string | null>(null);
+const focused = ref<string | null>(null);
+const active = computed(() => hovered.value ?? focused.value ?? selected.value);
+// Summaries scan the transaction once per data change, not once per page or hover.
+const inputSummary = computed(() => summarizeValues(props.details.inputs));
+const outputSummary = computed(() => summarizeValues(props.details.outputs));
+const inputs = computed(() => transactionGraphPage(props.details.inputs, pages.value.inputs, inputSummary.value));
+const outputs = computed(() => transactionGraphPage(props.details.outputs, pages.value.outputs, outputSummary.value));
+const graph = computed(() => transactionGraphLayout(
+  props.details.inputs.length, props.details.outputs.length, inputs.value.page, outputs.value.page,
+));
+const sides = computed(() => [
+  {
+    key: 'inputs' as const, title: 'Inputs', singular: 'Input', page: inputs.value,
+    nodes: inputs.value.entries.map(({ item, index }) => ({
+      key: `inputs-${index}`, index, value: item.value, coinbase: item.coinbase,
+      copyValue: item.address || (!item.coinbase ? item.txid : null),
+      copyLabel: item.address ? 'address' : 'transaction ID',
+      fallback: item.coinbase ? 'Coinbase · newly created bitcoin' : 'Non-address script',
+    })),
+  },
+  {
+    key: 'outputs' as const, title: 'Outputs', singular: 'Output', page: outputs.value,
+    nodes: outputs.value.entries.map(({ item, index }) => ({
+      key: `outputs-${index}`, index: item.index, value: item.value, coinbase: false,
+      copyValue: item.address, copyLabel: 'address', fallback: 'Non-address script',
+    })),
+  },
+]);
+
+function clearHighlight() {
+  selected.value = hovered.value = focused.value = null;
+}
+
+function valueLabel(value: number | null, coinbase: boolean) {
+  return value === null
+    ? (coinbase ? 'Not applicable (coinbase)' : 'Unknown value')
+    : `${props.amount(value)} ${currencyLabel(props.currency)}`;
+}
+
+function focusBranch(key: string) {
+  focused.value = key;
+  // A stationary pointer must not mask a newly focused keyboard branch.
+  hovered.value = null;
+}
+
+function leaveFocus(event: FocusEvent) {
+  if (!(event.relatedTarget instanceof Node) || !(event.currentTarget as HTMLElement).contains(event.relatedTarget)) {
+    focused.value = null;
+  }
+}
+
+function setPage(side: Side, page: number) {
+  pages.value[side] = paginationRange(props.details[side].length, page).page;
+}
+
+watch(() => props.details.txid, () => {
+  pages.value = { inputs: 0, outputs: 0 };
+  clearHighlight();
+}, { flush: 'sync' });
+watch([() => props.details.inputs.length, () => props.details.outputs.length], () => {
+  setPage('inputs', pages.value.inputs);
+  setPage('outputs', pages.value.outputs);
+  clearHighlight();
+}, { flush: 'sync' });
+watch([() => pages.value.inputs, () => pages.value.outputs], () => {
+  selected.value = null;
+  // The group button keeps its DOM identity and keyboard focus when exploring a page.
+  if (!hovered.value?.endsWith('-group')) hovered.value = null;
+  if (!focused.value?.endsWith('-group')) focused.value = null;
+}, { flush: 'sync' });
 </script>
 
 <template>
-  <section :aria-labelledby="`${idPrefix}-graph-heading`">
-    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <h4 :id="`${idPrefix}-graph-heading`" class="section-title">Transaction flow</h4>
-      <p class="text-xs text-slate-500">All inputs & outputs · scroll to explore</p>
-    </div>
-    <div class="mb-2 flex justify-between px-2 text-xs font-medium">
-      <span class="text-sky-400">{{ details.inputs.length }} inputs</span>
-      <span class="text-emerald-400">{{ details.outputs.length }} outputs</span>
-    </div>
-    <div class="max-h-[28rem] overflow-auto rounded-2xl border border-slate-700/50 bg-slate-950/60" tabindex="0" role="region" aria-label="Scrollable transaction graph; full values are listed below">
-      <svg :viewBox="`0 0 ${graph.width} ${graph.height}`" :style="{ height: `${graph.height}px` }" class="w-full min-w-[960px]" role="img" :aria-labelledby="`${idPrefix}-graph-title ${idPrefix}-graph-description`">
-        <title :id="`${idPrefix}-graph-title`">Inputs to transaction to outputs</title>
-        <desc :id="`${idPrefix}-graph-description`">{{ details.inputs.length }} inputs connect to transaction {{ details.txid }}, then to {{ details.outputs.length }} outputs. Connections indicate structure, not an allocation of particular inputs to particular outputs. Full addresses and amounts are listed below.</desc>
-        <path v-for="(node, index) in graph.inputs" :key="`in-${index}`" :d="node.path" fill="none" stroke="#38bdf8" stroke-opacity="0.35" stroke-width="2" />
-        <path v-for="(node, index) in graph.outputs" :key="`out-${index}`" :d="node.path" fill="none" stroke="#34d399" stroke-opacity="0.35" stroke-width="2" />
-        <g v-for="(input, index) in details.inputs" :key="index" :transform="`translate(16, ${graph.inputs[index].y - 28})`">
-          <title>{{ input.coinbase ? 'Coinbase · newly created bitcoin' : (input.address || 'Non-address script') }} · {{ input.value === null ? 'Not applicable' : `${amount(input.value)} ${currencyLabel(currency)}` }}</title>
-          <rect width="272" height="56" rx="12" fill="#0f172a" stroke="#38bdf8" stroke-opacity="0.3" />
-          <circle cx="14" cy="18" r="3" fill="#38bdf8" />
-          <text x="26" y="22" fill="#94a3b8" font-size="11" font-family="monospace">{{ input.coinbase ? 'Coinbase' : shortId(input.address || input.txid || 'Unknown script') }}</text>
-          <text x="14" y="43" fill="#e2e8f0" font-size="12">{{ input.value === null ? 'Newly created bitcoin' : `${amount(input.value)} ${currencyLabel(currency)}` }}</text>
-        </g>
-        <g :transform="`translate(420, ${graph.centerY - 46})`">
-          <rect width="120" height="92" rx="20" fill="#261e18" stroke="#f7931a" stroke-opacity="0.7" />
-          <text x="60" y="32" text-anchor="middle" fill="#f7931a" font-size="25">₿</text>
-          <text x="60" y="53" text-anchor="middle" fill="#f8fafc" font-size="11">Transaction</text>
-          <text x="60" y="73" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="monospace">{{ details.txid.slice(0, 8) }}…</text>
-        </g>
-        <g v-for="(output, index) in details.outputs" :key="output.index" :transform="`translate(672, ${graph.outputs[index].y - 28})`">
-          <title>Output {{ output.index }} · {{ output.address || 'Non-address script' }} · {{ amount(output.value) }} {{ currencyLabel(currency) }}</title>
-          <rect width="272" height="56" rx="12" fill="#0f172a" stroke="#34d399" stroke-opacity="0.3" />
-          <circle cx="14" cy="18" r="3" fill="#34d399" />
-          <text x="26" y="22" fill="#94a3b8" font-size="11" font-family="monospace">#{{ output.index }} {{ output.address ? shortId(output.address) : 'Non-address script' }}</text>
-          <text x="14" y="43" fill="#e2e8f0" font-size="12">{{ amount(output.value) }} {{ currencyLabel(currency) }}</text>
-        </g>
+  <section class="transaction-graph" :aria-labelledby="`${idPrefix}-graph-heading`" :aria-describedby="`${idPrefix}-graph-description`" @keydown.esc.stop="clearHighlight">
+    <h4 :id="`${idPrefix}-graph-heading`" class="section-title mb-2">Transaction structure</h4>
+    <p :id="`${idPrefix}-graph-description`" class="mb-3 text-xs leading-relaxed text-slate-400">
+      Inputs → transaction → outputs, not an allocation of inputs to outputs. Hover or focus a branch to highlight it; use its button to pin or unpin it. Escape clears the highlight.
+      Groups contain all items outside the current page, including earlier pages. Explore a group to show the next page, wrapping to the first after the last.
+    </p>
+    <div class="graph-canvas" :class="{ 'has-active-branch': active !== null }" :style="{ '--graph-height': `${graph.height}px`, '--node-height': `${graph.nodeHeight}px`, '--center-y': `${graph.centerY}px` }">
+      <svg class="graph-edges" :viewBox="`0 0 ${graph.width} ${graph.height}`" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <template v-for="side in sides" :key="side.key">
+          <path v-for="(node, index) in graph[side.key]" :key="index" :d="node.path" :data-side="side.key"
+            :class="{ 'edge-active': active === (side.nodes[index]?.key ?? `${side.key}-group`) }" />
+        </template>
       </svg>
+      <template v-for="side in sides" :key="side.key">
+      <section class="graph-side" :data-side="side.key" :aria-labelledby="`${idPrefix}-graph-${side.key}-heading`">
+        <header class="graph-side-header">
+          <h5 :id="`${idPrefix}-graph-${side.key}-heading`" class="text-sm font-medium">{{ side.title }} ({{ side.page.total }})</h5>
+          <p :id="`${idPrefix}-graph-${side.key}-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">
+            {{ side.page.total ? side.page.start + 1 : 0 }}–{{ side.page.end }} of {{ side.page.total }} {{ side.key }} · Page {{ side.page.page + 1 }} / {{ side.page.pageCount }}
+          </p>
+          <nav v-if="side.page.pageCount > 1" :aria-labelledby="`${idPrefix}-graph-${side.key}-heading ${idPrefix}-graph-${side.key}-nav-label`" class="flex gap-2">
+            <span :id="`${idPrefix}-graph-${side.key}-nav-label`" class="sr-only">graph pagination</span>
+            <button type="button" class="graph-page-button" :disabled="side.page.page === 0" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count`" @click="setPage(side.key, side.page.page - 1)">Previous</button>
+            <button type="button" class="graph-page-button" :disabled="side.page.page + 1 === side.page.pageCount" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count`" @click="setPage(side.key, side.page.page + 1)">Next</button>
+          </nav>
+        </header>
+        <ul :id="`${idPrefix}-graph-${side.key}-nodes`" class="graph-nodes">
+          <li v-for="(node, index) in side.nodes" :key="node.key" class="graph-node" :class="{ 'node-active': active === node.key, 'node-pinned': selected === node.key }"
+            :style="{ '--node-top': `${graph[side.key][index].y - graph.nodeHeight / 2}px` }"
+            @mouseenter="hovered = node.key" @mouseleave="hovered = null" @focusin="focusBranch(node.key)" @focusout="leaveFocus">
+            <button type="button" class="branch-button" :aria-pressed="selected === node.key" :aria-label="`Pin ${side.singular.toLowerCase()} #${node.index} branch: ${valueLabel(node.value, node.coinbase)}`" @click="selected = selected === node.key ? null : node.key">
+              <span class="shrink-0">#{{ node.index }}</span>
+              <span class="text-right text-xs font-medium tabular-nums text-slate-200">{{ valueLabel(node.value, node.coinbase) }}</span>
+            </button>
+            <CopyValue v-if="node.copyValue" :value="node.copyValue" :display="shortId(node.copyValue)" :label="node.copyLabel" class="break-all font-mono text-xs text-slate-300" />
+            <p v-else class="text-xs text-slate-400">{{ node.fallback }}</p>
+          </li>
+          <li v-if="side.page.group" :key="`${side.key}-group`" class="graph-node graph-group" :class="{ 'node-active': active === `${side.key}-group` }"
+            :style="{ '--node-top': `${graph[side.key][side.nodes.length].y - graph.nodeHeight / 2}px` }"
+            @mouseenter="hovered = `${side.key}-group`" @mouseleave="hovered = null" @focusin="focusBranch(`${side.key}-group`)" @focusout="leaveFocus">
+            <button type="button" class="branch-button" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count ${idPrefix}-graph-${side.key}-group-sum`"
+              :aria-label="`Explore ${side.page.group.count} remaining ${side.key}: page ${side.page.group.nextPage + 1} of ${side.page.pageCount}`" @click="setPage(side.key, side.page.group.nextPage)">
+              <span>+{{ side.page.group.count }} remaining {{ side.key }}</span><span aria-hidden="true">→</span>
+            </button>
+            <p :id="`${idPrefix}-graph-${side.key}-group-sum`" class="text-xs tabular-nums text-slate-300">
+              <template v-if="side.page.group.total !== null">Total: {{ amount(side.page.group.total) }} {{ currencyLabel(currency) }}</template>
+              <template v-else>Known subtotal: {{ amount(side.page.group.knownTotal) }} {{ currencyLabel(currency) }}<br>{{ side.page.group.unknownCount }} unknown / not applicable values</template>
+            </p>
+          </li>
+        </ul>
+        <p v-if="!side.page.total" class="mt-2 text-xs text-slate-500">No {{ side.key }}.</p>
+      </section>
+      <div v-if="side.key === 'inputs'" class="graph-transaction" :class="{ 'transaction-active': active !== null }">
+        <span aria-hidden="true" class="text-xl text-accent">₿</span>
+        <span class="text-xs font-medium">Transaction</span>
+        <CopyValue :value="details.txid" :display="`${details.txid.slice(0, 4)}…${details.txid.slice(-4)}`" label="transaction ID" class="break-all font-mono text-xs text-slate-300" />
+      </div>
+      </template>
     </div>
-    <p class="mt-2 text-xs leading-relaxed text-slate-500">The graph shows transaction structure, not which input funded which output. Network fees are the difference between total inputs and outputs.</p>
+    <p class="mt-2 text-xs leading-relaxed text-slate-500">Totals above cover the entire transaction, not only this page. Except for coinbase, network fees are the difference between total inputs and outputs when all values are known.</p>
   </section>
 </template>
+
+<style scoped>
+.transaction-graph { container-type: inline-size; min-width: 0; }
+.graph-canvas { display: flex; flex-direction: column; gap: 1rem; border: 1px solid #334155; border-radius: 1rem; padding: .75rem; background: rgb(2 6 23 / 60%); }
+.graph-edges { display: none; }
+.graph-side { min-width: 0; --branch-color: #38bdf8; }
+.graph-side[data-side="inputs"] { order: 0; }
+.graph-side[data-side="outputs"] { order: 2; --branch-color: #34d399; }
+.graph-side-header { display: grid; gap: .375rem; color: var(--branch-color); }
+.graph-nodes { display: grid; gap: .5rem; margin-top: .75rem; }
+.graph-node { min-width: 0; border: 1px solid #334155; border-left: 3px solid var(--branch-color); border-radius: .75rem; padding: .375rem .625rem; background: #0f172a; overflow-wrap: anywhere; }
+.graph-node.node-active { border-color: var(--branch-color); outline: 2px solid var(--branch-color); outline-offset: 1px; background: #1e293b; }
+.graph-node.node-pinned { border-left-width: 6px; }
+.graph-group { border-style: dashed; }
+.branch-button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .5rem; min-height: 44px; padding: .25rem; border-radius: .375rem; text-align: left; font-size: .75rem; color: var(--branch-color); }
+.branch-button:hover { background: rgb(148 163 184 / 10%); }
+.graph-page-button { min-height: 44px; padding: .375rem .75rem; border: 1px solid #475569; border-radius: .5rem; font-size: .75rem; color: #e2e8f0; }
+.graph-page-button:disabled { opacity: .4; cursor: not-allowed; }
+.graph-page-button:not(:disabled):hover { background: #1e293b; }
+.graph-transaction { order: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .5rem; padding: .5rem; border: 1px solid #f7931a; border-radius: 1rem; background: #261e18; min-width: 0; }
+.transaction-active { outline: 2px solid #f7931a; outline-offset: 2px; }
+/* The same HTML controls serve both layouts: no duplicated IDs, copy buttons or live regions.
+   A container query also handles narrow desktop panels without a fixed-width SVG. */
+@container (min-width: 56rem) {
+  .graph-canvas { position: relative; display: block; height: var(--graph-height); padding: 0; }
+  .graph-edges { display: block; position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .graph-edges path { fill: none; stroke: #38bdf8; stroke-opacity: .3; stroke-width: 2; vector-effect: non-scaling-stroke; }
+  .graph-edges path[data-side="outputs"] { stroke: #34d399; }
+  .has-active-branch .graph-edges path:not(.edge-active) { stroke-opacity: .1; }
+  .graph-edges path.edge-active { stroke-opacity: 1; stroke-width: 4; }
+  .graph-side { position: absolute; top: 0; bottom: 0; width: 40%; }
+  .graph-side[data-side="inputs"] { left: 0; }
+  .graph-side[data-side="outputs"] { right: 0; }
+  .graph-side-header { padding: .75rem; }
+  .graph-nodes { display: block; margin: 0; }
+  .graph-node { position: absolute; top: var(--node-top); width: 100%; height: var(--node-height); }
+  .graph-transaction { position: absolute; top: var(--center-y); left: 44%; width: 12%; transform: translateY(-50%); flex-direction: column; gap: .25rem; }
+}
+</style>
