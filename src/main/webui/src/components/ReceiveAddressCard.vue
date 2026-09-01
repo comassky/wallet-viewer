@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
-import CopyAddressButton from './CopyAddressButton.vue';
 import CopyValue from './CopyValue.vue';
 
 const props = defineProps<{ receive: ReceiveAddress }>();
@@ -30,10 +29,9 @@ function enlarge(event: MouseEvent): void {
       </button>
       <div class="min-w-0 w-full flex-1">
         <div class="my-2 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-2.5 font-mono text-sm">
-          <CopyValue :value="receive.address" label="address" />
+          <CopyValue :value="receive.address" label="address" status-right />
         </div>
         <div class="break-all font-mono text-xs text-slate-400">{{ receive.path }}</div>
-        <CopyAddressButton :address="receive.address" compact />
       </div>
     </div>
   </section>
