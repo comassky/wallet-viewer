@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { currencyLabel, type Currency } from '../currency';
 import type { Transaction, TransactionDetails } from '../types/wallet';
 import { formatDate } from '../utils/format';
 import { paginateItems, paginationRange } from '../utils/transactionGraph';
+import { useModalDialog } from '../composables/useModalDialog';
 import TransactionGraph from './TransactionGraph.vue';
 import TransactionBadge from './TransactionBadge.vue';
 import ConfirmationStatus from './ConfirmationStatus.vue';
@@ -21,6 +22,7 @@ const emit = defineEmits<{ close: []; retry: [] }>();
 
 const idPrefix = 'transaction-dialog';
 const dialog = ref<HTMLDialogElement | null>(null);
+const { showModal, close, handleClose, closeOnBackdrop, isDisposed } = useModalDialog(dialog, () => emit('close'));
 const tabButtons = ref<HTMLButtonElement[]>([]);
 const tabs = [
   { id: 'graph', label: 'Graph' },
@@ -35,23 +37,6 @@ const inputPage = computed(() => paginateItems(props.details?.inputs ?? [], inpu
 const outputPage = computed(() => paginateItems(props.details?.outputs ?? [], outputPageIndex.value));
 const isCoinbase = computed(() => props.details?.inputs.some(input => input.coinbase) ?? false);
 
-let savedOverflow: { value: string; priority: string } | null = null;
-let disposed = false;
-
-function lockScroll(): void {
-  const style = document.documentElement.style;
-  savedOverflow ??= { value: style.getPropertyValue('overflow'), priority: style.getPropertyPriority('overflow') };
-  style.setProperty('overflow', 'hidden');
-}
-
-function restoreScrolling(): void {
-  if (!savedOverflow) return;
-  const style = document.documentElement.style;
-  if (savedOverflow.value) style.setProperty('overflow', savedOverflow.value, savedOverflow.priority);
-  else style.removeProperty('overflow');
-  savedOverflow = null;
-}
-
 // The parent owns the selection; opening/closing the native dialog follows it.
 watch(() => props.transaction?.txid, async txid => {
   const element = dialog.value;
@@ -60,11 +45,10 @@ watch(() => props.transaction?.txid, async txid => {
     activeTab.value = 'graph';
     inputPageIndex.value = outputPageIndex.value = 0;
     await nextTick();
-    if (disposed || !element.isConnected || element.open) return;
-    element.showModal();
-    lockScroll();
+    if (isDisposed()) return;
+    showModal();
   } else if (element.open) {
-    element.close();
+    close();
   }
 }, { flush: 'post' });
 
@@ -87,27 +71,6 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
   activeTab.value = tabs[nextIndex].id;
   tabButtons.value[nextIndex]?.focus();
 }
-
-function onClose(): void {
-  restoreScrolling();
-  emit('close');
-}
-
-function closeOnBackdrop(event: MouseEvent): void {
-  const element = dialog.value;
-  if (!element || event.target !== element) return;
-  const bounds = element.getBoundingClientRect();
-  if (event.clientX < bounds.left || event.clientX > bounds.right ||
-      event.clientY < bounds.top || event.clientY > bounds.bottom) {
-    element.close();
-  }
-}
-
-onBeforeUnmount(() => {
-  disposed = true;
-  dialog.value?.close();
-  restoreScrolling();
-});
 </script>
 
 <template>
@@ -117,12 +80,12 @@ onBeforeUnmount(() => {
     lang="en-US"
     aria-labelledby="transaction-details-title"
     class="transaction-dialog rounded-2xl border border-slate-700 bg-slate-900 p-4 text-slate-100 shadow-2xl sm:p-6"
-    @close="onClose"
+    @close="handleClose"
     @click="closeOnBackdrop"
   >
-    <div class="mb-4 flex items-start justify-between gap-3">
-      <h2 id="transaction-details-title" class="pt-2 text-lg font-semibold">Transaction details</h2>
-      <button type="button" autofocus @click="dialog?.close()" class="button-secondary shrink-0 rounded-lg px-3 text-sm">Close</button>
+    <div class="mb-3 flex items-start justify-between gap-3">
+      <h2 id="transaction-details-title" class="pt-1 text-lg font-semibold">Transaction details</h2>
+      <button type="button" autofocus @click="close" class="button-secondary shrink-0 rounded-lg px-3 text-sm">Close</button>
     </div>
 
     <template v-if="transaction">
@@ -143,13 +106,13 @@ onBeforeUnmount(() => {
         <button type="button" class="button-secondary mt-4 rounded-xl px-4 text-sm" @click="$emit('retry')">Try again</button>
       </div>
       <template v-else-if="details">
-        <dl class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div class="detail-stat"><dt class="mb-2 text-xs text-slate-400">Total inputs</dt><dd class="break-all text-lg font-medium tabular-nums">{{ details.totalInput === null ? (isCoinbase ? 'Not applicable (coinbase)' : 'Unknown') : `${amount(details.totalInput)} ${currencyLabel(currency)}` }}</dd></div>
-          <div class="detail-stat"><dt class="mb-2 text-xs text-slate-400">Total outputs</dt><dd class="break-all text-lg font-medium tabular-nums">{{ amount(details.totalOutput) }} {{ currencyLabel(currency) }}</dd></div>
-          <div class="detail-stat"><dt class="mb-2 text-xs text-slate-400">Network fee</dt><dd class="break-all text-lg font-medium tabular-nums text-accent">{{ details.fee === null ? (isCoinbase ? 'Not applicable (coinbase)' : 'Unknown') : `${amount(details.fee)} ${currencyLabel(currency)}` }}</dd><dd v-if="details.fee !== null" class="mt-1 text-xs text-slate-500">{{ details.fee.toLocaleString('en-US') }} satoshis</dd></div>
+        <dl class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-3 py-2"><dt class="text-xs text-slate-400">Total inputs</dt><dd class="break-all text-base font-semibold tabular-nums">{{ details.totalInput === null ? (isCoinbase ? 'Not applicable (coinbase)' : 'Unknown') : `${amount(details.totalInput)} ${currencyLabel(currency)}` }}</dd></div>
+          <div class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-3 py-2"><dt class="text-xs text-slate-400">Total outputs</dt><dd class="break-all text-base font-semibold tabular-nums">{{ amount(details.totalOutput) }} {{ currencyLabel(currency) }}</dd></div>
+          <div class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-3 py-2"><dt class="text-xs text-slate-400">Network fee</dt><dd class="break-all text-base font-semibold tabular-nums text-accent">{{ details.fee === null ? (isCoinbase ? 'Not applicable (coinbase)' : 'Unknown') : `${amount(details.fee)} ${currencyLabel(currency)}` }}<span v-if="details.fee !== null" class="ml-2 text-xs font-normal text-slate-500">{{ details.fee.toLocaleString('en-US') }} sat</span></dd></div>
         </dl>
 
-        <div role="tablist" aria-label="Transaction detail views" class="mb-5 flex gap-2 border-b border-slate-800">
+        <div role="tablist" aria-label="Transaction detail views" class="mb-4 flex gap-2 border-b border-slate-800">
           <button
             v-for="(tab, index) in tabs"
             :id="`${idPrefix}-tab-${tab.id}`"
