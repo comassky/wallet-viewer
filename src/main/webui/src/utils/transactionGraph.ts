@@ -74,9 +74,9 @@ export function transactionGraphLayout(inputCount: number, outputCount: number, 
   const inputs = nodeCount(inputCount, inputPage);
   const outputs = nodeCount(outputCount, outputPage);
   const headerHeight = 112;
-  const nodeHeight = 128;
+  const nodeHeight = 104;
   const rowHeight = nodeHeight + 12;
-  const bodyHeight = Math.max(240, Math.max(inputs, outputs) * rowHeight + 16);
+  const bodyHeight = Math.max(144, Math.max(inputs, outputs) * rowHeight + 16);
   const height = headerHeight + bodyHeight;
   const positions = (count: number) => Array.from({ length: count }, (_, index) =>
     headerHeight + (bodyHeight - count * rowHeight) / 2 + index * rowHeight + rowHeight / 2);
