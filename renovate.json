@@ -6,6 +6,7 @@
   "automerge": false,
   "prHourlyLimit": 10,
   "separateMajorMinor": true,
+  "pruneStaleBranches": true,
   "labels": ["dependencies"],
   "packageRules": [
     {
