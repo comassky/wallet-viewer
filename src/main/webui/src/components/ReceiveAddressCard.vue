@@ -3,6 +3,7 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { AddressCheck, ReceiveAddress } from '../types/wallet';
 import CopyValue from './CopyValue.vue';
+import UiIcon from './UiIcon.vue';
 
 const props = defineProps<{ receive: ReceiveAddress }>();
 const emit = defineEmits<{ enlarge: [address: ReceiveAddress, trigger: HTMLButtonElement] }>();
@@ -14,8 +15,8 @@ function enlarge(event: MouseEvent): void {
 
 const tabButtons = ref<HTMLButtonElement[]>([]);
 const tabs = [
-  { id: 'receive', label: 'Receive' },
-  { id: 'check', label: 'Check address' },
+  { id: 'receive', label: 'Receive', icon: 'qr-code' },
+  { id: 'check', label: 'Check address', icon: 'search' },
 ] as const;
 const activeTab = ref<(typeof tabs)[number]['id']>('receive');
 
@@ -78,11 +79,11 @@ onScopeDispose(() => controller?.abort());
         :aria-selected="activeTab === tab.id"
         :aria-controls="`receive-panel-${tab.id}`"
         :tabindex="activeTab === tab.id ? 0 : -1"
-        class="-mb-px rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        class="-mb-px inline-flex items-center gap-2 rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         :class="activeTab === tab.id ? 'border-accent bg-accent/5 text-accent' : 'border-transparent text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200'"
         @click="activeTab = tab.id"
         @keydown="navigateTabs($event, index)"
-      >{{ tab.label }}</button>
+      ><UiIcon :name="tab.icon" />{{ tab.label }}</button>
     </div>
 
     <div class="grid">
@@ -124,13 +125,14 @@ onScopeDispose(() => controller?.abort());
           />
           <button type="submit" :disabled="checking || !query.trim()" class="button-secondary shrink-0 rounded-lg px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">{{ checking ? 'Checking…' : 'Verify' }}</button>
         </div>
-        <p v-if="error" role="alert" class="mt-3 text-xs text-rose-400">{{ error }}</p>
+        <p v-if="error" role="alert" class="mt-3 flex items-start gap-2 text-xs text-rose-400"><UiIcon name="alert" class="mt-0.5 shrink-0" /><span>{{ error }}</span></p>
         <p v-else-if="result?.belongs" role="status" class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-emerald-400">
-          <span>✓ Belongs to this wallet</span>
+          <UiIcon name="circle-check" />
+          <span>Belongs to this wallet</span>
           <span class="text-slate-400">· {{ result.chain === 0 ? 'receive' : 'change' }} address #{{ result.index }}</span>
           <span class="break-all font-mono text-slate-500">{{ result.path }}</span>
         </p>
-        <p v-else-if="result" role="status" class="mt-3 text-xs text-amber-400">Not derived from this wallet (checked the first {{ result.checked }} receive and change addresses).</p>
+        <p v-else-if="result" role="status" class="mt-3 flex items-start gap-2 text-xs text-amber-400"><UiIcon name="alert" class="mt-0.5 shrink-0" /><span>Not derived from this wallet (checked the first {{ result.checked }} receive and change addresses).</span></p>
       </form>
       </div>
     </div>
