@@ -11,7 +11,7 @@ defineEmits<{ refresh: []; retry: [] }>();
 <template>
   <header class="mb-8 flex flex-wrap items-center justify-between gap-5 border-b border-slate-700/50 pb-6">
     <div class="flex items-center gap-3.5">
-      <span class="flex h-12 w-12 -rotate-6 items-center justify-center rounded-2xl border border-accent/50 bg-accent text-3xl font-bold text-slate-950 shadow-[0_0_32px_#f7931a20]" aria-hidden="true">₿</span>
+      <img src="/logo.png" alt="" width="48" height="48" class="h-12 w-12 shrink-0 drop-shadow-[0_0_16px_#f7931a30]" />
       <div>
         <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">Wallet <span class="font-normal text-accent">Viewer</span></h1>
         <p class="mt-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">Bitcoin · self-hosted · watch-only</p>

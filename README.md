@@ -1,3 +1,5 @@
+<p align="center"><img src="src/main/webui/public/logo.png" alt="Bitcoin Wallet Viewer" width="120" height="120"></p>
+
 # ₿ Bitcoin Wallet Viewer
 
 ![Read-only Bitcoin](https://img.shields.io/badge/Bitcoin-read--only-F7931A?style=flat-square&logo=bitcoin&logoColor=white)

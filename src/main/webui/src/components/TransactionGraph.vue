@@ -122,21 +122,21 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
             @mouseenter="hovered = node.key" @mouseleave="hovered = null" @focusin="focusBranch(node.key)" @focusout="leaveFocus">
             <button type="button" class="branch-button" :aria-pressed="selected === node.key" :aria-label="`Pin ${side.singular.toLowerCase()} #${node.index} branch: ${valueLabel(node.value, node.coinbase)}`" @click="selected = selected === node.key ? null : node.key">
               <span class="shrink-0">#{{ node.index }}</span>
-              <span class="text-right text-xs font-medium tabular-nums text-slate-200">{{ valueLabel(node.value, node.coinbase) }}</span>
+              <span class="min-w-0 truncate text-xs font-medium tabular-nums text-slate-200">{{ valueLabel(node.value, node.coinbase) }}</span>
             </button>
-            <CopyValue v-if="node.copyValue" :value="node.copyValue" :display="shortId(node.copyValue)" :label="node.copyLabel" class="break-all font-mono text-xs text-slate-300" />
-            <p v-else class="text-xs text-slate-400">{{ node.fallback }}</p>
+            <CopyValue v-if="node.copyValue" :value="node.copyValue" :display="shortId(node.copyValue)" :label="node.copyLabel" class="ml-auto min-w-0 font-mono text-xs text-slate-300" />
+            <p v-else class="ml-auto min-w-0 truncate text-xs text-slate-400">{{ node.fallback }}</p>
           </li>
           <li v-if="side.page.group" :key="`${side.key}-group`" class="graph-node graph-group" :class="{ 'node-active': active === `${side.key}-group` }"
             :style="{ '--node-top': `${graph[side.key][side.nodes.length].y - graph.nodeHeight / 2}px` }"
             @mouseenter="hovered = `${side.key}-group`" @mouseleave="hovered = null" @focusin="focusBranch(`${side.key}-group`)" @focusout="leaveFocus">
             <button type="button" class="branch-button" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count ${idPrefix}-graph-${side.key}-group-sum`"
               :aria-label="`Explore ${side.page.group.count} remaining ${side.key}: page ${side.page.group.nextPage + 1} of ${side.page.pageCount}`" @click="setPage(side.key, side.page.group.nextPage)">
-              <span>+{{ side.page.group.count }} remaining {{ side.key }}</span><span aria-hidden="true">→</span>
+              <span class="shrink-0">+{{ side.page.group.count }} remaining {{ side.key }}</span><span aria-hidden="true">→</span>
             </button>
-            <p :id="`${idPrefix}-graph-${side.key}-group-sum`" class="text-xs tabular-nums text-slate-300">
+            <p :id="`${idPrefix}-graph-${side.key}-group-sum`" class="ml-auto min-w-0 truncate text-xs tabular-nums text-slate-300">
               <template v-if="side.page.group.total !== null">Total: {{ amount(side.page.group.total) }} {{ currencyLabel(currency) }}</template>
-              <template v-else>Known subtotal: {{ amount(side.page.group.knownTotal) }} {{ currencyLabel(currency) }}<br>{{ side.page.group.unknownCount }} unknown / not applicable values</template>
+              <template v-else>Known: {{ amount(side.page.group.knownTotal) }} {{ currencyLabel(currency) }} · {{ side.page.group.unknownCount }} unknown</template>
             </p>
           </li>
         </ul>
@@ -162,12 +162,12 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
 .graph-side[data-side="outputs"] { order: 2; --branch-color: #34d399; }
 .graph-side-header { display: grid; gap: .375rem; color: var(--branch-color); }
 .graph-nodes { display: grid; gap: .5rem; margin-top: .75rem; }
-.graph-node { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: .125rem; border: 1px solid #363330; border-left: 3px solid var(--branch-color); border-radius: .75rem; padding: .375rem .75rem; background: linear-gradient(180deg, #1a1918, #131211); overflow-wrap: anywhere; transition: border-color .15s ease, background-color .15s ease; }
+.graph-node { min-width: 0; display: flex; align-items: center; gap: .5rem; border: 1px solid #363330; border-left: 3px solid var(--branch-color); border-radius: .75rem; padding: .375rem .625rem; background: linear-gradient(180deg, #1a1918, #131211); overflow-wrap: anywhere; transition: border-color .15s ease, background-color .15s ease; }
 .graph-node:hover { border-color: color-mix(in srgb, var(--branch-color) 40%, #363330); }
 .graph-node.node-active { border-color: var(--branch-color); outline: 2px solid var(--branch-color); outline-offset: 1px; background: #242220; }
 .graph-node.node-pinned { border-left-width: 6px; }
 .graph-group { border-style: dashed; }
-.branch-button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .5rem; min-height: 44px; padding: .125rem 0; border-radius: .375rem; text-align: left; font-size: .75rem; color: var(--branch-color); }
+.branch-button { display: flex; min-width: 0; align-items: center; gap: .5rem; min-height: 44px; padding: .125rem .25rem; border-radius: .375rem; text-align: left; font-size: .75rem; color: var(--branch-color); }
 .branch-button:hover { background: color-mix(in srgb, var(--branch-color) 10%, transparent); }
 .graph-node:not(.graph-group) .branch-button > span:first-child { flex-shrink: 0; padding: .0625rem .375rem; border-radius: .375rem; background: color-mix(in srgb, var(--branch-color) 15%, transparent); font-weight: 600; font-variant-numeric: tabular-nums; }
 .graph-page-button { min-height: 44px; padding: .375rem .75rem; border: 1px solid #57534e; border-radius: .5rem; font-size: .75rem; color: #e7e5e4; }
