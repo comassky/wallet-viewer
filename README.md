@@ -19,7 +19,18 @@
 
 ## Architecture
 
-**Electrum → serialized scan → immutable Caffeine state → WebSocket + REST → Vue**
+```mermaid
+flowchart LR
+	E[Electrum] -->|Notifications| S
+	subgraph Backend[Quarkus backend]
+		S[Serialized wallet scan] --> C[Versioned Caffeine state]
+		C --> A[REST API / WebSocket]
+		P[Fiat price service] --> A
+	end
+	S -->|Script-hash queries| E
+	M[mempool.space] -->|Public quotes| P
+	A <-->|REST / live snapshots| V[Vue dashboard]
+```
 
 - Addresses are derived locally; only script hashes reach Electrum, never the extended public key. Notifications trigger serialized scans, not periodic wallet polling.
 - WebSocket pushes versioned snapshots; REST reads the same cache. Refresh replays cached data, and transaction details load on demand via Axios.
