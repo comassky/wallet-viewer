@@ -86,7 +86,6 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
                 <span aria-hidden="true" class="ml-1" :class="sortKey === column.key ? 'text-accent' : 'text-slate-600'">{{ sortKey === column.key ? (descending ? '↓' : '↑') : '↕' }}</span>
               </button>
             </th>
-            <th class="w-24 px-3 py-3"><span class="sr-only">Details</span></th>
           </tr>
         </thead>
         <tbody v-auto-animate>
@@ -100,12 +99,6 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
               {{ amount(tx.amount, true) }}
             </td>
             <td class="px-3 py-2.5 text-right"><ConfirmationStatus :confirmations="tx.confirmations" compact /></td>
-            <td class="px-3 py-2.5 text-right">
-              <button type="button" @click.stop="toggle(tx.txid)" aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="inline-flex items-center gap-2 rounded-lg px-2 text-xs text-accent transition hover:bg-accent/10">
-                Details
-                <UiIcon name="arrow-right" />
-              </button>
-            </td>
           </tr>
         </tbody>
       </table>

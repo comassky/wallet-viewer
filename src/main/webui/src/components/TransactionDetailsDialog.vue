@@ -139,7 +139,7 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
         <div v-show="activeTab === 'io'" :id="`${idPrefix}-panel-io`" role="tabpanel" :aria-labelledby="`${idPrefix}-tab-io`" tabindex="0" class="space-y-6 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
           <div class="grid min-w-0 gap-6 lg:grid-cols-2">
             <section class="min-w-0" :aria-labelledby="`${idPrefix}-inputs-title`">
-              <div class="mb-3 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div class="mb-3 flex h-9 flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <h4 :id="`${idPrefix}-inputs-title`" class="section-title text-sky-400">Inputs <span class="text-slate-500">({{ details.inputs.length }})</span></h4>
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <p :id="`${idPrefix}-inputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ inputPage.total ? inputPage.start + 1 : 0 }}–{{ inputPage.end }} of {{ inputPage.total }} inputs · Page {{ inputPage.page + 1 }} / {{ inputPage.pageCount }}</p>
@@ -170,7 +170,7 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
               <p v-if="!inputPage.total" class="text-xs text-slate-500">No inputs.</p>
             </section>
             <section class="min-w-0" :aria-labelledby="`${idPrefix}-outputs-title`">
-              <div class="mb-3 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div class="mb-3 flex h-9 flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <h4 :id="`${idPrefix}-outputs-title`" class="section-title text-emerald-400">Outputs <span class="text-slate-500">({{ details.outputs.length }})</span></h4>
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <p :id="`${idPrefix}-outputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ outputPage.total ? outputPage.start + 1 : 0 }}–{{ outputPage.end }} of {{ outputPage.total }} outputs · Page {{ outputPage.page + 1 }} / {{ outputPage.pageCount }}</p>
