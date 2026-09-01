@@ -1,12 +1,9 @@
 # ₿ Bitcoin Wallet Viewer
 
 ![Read-only Bitcoin](https://img.shields.io/badge/Bitcoin-read--only-F7931A?style=flat-square&logo=bitcoin&logoColor=white)
-![Java 25](https://img.shields.io/badge/Java-25-437291?style=flat-square)
-![Quarkus 3.39.2](https://img.shields.io/badge/Quarkus-3.39.2-4695EB?style=flat-square)
-![Vue 3.5.41](https://img.shields.io/badge/Vue-3.5.41-42B883?style=flat-square&logo=vuedotjs&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-self--hosted-2496ED?style=flat-square&logo=docker&logoColor=white)
 
-**Your Bitcoin. A clearer picture.** A self-hosted, read-only dashboard powered by Electrum: one account-level extended public key, one JVM application, no database, no signing or spending.
+**A self-hosted, read-only Bitcoin dashboard powered by Electrum.** One extended public key, one application. No database, signing or spending.
 
 [Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Docker](#docker) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations)
 
@@ -14,37 +11,21 @@
 
 ## Features
 
-- **Wallet overview:** confirmed/unconfirmed balances, transaction history, confirmations and unspent outputs; BIP44, BIP49, BIP84 and BIP86 receive/change derivation.
-- **Activity / UTXO tabs:** keyboard-accessible navigation, sortable tables, mobile cards and click-to-copy addresses/transaction IDs with feedback.
-- **Inline transaction details:** expand a row to inspect inputs, outputs, scripts and network fees without leaving the dashboard. Details load on demand from your Electrum server, not an external explorer.
-- **Compact transaction graph:** up to **five inputs and five outputs per page**, plus a group for all off-page items. Each graph side and each detail list has independent pagination; groups let you explore further items.
-- **BTC / SAT / EUR / USD:** choose a unit from the total balance; the preference is saved locally and applies throughout the dashboard.
-- **Receive card:** next receiving address, derivation path, copy action and an enlargeable QR code tied to the displayed address.
-- **Live state:** automatic WebSocket reconnection, synchronization status and last-known data retained with a stale/offline warning.
-
-- **Bitcoin dark theme:** charcoal surfaces, orange accents and [Lucide](https://lucide.dev) icons. The header's live badge reveals Electrum host/port, connection, software/protocol versions and TLS on hover, keyboard focus or tap. Unavailable metadata is explicit.
+- **Live wallet:** balances, confirmations, Activity / UTXO tabs, sorting and click-to-copy identifiers.
+- **Transaction details:** expandable rows, fees and compact input/output graphs with independent pagination (five items per side).
+- **Display units:** BTC, SAT, EUR and USD; switch beside the balance, with the preference saved locally.
+- **Receive:** next address, derivation path and enlargeable QR code; BIP44, BIP49, BIP84 and BIP86 support.
+- **Bitcoin dark theme:** responsive layout, keyboard controls and a live badge with Electrum server details.
 
 ## Architecture
 
 **Electrum → serialized scan → immutable Caffeine state → WebSocket + REST → Vue**
 
-| Layer | What makes it work |
-| --- | --- |
-| Electrum transport | One persistent outbound TCP connection, optional verified TLS, newline-delimited JSON-RPC, request-ID matching, heartbeat and automatic reconnect. |
-| Discovery | Derives scripts locally; subscribes to script hashes and block headers. The extended public key is never sent to Electrum. |
-| Scan coordinator | One worker coalesces notifications over **200 ms**. Updates arriving during a scan discard its result and trigger another pass; failed scans retry. |
-| Shared state | Caffeine holds one immutable, versioned snapshot/status per instance, without TTL eviction. State is committed before consumers are notified. |
-| Browser & REST | Same-origin `ws`/`wss` pushes complete states; wallet snapshot REST endpoints read the same cache. Refresh replays the cache, **not a new scan**. |
-| REST client | Shared Axios instance with JSON parsing, request deadlines and AbortSignal cancellation; no automatic retries. The native wallet WebSocket transport remains independent. |
-| Transaction details | Only transactions in cached wallet history can trigger a lookup. Raw transactions and parents are retrieved/validated on demand, without rescanning or enlarging the live stream. |
-
-**No database, no scheduled wallet polling or full reconciliation.** State and discovery watermarks are in memory, rebuilt after restart and not shared between replicas. REST returns 503 before the first snapshot, then may serve stale data during outages; use live status to judge freshness.
-
-Fiat pricing is separate: the backend fetches public [mempool.space quotes](https://mempool.space/api/v1/prices), caching successes and failures for 60 seconds. The browser refreshes every minute while fiat is selected; **no wallet identifiers are sent to the price provider**.
+- Addresses are derived locally; only script hashes reach Electrum, never the extended public key. Notifications trigger serialized scans, not periodic wallet polling.
+- WebSocket pushes versioned snapshots; REST reads the same cache. Refresh replays cached data, and transaction details load on demand via Axios.
+- State is in memory and rebuilt after restart. During outages, the UI keeps the last snapshot with a stale/offline warning. Fiat quotes come separately from [mempool.space](https://mempool.space/api/v1/prices), without wallet identifiers.
 
 ## Stack
-
-Versions below come from repository declarations and the npm lockfile, **not an inventory of locally installed tools**.
 
 | Component | Version / source |
 | --- | --- |
@@ -53,11 +34,10 @@ Versions below come from repository declarations and the npm lockfile, **not an 
 | Reactive transport / cache | Vert.x, Mutiny and Caffeine — versions managed by the Quarkus BOM |
 | Node.js | **24.20.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
 | Frontend (locked) | Vue **3.5.41**, TypeScript **5.9.3**, Vite **5.4.21**, Tailwind CSS **3.4.19** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
-| Icons | Lucide Vue **1.43.0** (`@lucide/vue`), explicit imports of the icons used by the UI |
-| REST transport | Axios **1.20.0**; default deadline **120 s**, server-info requests **5 s** |
+| UI libraries | Lucide Vue **1.43.0**, Axios **1.20.0** |
 | Runtime image | Distroless Java **25**, Debian **13**, `nonroot` — [Dockerfile](Dockerfile) |
 
-[src/main/webui/package.json](src/main/webui/package.json) declares caret ranges; the table reports resolved lockfile versions. The Docker build runs Maven verification, frontend tests, TypeScript checking and asset compilation before packaging. Local development uses JDK 25 and `mvn quarkus:dev`; Quinoa manages Node automatically.
+Versions reflect declarations and the npm lockfile. For local development, use JDK 25 and `mvn quarkus:dev`; Quinoa manages Node automatically.
 
 ## Docker
 
@@ -78,7 +58,7 @@ docker compose logs -f wallet-viewer
 docker compose down
 ```
 
-[compose.yaml](compose.yaml) binds to `127.0.0.1`, requires a nonempty key, enables Electrum TLS and adds a read-only filesystem, temporary `/tmp`, dropped capabilities, no privilege escalation and rotated logs. The runtime uses UID/GID **65532:65532**, with no shell or package manager; no persistent volume is needed. `WALLET_VIEWER_PORT` changes the host port (default **8080**).
+[compose.yaml](compose.yaml) binds to `127.0.0.1:8080`, enables Electrum TLS and runs non-root with a read-only filesystem and dropped capabilities. Change `WALLET_VIEWER_PORT` to use another host port.
 
 **Use GHCR instead of building:** set `WALLET_VIEWER_IMAGE=ghcr.io/<owner>/<repository>:latest` in your local environment file, using the lowercase repository path, then:
 
@@ -87,15 +67,13 @@ docker compose pull
 docker compose up -d --no-build
 ```
 
-Prefer a release tag or digest for reproducibility; private packages require registry authentication. [.github/workflows/docker.yml](.github/workflows/docker.yml) verifies/builds **linux/amd64** images on pull requests without publishing, and publishes GHCR images on `main` or `v*` pushes (or manual runs on those refs). It uses `GITHUB_TOKEN`, needs no wallet key, and **does not deploy**.
+Prefer a release tag or digest; private GHCR images require authentication. The [Docker workflow](.github/workflows/docker.yml) runs Java/frontend tests, TypeScript checks and a **linux/amd64** build on PRs; `main` and `v*` pushes publish images without deploying them.
 
 ## Dependency updates
 
-[renovate.json](renovate.json) keeps update PRs in three independent groups: **Java** (Maven libraries, BOM and plugins), **Frontend** (npm dependencies/lockfile and Quinoa's Node version), and **Docker** (build/runtime images and digests). Major upgrades are separated from minor/patch upgrades; **automerge is disabled**. The Dependency Dashboard categorizes updates the same way.
+[Renovate](renovate.json) opens separate **Java**, **Frontend** and **Docker** PRs, with major upgrades separated and **no automerge**. Node settings stay synchronized; Docker digests track image rebuilds. JDK/image-family migrations remain manual.
 
-Node's version and version-specific install directory are updated together. Docker digest pinning also tracks rebuilds of the floating Distroless `nonroot` tag. Java stays on **25**: changing the JDK or Distroless Java/Debian image family requires a coordinated manual migration. The local Compose application image and generated build directories are excluded; GitHub Actions versions are outside these three scopes.
-
-**Activate:** install/authorize the [Renovate GitHub App](https://github.com/apps/renovate) for this repository and merge this configuration into the default branch. No extra workflow or repository token is needed for the hosted app; existing Docker PR checks verify proposed updates. The frontend [src/main/webui/.npmrc](src/main/webui/.npmrc) and lockfile use the public npm registry, so Docker and Renovate need no corporate registry access. Avoid overriding the project registry when updating dependencies; never commit registry credentials.
+Authorize the [Renovate app](https://github.com/apps/renovate) for the repository and publish the configuration on the default branch. In the [Mend portal](https://developer.mend.io/github/comassky/wallet-viewer), disable **Silent mode** to enable automatic PR creation. npm uses the public registry; no corporate credentials are needed.
 
 ## Configuration
 
@@ -113,23 +91,18 @@ Supply wallet settings **at runtime**, never as build arguments or in source. De
 | `ELECTRUM_SSL` | `true` | TLS with certificate/hostname verification; application-only default is `false` |
 | `ELECTRUM_REQUEST_TIMEOUT` | `30s` | Per-RPC timeout |
 
-Inside a container, `localhost` means that container: use a reachable Docker hostname or, on Docker Desktop, `host.docker.internal` for a host server. Compose forwards only its declared variables and does not mount local Java configuration; extra settings such as `WALLET_PRICES_URL` need an explicit environment/Compose override.
+Inside Docker, `localhost` means the container: use a reachable server hostname. Compose forwards only declared variables and does not mount local Java configuration.
 
 ## Logs
 
-- **INFO:** connection/reconnect lifecycle, notifications, scan duration/outcome and newly discovered transaction counts. Address-change notifications include the **full locally derived address** when known, otherwise `address=unknown`; resolving it performs no network request.
-- **DEBUG:** per-RPC method, numeric request ID, duration and success/failure. Wallet keys, script hashes, transaction IDs, balances and raw payloads remain excluded; RPC correlation IDs are not wallet identifiers.
+- **INFO:** Electrum connections, address notifications, scan results and new transaction counts.
+- **DEBUG:** RPC method, request ID, duration and outcome; no keys, balances or raw payloads. Enable the `com.example.walletviewer` category via [Quarkus logging configuration](https://quarkus.io/guides/logging).
 
-**Logs now contain wallet addresses.** Keep them private, restrict access and retention, and redact addresses before sharing diagnostics.
-
-For local Quarkus runs, set `quarkus.log.category."com.example.walletviewer".level=DEBUG` in the ignored [config/application.properties](config/application.properties), then restart. Keep framework-wide logging unchanged.
-
-Quarkus defaults to a **DEBUG build-time minimum**. If a custom build raised it, rebuild with `quarkus.log.category."com.example.walletviewer".min-level=DEBUG`; changing only the runtime level cannot restore disabled logging. See [Quarkus logging](https://quarkus.io/guides/logging). For Docker, explicitly supply runtime logging configuration: Compose does not mount the local file or forward arbitrary variables.
+**Logs contain wallet addresses:** keep them private and redact them before sharing.
 
 ## Security and limitations
 
-- **No authentication:** keep the localhost binding or use an authenticated HTTPS reverse proxy. WebSocket origin validation is not access control. Preserve `Host`/`Origin`, forward HTTP/1.1 `Upgrade`/`Connection`, use `wss` and proxy timeouts **greater than 90 seconds**.
-- **Read-only is not anonymous:** an extended public key reveals account history. Electrum can correlate queried scripts; use a trusted, network-compatible server. Never provide spending secrets.
-- **Bounded discovery:** activity beyond the gap limit or per-chain maximum may be missed. A next receive address beyond the cap is watched **without fetching its history**; increase `WALLET_MAX_ADDRESSES` before relying on its funds being included. Discovery watermarks do not persist across restarts.
-- **Details depend on server history:** unavailable parent transactions prevent fee calculation. Graph links show transaction structure, not input-to-output ownership or funding attribution.
-- **Fiat is an estimate at today's price, not historical accounting.** Old transactions use current quotes too. Failed refreshes retain a last-known quote with a warning; without one, fiat amounts are unavailable. BTC/SAT do not depend on the price service.
+- **No authentication:** keep access local or use an authenticated HTTPS proxy with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90 seconds. Origin checks are not access control.
+- **Privacy:** public keys expose account history; Electrum can correlate scripts. Use a trusted server and never provide spending secrets.
+- **Bounded discovery:** funds beyond the gap/address limits may be missed. An extra receive address beyond the cap is watched without history; raise `WALLET_MAX_ADDRESSES` before relying on its balance.
+- **Estimates:** missing parent transactions prevent fee calculation; graph edges do not allocate inputs to outputs. Fiat uses current quotes, not historical prices.
