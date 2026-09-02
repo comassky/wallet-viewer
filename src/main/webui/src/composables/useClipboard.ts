@@ -1,4 +1,5 @@
 import { onScopeDispose, ref } from 'vue';
+import { showToast } from './useToast';
 
 /** Independent copy feedback per component; stale asynchronous results are ignored. */
 export function useClipboard() {
@@ -15,7 +16,7 @@ export function useClipboard() {
     error.value = null;
   }
 
-  async function copy(text: string): Promise<void> {
+  async function copy(text: string, label = 'value'): Promise<void> {
     if (disposed) return;
     reset();
     const current = version;
@@ -23,6 +24,7 @@ export function useClipboard() {
       await navigator.clipboard.writeText(text);
       if (disposed || current !== version) return;
       copied.value = true;
+      showToast(`${label.charAt(0).toUpperCase()}${label.slice(1)} copied`);
       timer = setTimeout(() => (copied.value = false), 1500);
     } catch {
       if (disposed || current !== version) return;
