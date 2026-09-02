@@ -31,6 +31,12 @@
       "rangeStrategy": "bump"
     },
     {
+      "description": "Hold TypeScript on the 5.x line: the 7.x native compiler is too new and unsupported by vue-tsc/Vite here.",
+      "matchManagers": ["npm"],
+      "matchDepNames": ["typescript"],
+      "allowedVersions": "<6"
+    },
+    {
       "description": "Build/runtime images, including updates behind the floating Distroless nonroot tag.",
       "matchManagers": ["dockerfile", "docker-compose"],
       "groupName": "Docker images",
