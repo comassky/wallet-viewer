@@ -1,4 +1,4 @@
-name: Prepare Release
+name: Release
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write # commit the version bumps and push the release tag
+      contents: write # commit the version bumps, push the tag and create the Release
     steps:
       - name: Compute versions
         id: version
@@ -90,3 +90,12 @@ jobs:
         run: |
           git push origin HEAD:main
           git push origin "refs/tags/$TAG"
+
+      # Created here directly so a release always exists, even when a GITHUB_TOKEN
+      # push does not trigger the tag-driven Release workflow (image build).
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
