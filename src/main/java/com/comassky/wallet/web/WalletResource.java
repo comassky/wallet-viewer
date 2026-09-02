@@ -1,6 +1,7 @@
 package com.comassky.wallet.web;
 
 import com.comassky.wallet.electrum.ElectrumClient;
+import com.comassky.wallet.model.AddressCheckDto;
 import com.comassky.wallet.model.AddressInfo;
 import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.ElectrumServerDto;
@@ -22,6 +23,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
 import java.util.List;
@@ -90,6 +92,12 @@ public class WalletResource {
     @Path("/receive")
     public Uni<ReceiveAddressDto> receive() {
         return live.snapshot().map(WalletSnapshot::receiveAddress);
+    }
+
+    @GET
+    @Path("/verify")
+    public AddressCheckDto verify(@QueryParam("address") String address) {
+        return service.verifyAddress(address);
     }
 
     @GET
