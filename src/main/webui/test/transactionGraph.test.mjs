@@ -27,12 +27,12 @@ test('small transactions are complete and every branch connects only to the tran
 
 test('compact cards and canvas avoid oversized rows for small and fully populated pages', () => {
   const small = transactionGraphLayout(1, 1);
-  assert.equal(small.nodeHeight, 76);
+  assert.equal(small.nodeHeight, 56);
   assert.equal(small.height, 224);
   assert.equal(small.inputs[0].y, small.centerY);
   assert.equal(small.outputs[0].y, small.centerY);
   const full = transactionGraphLayout(50, 50);
-  assert.equal(full.height, 632);
+  assert.equal(full.height, 512);
   assert.equal(full.inputs[1].y - full.inputs[0].y, full.nodeHeight + 10);
 });
 
