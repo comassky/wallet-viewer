@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { walletApi } from '../services/walletApi';
-import type { AddressCheck, ReceiveAddress } from '../types/wallet';
-import CopyValue from './CopyValue.vue';
+import type { ReceiveAddress } from '../types/wallet';
+import CopyButton from './CopyButton.vue';
+import AddressCheckForm from './AddressCheckForm.vue';
 import UiIcon from './UiIcon.vue';
 
 const props = defineProps<{ receive: ReceiveAddress }>();
@@ -34,40 +35,18 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
   tabButtons.value[nextIndex]?.focus();
 }
 
-const query = ref('');
-const checking = ref(false);
-const result = ref<AddressCheck | null>(null);
-const error = ref<string | null>(null);
-let controller: AbortController | null = null;
-
-// A new input invalidates the previous verdict.
-watch(query, () => { result.value = null; error.value = null; });
-
-async function verify(): Promise<void> {
-  const value = query.value.trim();
-  controller?.abort();
-  result.value = null;
-  error.value = null;
-  if (!value) return;
-  const request = new AbortController();
-  controller = request;
-  checking.value = true;
-  try {
-    const check = await walletApi.verifyAddress(value, { signal: request.signal });
-    if (controller !== request) return;
-    result.value = check;
-  } catch (failure) {
-    if (controller === request) error.value = failure instanceof Error ? failure.message : 'Verification failed.';
-  } finally {
-    if (controller === request) { checking.value = false; controller = null; }
-  }
-}
-
-onScopeDispose(() => controller?.abort());
 </script>
 
 <template>
-  <section class="wallet-panel min-w-0 p-6 sm:p-8">
+  <section class="min-w-0" aria-label="Receive Bitcoin">
+    <div class="flex flex-wrap items-start gap-3 lg:hidden">
+      <button type="button" aria-haspopup="dialog" aria-controls="receive-qr-dialog" class="button-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold" @click="enlarge"><UiIcon name="qr-code" />Receive</button>
+      <details class="mobile-address-check min-w-0 flex-1">
+        <summary class="button-secondary cursor-pointer rounded-xl px-4 py-3 text-center text-sm font-semibold">Check address</summary>
+        <div class="wallet-panel mt-3 p-4"><AddressCheckForm /></div>
+      </details>
+    </div>
+    <div class="wallet-panel hidden h-full p-6 lg:block xl:p-8">
     <div role="tablist" aria-label="Receive Bitcoin" class="mb-5 flex gap-2 border-b border-slate-800">
       <button
         v-for="(tab, index) in tabs"
@@ -101,40 +80,20 @@ onScopeDispose(() => controller?.abort());
           <img :src="qrUrl" alt="" class="h-32 w-32" />
         </button>
         <div class="min-w-0 w-full flex-1">
-          <div class="my-2 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-2.5 font-mono text-sm">
-            <CopyValue :value="receive.address" label="address" status-right />
-          </div>
-          <div class="break-all font-mono text-xs text-slate-400">{{ receive.path }}</div>
+          <p class="my-2 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-2.5 font-mono text-sm">{{ receive.address }}</p>
+          <CopyButton :value="receive.address" />
+          <details class="mt-2 text-xs text-slate-400">
+            <summary class="cursor-pointer py-2">Technical details</summary>
+            <p class="mt-1 break-all font-mono">Derivation path: {{ receive.path }}</p>
+          </details>
         </div>
       </div>
     </div>
 
       <div id="receive-panel-check" role="tabpanel" aria-labelledby="receive-tab-check" :tabindex="activeTab === 'check' ? 0 : -1" :aria-hidden="activeTab !== 'check'" class="flex flex-col justify-center [grid-area:1/1] rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent" :class="{ invisible: activeTab !== 'check' }">
-      <form @submit.prevent="verify">
-        <p class="mb-3 text-xs text-slate-500">Check that an address was derived from this wallet's extended public key.</p>
-        <div class="flex flex-col gap-2 sm:flex-row">
-          <input
-            id="verify-address"
-            v-model="query"
-            type="text"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="bc1…"
-            aria-label="Address to verify"
-            class="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 font-mono text-sm text-slate-100 placeholder:text-slate-500 focus:border-accent focus:outline-none"
-          />
-          <button type="submit" :disabled="checking || !query.trim()" class="button-secondary shrink-0 rounded-lg px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50">{{ checking ? 'Checking…' : 'Verify' }}</button>
-        </div>
-        <p v-if="error" role="alert" class="mt-3 flex items-start gap-2 text-xs text-rose-400"><UiIcon name="alert" class="mt-0.5 shrink-0" /><span>{{ error }}</span></p>
-        <p v-else-if="result?.belongs" role="status" class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-emerald-400">
-          <UiIcon name="circle-check" />
-          <span>Belongs to this wallet</span>
-          <span class="text-slate-400">· {{ result.chain === 0 ? 'receive' : 'change' }} address #{{ result.index }}</span>
-          <span class="break-all font-mono text-slate-500">{{ result.path }}</span>
-        </p>
-        <p v-else-if="result" role="status" class="mt-3 flex items-start gap-2 text-xs text-amber-400"><UiIcon name="alert" class="mt-0.5 shrink-0" /><span>Not derived from this wallet (checked the first {{ result.checked }} receive and change addresses).</span></p>
-      </form>
+        <AddressCheckForm />
       </div>
+    </div>
     </div>
   </section>
 </template>

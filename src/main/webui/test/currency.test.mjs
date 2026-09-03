@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatAmount, isCurrency, isFiat, validRates } from '../src/currency.ts';
+import { formatAmount, isCurrency, isFiat, validRates, currencyStorageKey, fiatCurrencyStorageKey, readDisplayPreferences, saveCurrency, saveFiatCurrency } from '../src/currency.ts';
 
 const rates = { eur: 60_000, usd: 70_000, timestamp: 1_788_948_611 };
 const normalize = value => value.replace(/,/g, '');
@@ -41,4 +41,34 @@ test('only supported stored currencies are accepted', () => {
   assert.equal(isFiat('USD'), true);
   assert.equal(isFiat('BTC'), false);
   assert.equal(isFiat('SATS'), false);
+});
+
+test('display preferences migrate legacy fiat choices and save each unit independently', t => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const store = new Map([[currencyStorageKey, 'USD']]);
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+    getItem: key => store.get(key) ?? null,
+    setItem: (key, value) => store.set(key, value),
+  } });
+  t.after(() => descriptor ? Object.defineProperty(globalThis, 'localStorage', descriptor) : delete globalThis.localStorage);
+  assert.deepEqual(readDisplayPreferences(), { currency: 'BTC', fiatCurrency: 'USD' });
+  saveFiatCurrency('USD');
+  saveCurrency('SATS');
+  assert.deepEqual(readDisplayPreferences(), { currency: 'SATS', fiatCurrency: 'USD' });
+  saveFiatCurrency('EUR');
+  assert.deepEqual(readDisplayPreferences(), { currency: 'SATS', fiatCurrency: 'EUR' });
+  store.set(currencyStorageKey, 'SAT');
+  assert.equal(readDisplayPreferences().currency, 'SATS');
+  store.set(currencyStorageKey, 'invalid');
+  store.set(fiatCurrencyStorageKey, 'GBP');
+  assert.deepEqual(readDisplayPreferences(), { currency: 'BTC', fiatCurrency: 'EUR' });
+});
+
+test('display preferences still work when storage is blocked', t => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { throw new Error('Blocked'); } });
+  t.after(() => descriptor ? Object.defineProperty(globalThis, 'localStorage', descriptor) : delete globalThis.localStorage);
+  assert.deepEqual(readDisplayPreferences(), { currency: 'BTC', fiatCurrency: 'EUR' });
+  assert.doesNotThrow(() => saveFiatCurrency('USD'));
+  assert.doesNotThrow(() => saveCurrency('SATS'));
 });

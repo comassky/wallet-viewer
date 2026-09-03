@@ -8,7 +8,7 @@
   --color-slate-200: #e7e5e4;
   --color-slate-300: #d6d3d1;
   --color-slate-400: #a8a29e;
-  --color-slate-500: #78716c;
+  --color-slate-500: #a19a94;
   --color-slate-600: #57534e;
   --color-slate-700: #363330;
   --color-slate-800: #242220;
@@ -35,8 +35,12 @@
     min-height: 44px;
   }
 
-  :where(button, a):focus-visible {
+  :where(button, a, input, select, summary):focus-visible {
     @apply outline outline-2 outline-offset-4 outline-accent;
+  }
+
+  summary {
+    min-height: 44px;
   }
 }
 
@@ -58,12 +62,22 @@
     @apply border border-slate-700/70 bg-slate-800/70 text-slate-200 transition hover:border-accent/60 hover:bg-slate-800 hover:text-white;
   }
 
+  .button-primary {
+    @apply border border-accent bg-accent text-slate-950 transition hover:bg-amber-400;
+  }
+
+  .mobile-address-check[open] {
+    flex-basis: 100%;
+  }
+
   .detail-stat {
     @apply rounded-xl border border-slate-700/40 bg-slate-950/40 p-3;
   }
 
   .wallet-shell {
     min-width: 0;
+    max-width: 1440px;
+    margin-inline: auto;
     overflow-wrap: anywhere;
   }
 
