@@ -2,12 +2,10 @@
 import { nextTick, onBeforeUnmount, ref } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
-import CopyAddressButton from './CopyAddressButton.vue';
 import CopyValue from './CopyValue.vue';
 
 const dialog = ref<HTMLDialogElement | null>(null);
 const receive = ref<(ReceiveAddress & { url: string }) | null>(null);
-const copyButton = ref<InstanceType<typeof CopyAddressButton> | null>(null);
 let savedOverflow: { value: string; priority: string } | null = null;
 let disposed = false;
 let opening = false;
@@ -18,7 +16,6 @@ async function open(address: ReceiveAddress, trigger: HTMLButtonElement): Promis
   opening = true;
   // Freeze the address, derivation index and image URL as one snapshot.
   receive.value = { ...address, url: walletApi.qrAtUrl(address.index) };
-  copyButton.value?.reset();
   try {
     await nextTick();
     if (disposed || !element.isConnected || element.open) return;
@@ -44,7 +41,6 @@ function restoreScrolling(): void {
 function onClose(): void {
   if (dialog.value?.open) return;
   restoreScrolling();
-  copyButton.value?.reset();
 }
 
 function closeOnBackdrop(event: MouseEvent): void {
@@ -90,8 +86,7 @@ defineExpose({ open });
     <template v-if="receive">
       <img :src="receive.url" alt="Receive address QR code" class="mx-auto aspect-square w-full max-w-96 rounded-xl bg-white p-3" />
       <p class="mt-4 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-3 font-mono text-sm"><CopyValue :value="receive.address" label="address" /></p>
-      <p class="mt-2 break-all font-mono text-xs text-slate-400">Path: {{ receive.path }}</p>
-      <CopyAddressButton ref="copyButton" :address="receive.address" />
+      <p class="mt-2 break-all text-center font-mono text-xs text-slate-400">Path: {{ receive.path }}</p>
     </template>
   </dialog>
 </template>
