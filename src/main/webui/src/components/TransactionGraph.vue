@@ -91,7 +91,7 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
 
 <template>
   <section class="transaction-graph" aria-label="Transaction structure" @keydown.esc.stop="clearHighlight">
-    <div class="graph-canvas" :class="{ 'has-active-branch': active !== null }" :style="{ '--graph-height': `${graph.height}px`, '--node-height': `${graph.nodeHeight}px`, '--center-y': `${graph.centerY}px` }">
+    <div class="graph-canvas" :class="{ 'has-active-branch': active !== null }" :style="{ '--graph-height': `${graph.height}px`, '--node-height': `${graph.nodeHeight}px`, '--center-y': `${graph.centerY}px`, '--header-height': `${graph.headerHeight}px` }">
       <svg class="graph-edges" :viewBox="`0 0 ${graph.width} ${graph.height}`" preserveAspectRatio="none" aria-hidden="true" focusable="false">
         <template v-for="side in sides" :key="side.key">
           <path v-for="(node, index) in graph[side.key]" :key="index" :d="node.path" :data-side="side.key"
@@ -102,14 +102,14 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
       <section class="graph-side" :data-side="side.key" :aria-labelledby="`${idPrefix}-graph-${side.key}-heading`">
         <header class="graph-side-header">
           <h5 :id="`${idPrefix}-graph-${side.key}-heading`" class="text-sm font-medium">{{ side.title }} ({{ side.page.total }})</h5>
-          <p :id="`${idPrefix}-graph-${side.key}-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">
-            {{ side.page.total ? side.page.start + 1 : 0 }}–{{ side.page.end }} of {{ side.page.total }} {{ side.key }} · Page {{ side.page.page + 1 }} / {{ side.page.pageCount }}
-          </p>
-          <nav v-if="side.page.pageCount > 1" :aria-labelledby="`${idPrefix}-graph-${side.key}-heading ${idPrefix}-graph-${side.key}-nav-label`" class="flex gap-2">
-            <span :id="`${idPrefix}-graph-${side.key}-nav-label`" class="sr-only">graph pagination</span>
-            <button type="button" class="graph-page-button" :disabled="side.page.page === 0" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count`" @click="setPage(side.key, side.page.page - 1)">Previous</button>
-            <button type="button" class="graph-page-button" :disabled="side.page.page + 1 === side.page.pageCount" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count`" @click="setPage(side.key, side.page.page + 1)">Next</button>
-          </nav>
+          <div class="graph-side-pager">
+            <p :id="`${idPrefix}-graph-${side.key}-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ side.page.total ? side.page.start + 1 : 0 }}–{{ side.page.end }} of {{ side.page.total }} {{ side.key }} · Page {{ side.page.page + 1 }} / {{ side.page.pageCount }}</p>
+            <nav v-if="side.page.pageCount > 1" :aria-labelledby="`${idPrefix}-graph-${side.key}-heading ${idPrefix}-graph-${side.key}-nav-label`" class="flex gap-1.5">
+              <span :id="`${idPrefix}-graph-${side.key}-nav-label`" class="sr-only">graph pagination</span>
+              <button type="button" class="graph-page-button" :disabled="side.page.page === 0" :aria-label="`Previous ${side.key} page`" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count`" @click="setPage(side.key, side.page.page - 1)">‹</button>
+              <button type="button" class="graph-page-button" :disabled="side.page.page + 1 === side.page.pageCount" :aria-label="`Next ${side.key} page`" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count`" @click="setPage(side.key, side.page.page + 1)">›</button>
+            </nav>
+          </div>
         </header>
         <ul :id="`${idPrefix}-graph-${side.key}-nodes`" class="graph-nodes">
           <li v-for="(node, index) in side.nodes" :key="node.key" class="graph-node" :class="{ 'node-active': active === node.key, 'node-pinned': selected === node.key }"
@@ -155,7 +155,8 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
 .graph-side { min-width: 0; --branch-color: #38bdf8; }
 .graph-side[data-side="inputs"] { order: 0; }
 .graph-side[data-side="outputs"] { order: 2; --branch-color: #34d399; }
-.graph-side-header { display: grid; gap: .375rem; color: var(--branch-color); }
+.graph-side-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem .75rem; color: var(--branch-color); }
+.graph-side-pager { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .graph-nodes { display: grid; gap: .5rem; margin-top: .75rem; }
 .graph-node { min-width: 0; display: flex; align-items: center; gap: .5rem; border: 1px solid #363330; border-left: 3px solid var(--branch-color); border-radius: .75rem; padding: .375rem .625rem; background: linear-gradient(180deg, #1a1918, #131211); overflow-wrap: anywhere; transition: border-color .15s ease, background-color .15s ease; }
 .graph-node:hover { border-color: color-mix(in srgb, var(--branch-color) 40%, #363330); }
@@ -165,7 +166,7 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
 .branch-button { display: flex; min-width: 0; align-items: center; gap: .5rem; min-height: 44px; padding: .125rem .25rem; border-radius: .375rem; text-align: left; font-size: .75rem; color: var(--branch-color); }
 .branch-button:hover { background: color-mix(in srgb, var(--branch-color) 10%, transparent); }
 .graph-node:not(.graph-group) .branch-button > span:first-child { flex-shrink: 0; padding: .0625rem .375rem; border-radius: .375rem; background: color-mix(in srgb, var(--branch-color) 15%, transparent); font-weight: 600; font-variant-numeric: tabular-nums; }
-.graph-page-button { min-height: 44px; padding: .375rem .75rem; border: 1px solid #57534e; border-radius: .5rem; font-size: .75rem; color: #e7e5e4; }
+.graph-page-button { display: inline-flex; align-items: center; justify-content: center; min-width: 1.75rem; height: 1.75rem; padding: 0 .375rem; border: 1px solid #57534e; border-radius: .5rem; font-size: 1rem; line-height: 1; color: #e7e5e4; }
 .graph-page-button:disabled { opacity: .4; cursor: not-allowed; }
 .graph-page-button:not(:disabled):hover { background: #242220; border-color: #f7931a; }
 .graph-transaction { order: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .5rem; padding: .5rem; border: 1px solid #f7931a; border-radius: 1rem; background: #261e18; min-width: 0; }
@@ -182,7 +183,7 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
   .graph-side { position: absolute; top: 0; bottom: 0; width: 34%; }
   .graph-side[data-side="inputs"] { left: 2.5%; }
   .graph-side[data-side="outputs"] { right: 2.5%; }
-  .graph-side-header { padding: .75rem; }
+  .graph-side-header { padding: .75rem; height: var(--header-height); align-content: center; }
   .graph-nodes { display: block; margin: 0; }
   .graph-node { position: absolute; top: var(--node-top); width: 100%; height: var(--node-height); }
   .graph-transaction { position: absolute; top: var(--center-y); left: 44%; width: 12%; transform: translateY(-50%); flex-direction: column; gap: .25rem; }
