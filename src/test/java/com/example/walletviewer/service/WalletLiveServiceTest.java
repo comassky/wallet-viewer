@@ -54,6 +54,7 @@ class WalletLiveServiceTest {
     void setUp() throws Exception {
         live.scanner = scanner;
         live.electrum = electrum;
+        live.demo = new DemoService();
         // A barrier on the real single writer lets assertions wait for its finally block,
         // not merely for listener delivery. No production timing override is needed.
         worker = (ScheduledExecutorService) field("worker").get(live);
