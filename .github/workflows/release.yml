@@ -20,7 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write # commit the version bumps, push the tag and create the Release
+      contents: write # commit the version bumps and push the release tag
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Compute versions
         id: version
@@ -44,8 +46,6 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-          # A PAT (RELEASE_TOKEN) lets the pushed tag trigger the tag-driven Release
-          # workflow (image build + GitHub Release). GITHUB_TOKEN pushes do not.
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Fail if tag already exists
@@ -91,11 +91,12 @@ jobs:
           git push origin HEAD:main
           git push origin "refs/tags/$TAG"
 
-      # Created here directly so a release always exists, even when a GITHUB_TOKEN
-      # push does not trigger the tag-driven Release workflow (image build).
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
-          generate_release_notes: true
+  # Builds/publishes the image and creates the GitHub Release in the same run.
+  publish:
+    needs: release
+    permissions:
+      contents: write # create the GitHub Release
+      packages: write # push the image to GHCR
+    uses: ./.github/workflows/publish-image.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
