@@ -4,6 +4,7 @@ import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
 import { useModalDialog } from '../composables/useModalDialog';
 import CopyButton from './CopyButton.vue';
+import UiIcon from './UiIcon.vue';
 
 const dialog = ref<HTMLDialogElement | null>(null);
 const receive = ref<(ReceiveAddress & { url: string }) | null>(null);
@@ -54,9 +55,12 @@ defineExpose({ open });
       <img :src="receive.url" alt="Receive address QR code" class="mx-auto aspect-square w-full max-w-96 rounded-xl bg-white p-3" />
       <p class="mt-4 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-3 font-mono text-sm">{{ receive.address }}</p>
       <CopyButton :key="receive.address" :value="receive.address" class="mt-3 text-center" />
-      <details :key="receive.address" class="mt-3 text-xs text-slate-400">
-        <summary class="cursor-pointer py-2">Technical details</summary>
-        <p class="mt-1 break-all font-mono">Derivation path: {{ receive.path }}</p>
+      <details :key="receive.address" class="technical-details mt-3 text-xs">
+        <summary class="flex cursor-pointer select-none items-center gap-1.5 py-1.5 font-medium text-slate-400 transition hover:text-slate-200"><UiIcon name="chevron-right" class="chevron shrink-0 transition-transform" />Technical details</summary>
+        <div class="mt-2 rounded-lg border border-slate-700/50 bg-slate-950/40 p-3">
+          <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Derivation path</p>
+          <p class="mt-0.5 break-all font-mono text-slate-300">{{ receive.path }}</p>
+        </div>
       </details>
     </template>
   </dialog>

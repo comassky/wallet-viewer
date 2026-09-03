@@ -130,7 +130,7 @@ const { query, filter, counts, filtered, visible, hasMore, showMore, resetFilter
               <span class="mt-1 block text-xs text-slate-400">{{ rates ? '≈ ' : '' }}{{ formatAmount(tx.amount, fiatCurrency, rates, true) }} {{ fiatCurrency }}</span>
             </td>
             <td class="px-3 py-2.5 text-right"><ConfirmationStatus :confirmations="tx.confirmations" compact /></td>
-            <td class="px-3 py-2.5 text-right"><button type="button" data-tx-details aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="rounded-lg px-2 text-xs font-semibold text-accent hover:bg-accent/10" @click.stop="openDetails(tx.txid, $event)">Details</button></td>
+            <td class="px-3 py-2.5 text-right"><button type="button" data-tx-details aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="inline-flex items-center justify-center rounded-lg px-2 py-1 text-accent hover:bg-accent/10" @click.stop="openDetails(tx.txid, $event)"><UiIcon name="chevron-right" /></button></td>
           </tr>
         </tbody>
       </table>
