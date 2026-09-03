@@ -184,9 +184,9 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
   .graph-edges path[data-side="outputs"] { stroke: #34d399; }
   .has-active-branch .graph-edges path:not(.edge-active) { stroke-opacity: .1; }
   .graph-edges path.edge-active { stroke-opacity: 1; stroke-width: 4; }
-  .graph-side { position: absolute; top: 0; bottom: 0; width: 40%; }
-  .graph-side[data-side="inputs"] { left: 0; }
-  .graph-side[data-side="outputs"] { right: 0; }
+  .graph-side { position: absolute; top: 0; bottom: 0; width: 34%; }
+  .graph-side[data-side="inputs"] { left: 2.5%; }
+  .graph-side[data-side="outputs"] { right: 2.5%; }
   .graph-side-header { padding: .75rem; }
   .graph-nodes { display: block; margin: 0; }
   .graph-node { position: absolute; top: var(--node-top); width: 100%; height: var(--node-height); }

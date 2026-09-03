@@ -9,12 +9,12 @@ test('small transactions are complete and every branch connects only to the tran
   assert.equal(graph.inputs.length, 3);
   assert.equal(graph.outputs.length, 2);
   for (const node of graph.inputs) {
-    assert.ok(node.path.startsWith(`M 400 ${node.y}`));
+    assert.ok(node.path.startsWith(`M 365 ${node.y}`));
     assert.ok(node.path.endsWith(`440 ${graph.centerY}`));
   }
   for (const node of graph.outputs) {
     assert.ok(node.path.startsWith(`M 560 ${graph.centerY}`));
-    assert.ok(node.path.endsWith(`600 ${node.y}`));
+    assert.ok(node.path.endsWith(`635 ${node.y}`));
   }
   for (let count = 0; count <= TRANSACTION_PAGE_SIZE; count++) {
     const items = Array.from({ length: count }, (_, index) => ({ value: index }));
