@@ -2,22 +2,31 @@
 
 # ₿ Bitcoin Wallet Viewer
 
-![Read-only Bitcoin](https://img.shields.io/badge/Bitcoin-read--only-F7931A?style=flat-square&logo=bitcoin&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-self--hosted-2496ED?style=flat-square&logo=docker&logoColor=white)
+<p align="center">
+  <img alt="Bitcoin: read-only" src="https://img.shields.io/badge/Bitcoin-read--only-F7931A?style=flat-square&logo=bitcoin&logoColor=white">
+  <img alt="Java 25" src="https://img.shields.io/badge/Java-25-ED8B00?style=flat-square&logo=openjdk&logoColor=white">
+  <img alt="Quarkus 3.39" src="https://img.shields.io/badge/Quarkus-3.39-4695EB?style=flat-square&logo=quarkus&logoColor=white">
+  <img alt="bitcoinj 0.17" src="https://img.shields.io/badge/bitcoinj-0.17-F7931A?style=flat-square&logo=bitcoin&logoColor=white">
+  <img alt="Vue 3.5" src="https://img.shields.io/badge/Vue-3.5-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white">
+  <img alt="Vite 8" src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white">
+  <img alt="TypeScript 5.9" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white">
+  <img alt="Tailwind CSS 4" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white">
+  <img alt="Docker: self-hosted" src="https://img.shields.io/badge/Docker-self--hosted-2496ED?style=flat-square&logo=docker&logoColor=white">
+</p>
 
 **A self-hosted, read-only Bitcoin dashboard powered by Electrum.** One extended public key, one application. No database, signing or spending.
 
 [Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Docker](#docker) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations)
 
-> **Local by default, not authenticated.** Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
+> 🔒 **Local by default, not authenticated.** Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
 
 ## Features
 
-- **Live wallet:** balances, confirmations, Activity / UTXO tabs, sorting and click-to-copy identifiers.
-- **Transaction details:** expandable rows, fees and compact input/output graphs with independent pagination (five items per side).
-- **Display units:** BTC, SAT, EUR and USD; switch beside the balance, with the preference saved locally.
-- **Receive:** next address, derivation path and enlargeable QR code; BIP44, BIP49, BIP84 and BIP86 support.
-- **Bitcoin dark theme:** responsive layout, keyboard controls and a live badge with Electrum server details.
+- 💰 **Live wallet:** balances, confirmations, Activity / UTXO tabs, sorting and click-to-copy identifiers.
+- 🔍 **Transaction details:** expandable rows, fees and compact input/output graphs with independent pagination (five items per side).
+- 💱 **Display units:** BTC, SAT, EUR and USD; switch beside the balance, with the preference saved locally.
+- 📥 **Receive:** next address, derivation path and enlargeable QR code; BIP44, BIP49, BIP84 and BIP86 support.
+- 🎨 **Bitcoin dark theme:** responsive layout, keyboard controls and a live badge with Electrum server details.
 
 ## Architecture
 
@@ -43,10 +52,10 @@ flowchart LR
 | Component | Version / source |
 | --- | --- |
 | Java / Maven builder | Java **25**; Maven **3.9.12**, Eclipse Temurin 25 Docker build image |
-| Backend | Quarkus **3.39.2**, Quinoa **2.9.0**, bitcoinj **0.16.3**, ZXing **3.5.3** — [pom.xml](pom.xml) |
+| Backend | Quarkus **3.39.2**, Quinoa **2.9.0**, bitcoinj **0.17.1**, ZXing **3.5.4** — [pom.xml](pom.xml) |
 | Reactive transport / cache | Vert.x, Mutiny and Caffeine — versions managed by the Quarkus BOM |
-| Node.js | **24.20.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
-| Frontend (locked) | Vue **3.5.41**, TypeScript **5.9.3**, Vite **5.4.21**, Tailwind CSS **3.4.19** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
+| Node.js | **24.21.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
+| Frontend (locked) | Vue **3.5.42**, Vite **8.2.2**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite) — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
 | UI libraries | Lucide Vue **1.43.0**, Axios **1.20.0** |
 | Runtime image | Distroless Java **25**, Debian **13**, `nonroot` — [Dockerfile](Dockerfile) |
 
@@ -73,7 +82,7 @@ docker compose down
 
 [compose.yaml](compose.yaml) binds to `127.0.0.1:8080`, enables Electrum TLS and runs non-root with a read-only filesystem and dropped capabilities. Change `WALLET_VIEWER_PORT` to use another host port.
 
-**Use GHCR instead of building:** set `WALLET_VIEWER_IMAGE=ghcr.io/<owner>/<repository>:latest` in your local environment file, using the lowercase repository path, then:
+**🐳 Use GHCR instead of building:** set `WALLET_VIEWER_IMAGE=ghcr.io/<owner>/<repository>:latest` in your local environment file, using the lowercase repository path, then:
 
 ```sh
 docker compose pull
@@ -84,7 +93,7 @@ Prefer a release tag or digest; private GHCR images require authentication. The 
 
 ## Dependency updates
 
-[Renovate](renovate.json) opens separate **Java**, **Frontend** and **Docker** PRs, with major upgrades separated and **no automerge**. Node settings stay synchronized; Docker digests track image rebuilds. JDK/image-family migrations remain manual.
+[Renovate](renovate.json) opens separate **Java**, **Frontend** and **Docker** PRs, with major upgrades separated and **no automerge**. Node settings stay synchronized; Docker digests track image rebuilds. TypeScript is held on the **5.x** line (the native 7.x compiler is not yet supported by the Vue/Vite toolchain), and JDK/image-family migrations remain manual.
 
 Authorize the [Renovate app](https://github.com/apps/renovate) for the repository and publish the configuration on the default branch. In the [Mend portal](https://developer.mend.io/github/comassky/wallet-viewer), disable **Silent mode** to enable automatic PR creation. npm uses the public registry; no corporate credentials are needed.
 
@@ -111,11 +120,11 @@ Inside Docker, `localhost` means the container: use a reachable server hostname.
 - **INFO:** Electrum connections, address notifications, scan results and new transaction counts.
 - **DEBUG:** RPC method, request ID, duration and outcome; no keys, balances or raw payloads. Enable the `com.example.walletviewer` category via [Quarkus logging configuration](https://quarkus.io/guides/logging).
 
-**Logs contain wallet addresses:** keep them private and redact them before sharing.
+**⚠️ Logs contain wallet addresses:** keep them private and redact them before sharing.
 
 ## Security and limitations
 
-- **No authentication:** keep access local or use an authenticated HTTPS proxy with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90 seconds. Origin checks are not access control.
-- **Privacy:** public keys expose account history; Electrum can correlate scripts. Use a trusted server and never provide spending secrets.
-- **Bounded discovery:** funds beyond the gap/address limits may be missed. An extra receive address beyond the cap is watched without history; raise `WALLET_MAX_ADDRESSES` before relying on its balance.
-- **Estimates:** missing parent transactions prevent fee calculation; graph edges do not allocate inputs to outputs. Fiat uses current quotes, not historical prices.
+- 🔓 **No authentication:** keep access local or use an authenticated HTTPS proxy with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90 seconds. Origin checks are not access control.
+- 🕵️ **Privacy:** public keys expose account history; Electrum can correlate scripts. Use a trusted server and never provide spending secrets.
+- 🎯 **Bounded discovery:** funds beyond the gap/address limits may be missed. An extra receive address beyond the cap is watched without history; raise `WALLET_MAX_ADDRESSES` before relying on its balance.
+- 📊 **Estimates:** missing parent transactions prevent fee calculation; graph edges do not allocate inputs to outputs. Fiat uses current quotes, not historical prices.
