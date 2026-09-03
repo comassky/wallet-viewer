@@ -77,7 +77,9 @@ export function transactionGraphLayout(inputCount: number, outputCount: number, 
   const nodeHeight = 56;
   const rowHeight = nodeHeight + 10;
   const bodyHeight = Math.max(120, Math.max(inputs, outputs) * rowHeight + 12);
-  const height = headerHeight + bodyHeight;
+  // Extra room below so the taller centered transaction card never touches the canvas bottom.
+  const bottomPad = 24;
+  const height = headerHeight + bodyHeight + bottomPad;
   const positions = (count: number) => Array.from({ length: count }, (_, index) =>
     headerHeight + (bodyHeight - count * rowHeight) / 2 + index * rowHeight + rowHeight / 2);
   const centerY = headerHeight + bodyHeight / 2;
