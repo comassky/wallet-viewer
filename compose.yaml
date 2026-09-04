@@ -22,6 +22,8 @@ services:
       ELECTRUM_PORT: "${ELECTRUM_PORT:-50002}"
       ELECTRUM_SSL: "${ELECTRUM_SSL:-true}"
       ELECTRUM_REQUEST_TIMEOUT: "${ELECTRUM_REQUEST_TIMEOUT:-30s}"
+      # Application log level (classic Quarkus). Use DEBUG for Electrum/scan lifecycle logs.
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
     security_opt:
       - no-new-privileges:true
     cap_drop:

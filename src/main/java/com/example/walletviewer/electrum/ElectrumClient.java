@@ -202,8 +202,8 @@ public class ElectrumClient {
 
     private void publishConnection(boolean state) {
         if (Objects.equals(connected, state)) return;
-        if (state) LOG.info("Electrum connection opened");
-        else if (Boolean.TRUE.equals(connected)) LOG.info("Electrum connection closed");
+        if (state) LOG.debug("Electrum connection opened");
+        else if (Boolean.TRUE.equals(connected)) LOG.debug("Electrum connection closed");
         connected = state;
         for (Consumer<Boolean> listener : connectionListeners) {
             try {
@@ -258,7 +258,7 @@ public class ElectrumClient {
         valid |= "blockchain.headers.subscribe".equals(method)
                 && params.size() == 1 && params.getValue(0) instanceof JsonObject;
         if (!valid) return;
-        LOG.info("blockchain.scripthash.subscribe".equals(method)
+        LOG.debug("blockchain.scripthash.subscribe".equals(method)
             ? "Electrum notification: address changed" : "Electrum notification: new block");
         for (Consumer<JsonObject> listener : notificationListeners) {
             try {
@@ -304,7 +304,7 @@ public class ElectrumClient {
         if (!monitoring || stopped || connection != null || reconnectTimer != -1) return;
         long delay = Math.min(nextReconnectDelay, reconnectMaxDelayMillis);
         nextReconnectDelay = Math.min(delay * 2, reconnectMaxDelayMillis);
-        LOG.infof("Electrum reconnect scheduled: delayMs=%d", delay);
+        LOG.debugf("Electrum reconnect scheduled: delayMs=%d", delay);
         reconnectTimer = vertx.setTimer(delay, id -> {
             synchronized (ElectrumClient.this) {
                 if (reconnectTimer != id) return;

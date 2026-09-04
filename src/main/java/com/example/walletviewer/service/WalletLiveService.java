@@ -64,7 +64,7 @@ public class WalletLiveService {
             changes.incrementAndGet();
             schedule(200);
             if (notification != null && "blockchain.scripthash.subscribe".equals(notification.getValue("method"))) {
-                LOG.infof("Electrum address notification: address=%s", notificationAddress(notification));
+                LOG.debugf("Electrum address notification: address=%s", notificationAddress(notification));
             }
         });
         connections = electrum.onConnectionChange(ready -> {
@@ -126,7 +126,7 @@ public class WalletLiveService {
         try {
             if (stopped || !connected) return;
             scanStarted = true;
-            LOG.info("Wallet scan started");
+            LOG.debug("Wallet scan started");
             publish("syncing", "Synchronizing wallet with Electrum…", null);
             // Off the Vert.x event loop; only one scan can run at any time.
             WalletSnapshot snapshot = scanner.scan().await().atMost(Duration.ofMinutes(5));
@@ -154,9 +154,9 @@ public class WalletLiveService {
             if (scanStarted) {
                 long durationMillis = (System.nanoTime() - started) / 1_000_000;
                 if (newTransactions == null) {
-                    LOG.infof("Wallet scan completed: durationMs=%d outcome=%s", durationMillis, outcome);
+                    LOG.debugf("Wallet scan completed: durationMs=%d outcome=%s", durationMillis, outcome);
                 } else {
-                    LOG.infof("Wallet scan completed: durationMs=%d outcome=%s newTransactions=%d",
+                    LOG.debugf("Wallet scan completed: durationMs=%d outcome=%s newTransactions=%d",
                             durationMillis, outcome, newTransactions);
                 }
             }
