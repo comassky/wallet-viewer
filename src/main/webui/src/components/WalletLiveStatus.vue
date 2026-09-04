@@ -62,7 +62,7 @@ onScopeDispose(() => document.removeEventListener('pointerdown', outside));
       :class="live ? 'border-accent/25 bg-accent/10 text-accent hover:bg-accent/15' : 'border-amber-400/30 bg-amber-400/10 text-amber-300'"
       @focus="show" @click="show"
     >
-      <span class="h-1.5 w-1.5 rounded-full" :class="live ? 'bg-accent shadow-[0_0_8px_#f7931a80]' : 'bg-amber-300'" aria-hidden="true" />
+      <span class="h-1.5 w-1.5 rounded-full" :class="live ? 'bg-accent live-dot' : 'bg-amber-300 motion-safe:animate-pulse'" aria-hidden="true" />
       <span role="status" aria-live="polite" aria-atomic="true">{{ label }}</span>
     </button>
     <div v-if="opened" id="electrum-server-info" role="region" aria-labelledby="electrum-server-title" :style="{ left: `${panelLeft}px` }" class="absolute top-full z-50 w-[min(21rem,calc(100vw-2rem))] pt-2">
