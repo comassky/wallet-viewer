@@ -25,6 +25,7 @@ export interface Transaction {
   confirmations: number;
   timestamp: number | null;
   type: TxType;
+  addresses: string[];
 }
 
 export interface ReceiveAddress {
