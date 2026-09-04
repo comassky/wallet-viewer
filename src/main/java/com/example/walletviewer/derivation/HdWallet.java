@@ -20,6 +20,7 @@ import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bouncycastle.math.ec.ECPoint;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @ApplicationScoped
 public class HdWallet {
+
+    private static final Logger LOG = Logger.getLogger(HdWallet.class);
 
     enum ScriptType {
         P2PKH(44), P2SH_P2WPKH(49), P2WPKH(84), P2TR(86);
@@ -77,6 +80,13 @@ public class HdWallet {
         String override = scriptTypeCfg == null ? "auto" : scriptTypeCfg.trim().toLowerCase();
         scriptType = resolveScriptType(prefix, override);
         basePath = "m/" + scriptType.purpose + "'/0'/0'";
+        if ("auto".equals(override)) {
+            LOG.infof("Wallet script type auto-detected: %s (BIP%d, %s) from %s key",
+                    scriptType, scriptType.purpose, basePath, prefix);
+        } else {
+            LOG.infof("Wallet script type configured: %s (BIP%d, %s)",
+                    scriptType, scriptType.purpose, basePath);
+        }
         account = DeterministicKey.deserializeB58(null, xpub, params);
         initialized = true;
     }
