@@ -16,6 +16,7 @@ import WalletSkeleton from './components/WalletSkeleton.vue';
 const { data, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, fiatCurrency, rates, ratesLoading, ratesError, amount } = useCurrency();
 const qrDialog = ref<InstanceType<typeof ReceiveQrDialog> | null>(null);
+const appVersion = __APP_VERSION__;
 const tabs = [
   { id: 'activity', label: 'Activity' },
   { id: 'utxos', label: 'UTXO' },
@@ -96,6 +97,16 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
       </button>
     </div>
   </main>
+
+  <footer class="wallet-shell w-full px-4 pb-8 text-xs text-slate-500 sm:px-6 lg:px-10">
+    <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 border-t border-slate-800 pt-6">
+      <span>Wallet Viewer v{{ appVersion }}</span>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/comassky/wallet-viewer" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 font-medium text-slate-400 transition hover:text-accent">
+        <UiIcon name="github" />GitHub
+      </a>
+    </div>
+  </footer>
 
   <!-- Keep the native dialog and its snapshot alive across loading and error states. -->
   <ReceiveQrDialog ref="qrDialog" />
