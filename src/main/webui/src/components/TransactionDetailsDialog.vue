@@ -9,6 +9,7 @@ import TransactionGraph from './TransactionGraph.vue';
 import TransactionBadge from './TransactionBadge.vue';
 import ConfirmationStatus from './ConfirmationStatus.vue';
 import CopyValue from './CopyValue.vue';
+import UiIcon from './UiIcon.vue';
 
 const props = defineProps<{
   transaction: Transaction | null;
@@ -83,19 +84,20 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
     @close="handleClose"
     @click="closeOnBackdrop"
   >
-    <div class="mb-3 flex items-start justify-between gap-3">
-      <h2 id="transaction-details-title" class="pt-1 text-lg font-semibold">Transaction details</h2>
-      <button type="button" autofocus @click="close" class="button-secondary shrink-0 rounded-lg px-3 text-sm">Close</button>
-    </div>
-
-    <template v-if="transaction">
-      <div class="mb-4 flex flex-wrap items-center gap-3">
+    <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <h2 id="transaction-details-title" class="text-lg font-semibold">Transaction details</h2>
+      <template v-if="transaction">
         <TransactionBadge :type="transaction.type" />
         <ConfirmationStatus :confirmations="transaction.confirmations" />
         <span class="text-xs text-slate-400">{{ formatDate(transaction.timestamp) }}</span>
         <CopyValue :value="transaction.txid" label="transaction ID" class="min-w-0 break-all font-mono text-xs leading-relaxed text-slate-400" />
-      </div>
+      </template>
+      <button type="button" autofocus @click="close" aria-label="Close" class="button-secondary ml-auto shrink-0 rounded-lg p-2">
+        <UiIcon name="close" class="h-4 w-4" />
+      </button>
+    </div>
 
+    <template v-if="transaction">
       <div v-if="loading" role="status" class="flex flex-col items-center gap-4 py-10 text-sm text-slate-400">
         <span class="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-accent motion-reduce:animate-none" aria-hidden="true" />
         Loading transaction and previous outputs from Electrum…

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { Activity, Check, Coins, Copy, RefreshCw, Server, ShieldCheck } from '@lucide/vue';
+import { Activity, Check, Coins, Copy, Server, ShieldCheck, X } from '@lucide/vue';
 
-defineProps<{ name: 'refresh' | 'shield' | 'server' | 'activity' | 'coins' | 'copy' | 'check' }>();
+defineProps<{ name: 'shield' | 'server' | 'activity' | 'coins' | 'copy' | 'check' | 'close' }>();
 // Explicit imports keep only the icons used by the interface in the production bundle.
 const icons = {
-  refresh: RefreshCw, shield: ShieldCheck, server: Server,
-  activity: Activity, coins: Coins, copy: Copy, check: Check,
+  shield: ShieldCheck, server: Server,
+  activity: Activity, coins: Coins, copy: Copy, check: Check, close: X,
 };
 </script>
 
