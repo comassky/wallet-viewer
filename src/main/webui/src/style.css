@@ -83,7 +83,8 @@
   }
 
   .transaction-dialog {
-    width: min(64rem, calc(100% - 2rem));
+    width: calc(100% - 2rem);
+    max-width: none;
     max-height: calc(100vh - 2rem);
     max-height: calc(100dvh - 2rem);
     margin: auto;
