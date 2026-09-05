@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRef } from 'vue';
+import { computed, toRef } from 'vue';
 import { currencyLabel, type Currency } from '../currency';
 import type { Transaction } from '../types/wallet';
 import { shortId, formatDate, transactionLabels } from '../utils/format';
@@ -8,7 +8,7 @@ import { useTableSort, type SortColumn } from '../composables/useTableSort';
 import CopyValue from './CopyValue.vue';
 import ConfirmationStatus from './ConfirmationStatus.vue';
 import TransactionBadge from './TransactionBadge.vue';
-import TransactionDetails from './TransactionDetails.vue';
+import TransactionDetailsDialog from './TransactionDetailsDialog.vue';
 
 const props = defineProps<{
   transactions: Transaction[];
@@ -16,6 +16,11 @@ const props = defineProps<{
   amount: (sats: number, signed?: boolean) => string;
 }>();
 const { expandedTxid, details, loading, error, toggle, retry } = useExpandedTransaction(toRef(props, 'transactions'));
+// The dialog shows whichever transaction the shared selection currently points at.
+const selectedTransaction = computed(() => props.transactions.find(tx => tx.txid === expandedTxid.value) ?? null);
+function closeDialog(): void {
+  if (expandedTxid.value) toggle(expandedTxid.value);
+}
 
 const columns: SortColumn<Transaction>[] = [
   { key: 'type', label: 'Type', value: tx => transactionLabels[tx.type] },
@@ -47,7 +52,6 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
       <li v-for="tx in sorted" :key="tx.txid" class="wallet-panel min-w-0">
         <div
           class="block w-full cursor-pointer rounded-2xl p-4 text-left transition hover:bg-slate-800/50"
-          :class="{ 'bg-accent/5': expandedTxid === tx.txid }"
           @click="toggle(tx.txid)"
         >
         <span class="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -64,13 +68,10 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
           <span class="text-slate-400">Confirmations</span>
           <span class="text-right"><ConfirmationStatus :confirmations="tx.confirmations" /></span>
         </span>
-        <button :id="`transaction-mobile-toggle-${tx.txid}`" type="button" :aria-expanded="expandedTxid === tx.txid" :aria-controls="`transaction-mobile-details-${tx.txid}`" :aria-label="`${expandedTxid === tx.txid ? 'Collapse' : 'Expand'} transaction ${tx.txid}`" class="mt-3 flex w-full items-center justify-end gap-2 rounded-lg text-xs text-accent" @click.stop="toggle(tx.txid)">
-          {{ expandedTxid === tx.txid ? 'Hide details' : 'Show details' }}
-          <span aria-hidden="true" class="inline-block transition-transform motion-reduce:transition-none" :class="{ 'rotate-180': expandedTxid === tx.txid }">⌄</span>
+        <button type="button" aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="mt-3 flex w-full items-center justify-end gap-2 rounded-lg text-xs text-accent" @click.stop="toggle(tx.txid)">
+          Show details
+          <span aria-hidden="true">→</span>
         </button>
-        </div>
-        <div :id="`transaction-mobile-details-${tx.txid}`" :hidden="expandedTxid !== tx.txid" role="region" :aria-labelledby="`transaction-mobile-toggle-${tx.txid}`" class="border-t border-slate-700/50 bg-slate-950/30">
-          <TransactionDetails v-if="expandedTxid === tx.txid" :id-prefix="`transaction-mobile-${tx.txid}`" :transaction="tx" :details="details" :loading="loading" :error="error" :currency="currency" :amount="amount" @retry="retry" />
         </div>
       </li>
     </ul>
@@ -88,8 +89,7 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
           </tr>
         </thead>
         <tbody v-auto-animate>
-          <template v-for="tx in sorted" :key="tx.txid">
-          <tr class="cursor-pointer border-t border-slate-800 transition hover:bg-slate-800/50" :class="{ 'bg-accent/5': expandedTxid === tx.txid }" @click="toggle(tx.txid)">
+          <tr v-for="tx in sorted" :key="tx.txid" class="cursor-pointer border-t border-slate-800 transition hover:bg-slate-800/50" @click="toggle(tx.txid)">
             <td class="px-3 py-2.5"><TransactionBadge :type="tx.type" /></td>
             <td class="px-3 py-2.5">
               <CopyValue :value="tx.txid" :display="shortId(tx.txid)" label="transaction ID" />
@@ -100,23 +100,16 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
             </td>
             <td class="px-3 py-2.5 text-right"><ConfirmationStatus :confirmations="tx.confirmations" compact /></td>
             <td class="px-3 py-2.5 text-right">
-              <button :id="`transaction-desktop-toggle-${tx.txid}`" type="button" @click.stop="toggle(tx.txid)" :aria-expanded="expandedTxid === tx.txid" :aria-controls="`transaction-desktop-details-${tx.txid}`" :aria-label="`${expandedTxid === tx.txid ? 'Collapse' : 'Expand'} transaction ${tx.txid}`" class="inline-flex items-center gap-2 rounded-lg px-2 text-xs text-accent transition hover:bg-accent/10">
-                {{ expandedTxid === tx.txid ? 'Hide' : 'Details' }}
-                <span aria-hidden="true" class="inline-block transition-transform motion-reduce:transition-none" :class="{ 'rotate-180': expandedTxid === tx.txid }">⌄</span>
+              <button type="button" @click.stop="toggle(tx.txid)" aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="inline-flex items-center gap-2 rounded-lg px-2 text-xs text-accent transition hover:bg-accent/10">
+                Details
+                <span aria-hidden="true">→</span>
               </button>
             </td>
           </tr>
-          <tr :hidden="expandedTxid !== tx.txid">
-            <td colspan="6" class="border-t border-slate-700/50 bg-slate-950/30 p-0">
-              <div :id="`transaction-desktop-details-${tx.txid}`" role="region" :aria-labelledby="`transaction-desktop-toggle-${tx.txid}`">
-                <TransactionDetails v-if="expandedTxid === tx.txid" :id-prefix="`transaction-desktop-${tx.txid}`" :transaction="tx" :details="details" :loading="loading" :error="error" :currency="currency" :amount="amount" @retry="retry" />
-              </div>
-            </td>
-          </tr>
-          </template>
         </tbody>
       </table>
     </div>
     <div v-else class="wallet-panel p-10 text-center"><p class="text-sm text-slate-300">No activity yet</p><p class="mt-2 text-xs text-slate-500">Transactions will appear here as your wallet synchronizes.</p></div>
+    <TransactionDetailsDialog :transaction="selectedTransaction" :details="details" :loading="loading" :error="error" :currency="currency" :amount="amount" @close="closeDialog" @retry="retry" />
   </section>
 </template>
