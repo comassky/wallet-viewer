@@ -1,63 +1,30 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
+import { useModalDialog } from '../composables/useModalDialog';
 import CopyValue from './CopyValue.vue';
 
 const dialog = ref<HTMLDialogElement | null>(null);
 const receive = ref<(ReceiveAddress & { url: string }) | null>(null);
-let savedOverflow: { value: string; priority: string } | null = null;
-let disposed = false;
+const { showModal, close, handleClose, closeOnBackdrop, isDisposed } = useModalDialog(dialog);
 let opening = false;
 
 async function open(address: ReceiveAddress, trigger: HTMLButtonElement): Promise<void> {
   const element = dialog.value;
-  if (disposed || opening || !element || element.open) return;
+  if (isDisposed() || opening || !element || element.open) return;
   opening = true;
   // Freeze the address, derivation index and image URL as one snapshot.
   receive.value = { ...address, url: walletApi.qrAtUrl(address.index) };
   try {
     await nextTick();
-    if (disposed || !element.isConnected || element.open) return;
     // Native dialog closure restores focus even in browsers that do not focus clicks.
     trigger.focus({ preventScroll: true });
-    element.showModal();
-    const style = document.documentElement.style;
-    savedOverflow ??= { value: style.getPropertyValue('overflow'), priority: style.getPropertyPriority('overflow') };
-    style.setProperty('overflow', 'hidden');
+    showModal();
   } finally {
     opening = false;
   }
 }
-
-function restoreScrolling(): void {
-  if (!savedOverflow) return;
-  const style = document.documentElement.style;
-  if (savedOverflow.value) style.setProperty('overflow', savedOverflow.value, savedOverflow.priority);
-  else style.removeProperty('overflow');
-  savedOverflow = null;
-}
-
-function onClose(): void {
-  if (dialog.value?.open) return;
-  restoreScrolling();
-}
-
-function closeOnBackdrop(event: MouseEvent): void {
-  const element = dialog.value;
-  if (!element || event.target !== element) return;
-  const bounds = element.getBoundingClientRect();
-  if (event.clientX < bounds.left || event.clientX > bounds.right ||
-      event.clientY < bounds.top || event.clientY > bounds.bottom) {
-    element.close();
-  }
-}
-
-onBeforeUnmount(() => {
-  disposed = true;
-  dialog.value?.close();
-  restoreScrolling();
-});
 
 defineExpose({ open });
 </script>
@@ -70,7 +37,7 @@ defineExpose({ open });
     aria-labelledby="receive-qr-title"
     aria-describedby="receive-qr-description"
     class="receive-qr-dialog rounded-2xl border border-slate-700 bg-slate-900 p-4 text-slate-100 shadow-2xl sm:p-6"
-    @close="onClose"
+    @close="handleClose"
     @click="closeOnBackdrop"
   >
     <div class="mb-3 flex items-start justify-between gap-3">
@@ -78,7 +45,7 @@ defineExpose({ open });
       <button
         type="button"
         autofocus
-        @click="dialog?.close()"
+        @click="close"
         class="button-secondary shrink-0 rounded-lg px-3 text-sm"
       >Close</button>
     </div>
