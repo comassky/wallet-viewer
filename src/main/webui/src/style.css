@@ -85,10 +85,6 @@
 
 /* Event animations — skipped entirely when the user prefers reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
-  @keyframes row-flash {
-    from { background-color: rgb(247 147 26 / 22%); }
-    to { background-color: transparent; }
-  }
   @keyframes value-pop {
     0% { transform: scale(1); }
     35% { transform: scale(1.07); color: var(--color-accent); }
@@ -98,7 +94,6 @@
     0% { box-shadow: 0 0 0 0 rgb(247 147 26 / 50%); }
     70%, 100% { box-shadow: 0 0 0 5px rgb(247 147 26 / 0%); }
   }
-  .row-flash { animation: row-flash 2.4s ease-out; }
   .value-pop { animation: value-pop .55s ease-out; }
   .live-dot { animation: live-ping 1.8s ease-out infinite; }
   .banner-enter-active, .banner-leave-active { transition: opacity .25s ease, transform .25s ease; }
