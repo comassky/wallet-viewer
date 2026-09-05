@@ -374,7 +374,7 @@ class WalletLiveServiceTest {
                 listener.accept(null);
             });
             assertEquals(2 + malformedOrUnknown.size(), logs.entries().size());
-            assertTrue(logs.entries().stream().allMatch(entry -> entry.level() == Level.INFO.intValue()
+            assertTrue(logs.entries().stream().allMatch(entry -> entry.level() < Level.INFO.intValue()
                     && entry.thrown() == null));
             assertTrue(logs.messages().stream().noneMatch(m -> m.contains(payload) || m.contains(unknownHash)
                     || m.contains(receive.scripthash) || m.contains(change.scripthash)
