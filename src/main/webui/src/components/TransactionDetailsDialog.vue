@@ -181,15 +181,21 @@ onBeforeUnmount(() => {
                 <button type="button" class="button-secondary rounded-lg px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page === 0" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page - 1">Previous</button>
                 <button type="button" class="button-secondary rounded-lg px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page + 1 === inputPage.pageCount" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page + 1">Next</button>
               </nav>
-              <ol :id="`${idPrefix}-inputs-list`" :start="inputPage.start + 1" class="space-y-2">
-                <li v-for="{ item: input, index } in inputPage.entries" :key="`${details.txid}-input-${index}`" :value="index + 1" class="detail-stat">
-                  <div class="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                    <span class="text-slate-500">#{{ index }}</span>
-                    <CopyValue v-if="input.address" :value="input.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-300" />
+              <ol :id="`${idPrefix}-inputs-list`" :start="inputPage.start + 1" class="space-y-2.5">
+                <li v-for="{ item: input, index } in inputPage.entries" :key="`${details.txid}-input-${index}`" :value="index + 1" class="rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 transition hover:border-slate-600/60">
+                  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
+                    <span class="rounded-md bg-slate-800/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">#{{ index }}</span>
+                    <CopyValue v-if="input.address" :value="input.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-200" />
                     <span v-else class="min-w-0 text-xs text-slate-300">{{ input.coinbase ? 'Coinbase · newly created bitcoin' : 'Non-address script' }}</span>
-                    <b class="ml-auto font-medium tabular-nums">{{ input.value === null ? (input.coinbase ? 'Not applicable (coinbase)' : 'Unknown value') : `${amount(input.value)} ${currencyLabel(currency)}` }}</b>
+                    <b class="justify-self-end whitespace-nowrap text-right text-sm font-semibold tabular-nums">
+                      <template v-if="input.value !== null">{{ amount(input.value) }} {{ currencyLabel(currency) }}</template>
+                      <span v-else class="text-slate-500">{{ input.coinbase ? 'N/A' : 'Unknown' }}</span>
+                    </b>
                   </div>
-                  <p v-if="input.txid" class="mt-1.5 break-all font-mono text-[11px] text-slate-500">Previous output: <CopyValue :value="input.txid" label="transaction ID" />:{{ input.vout }}</p>
+                  <p v-if="input.txid" class="mt-2 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-slate-800/60 pt-2 font-mono text-[11px] text-slate-500">
+                    <span class="uppercase tracking-wide text-slate-600">Prev out</span>
+                    <CopyValue :value="input.txid" label="transaction ID" /><span class="text-slate-600">:{{ input.vout }}</span>
+                  </p>
                 </li>
               </ol>
               <p v-if="!inputPage.total" class="text-xs text-slate-500">No inputs.</p>
@@ -202,15 +208,18 @@ onBeforeUnmount(() => {
                 <button type="button" class="button-secondary rounded-lg px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page === 0" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page - 1">Previous</button>
                 <button type="button" class="button-secondary rounded-lg px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page + 1 === outputPage.pageCount" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page + 1">Next</button>
               </nav>
-              <ol :id="`${idPrefix}-outputs-list`" :start="outputPage.start + 1" class="space-y-2">
-                <li v-for="{ item: output, index } in outputPage.entries" :key="`${details.txid}-output-${output.index}`" :value="index + 1" class="detail-stat">
-                  <div class="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                    <span class="text-slate-500">#{{ output.index }}</span>
-                    <CopyValue v-if="output.address" :value="output.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-300" />
+              <ol :id="`${idPrefix}-outputs-list`" :start="outputPage.start + 1" class="space-y-2.5">
+                <li v-for="{ item: output, index } in outputPage.entries" :key="`${details.txid}-output-${output.index}`" :value="index + 1" class="rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 transition hover:border-slate-600/60">
+                  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
+                    <span class="rounded-md bg-slate-800/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">#{{ output.index }}</span>
+                    <CopyValue v-if="output.address" :value="output.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-200" />
                     <span v-else class="min-w-0 text-xs text-slate-300">Non-address script</span>
-                    <b class="ml-auto font-medium tabular-nums">{{ amount(output.value) }} {{ currencyLabel(currency) }}</b>
+                    <b class="justify-self-end whitespace-nowrap text-right text-sm font-semibold tabular-nums">{{ amount(output.value) }} {{ currencyLabel(currency) }}</b>
                   </div>
-                  <details class="mt-1.5 text-[11px] text-slate-500"><summary class="cursor-pointer py-1">Output script</summary><p class="mt-1.5 select-text break-all font-mono">{{ output.scriptHex || '(empty script)' }}</p></details>
+                  <details class="mt-2 border-t border-slate-800/60 pt-2 text-[11px] text-slate-500">
+                    <summary class="cursor-pointer select-none uppercase tracking-wide text-slate-600 transition hover:text-slate-300">Output script</summary>
+                    <p class="mt-1.5 select-text break-all font-mono text-slate-400">{{ output.scriptHex || '(empty script)' }}</p>
+                  </details>
                 </li>
               </ol>
               <p v-if="!outputPage.total" class="text-xs text-slate-500">No outputs.</p>
