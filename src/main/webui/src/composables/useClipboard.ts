@@ -1,5 +1,5 @@
 import { onScopeDispose, ref } from 'vue';
-import { showToast } from './useToast';
+import { showToast } from './useToast.ts';
 
 /** Independent copy feedback per component; stale asynchronous results are ignored. */
 export function useClipboard() {
