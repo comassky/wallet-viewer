@@ -81,6 +81,21 @@
     background: rgb(2 6 23 / 85%);
     backdrop-filter: blur(4px);
   }
+
+  .transaction-dialog {
+    width: min(64rem, calc(100% - 2rem));
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    overflow-wrap: anywhere;
+  }
+
+  .transaction-dialog::backdrop {
+    background: rgb(2 6 23 / 85%);
+    backdrop-filter: blur(4px);
+  }
 }
 
 /* Event animations — skipped entirely when the user prefers reduced motion. */
