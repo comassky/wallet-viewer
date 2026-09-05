@@ -28,7 +28,7 @@
 ## Features
 
 - 💰 **Live wallet:** balances, confirmations, Activity / UTXO tabs, sorting and click-to-copy identifiers.
-- 🔍 **Transaction details:** expandable rows, fees and compact input/output graphs with independent pagination (five items per side).
+- 🔍 **Transaction details:** a full-width dialog with **Graph** and **Inputs / Outputs** tabs, fees and compact input/output graphs with independent pagination (five items per side).
 - 💱 **Display units:** BTC, SAT, EUR and USD; switch beside the balance, with the preference saved locally.
 - 📥 **Receive:** next address, derivation path and enlargeable QR code; BIP44, BIP49, BIP84 and BIP86 support.
 - 🎨 **Bitcoin dark theme:** responsive layout, keyboard controls and a live badge with Electrum server details.
@@ -61,7 +61,7 @@ flowchart LR
 | Reactive transport / cache | Vert.x, Mutiny and Caffeine — versions managed by the Quarkus BOM |
 | Node.js | **24.21.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
 | Frontend (locked) | Vue **3.5.42**, Vite **8.2.2**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite) — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
-| UI libraries | Lucide Vue **1.43.0**, Axios **1.20.0** |
+| UI libraries | Lucide Vue **1.43.0**, Axios **1.20.0**, @formkit/auto-animate **0.10.0** |
 | Runtime image | Distroless Java **25**, Debian **13**, `nonroot` — [Dockerfile](Dockerfile) |
 
 Versions reflect declarations and the npm lockfile. For local development, use JDK 25 and `mvn quarkus:dev`; Quinoa manages Node automatically.
