@@ -1,70 +1,101 @@
 name: Release
 
 on:
-  push:
-    tags: ['*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version X.Y.Z (without -SNAPSHOT)'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     permissions:
-      contents: write # create the GitHub Release
-      packages: write # push the image to GHCR
+      contents: write # commit the version bumps, push the tag and create the Release
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Set image name
-        id: image
+      - name: Compute versions
+        id: version
         shell: bash
         env:
-          REPOSITORY: ${{ github.repository }}
-        run: echo "name=ghcr.io/${REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version must be X.Y.Z (e.g. 1.2.3), got '$VERSION'"
+            exit 1
+          fi
+          IFS='.' read -r major minor patch <<< "$VERSION"
+          {
+            echo "release=$VERSION"
+            echo "tag=$VERSION"
+            echo "next=${major}.${minor}.$((patch + 1))-SNAPSHOT"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Image metadata
-        id: meta
-        uses: docker/metadata-action@v5
+      - name: Checkout main
+        uses: actions/checkout@v4
         with:
-          images: ${{ steps.image.outputs.name }}
-          # A X.Y.Z tag publishes X.Y.Z; 'latest' is added automatically for non-prerelease tags.
-          tags: |
-            type=semver,pattern={{version}}
+          ref: main
+          fetch-depth: 0
+          # A PAT (RELEASE_TOKEN) lets the pushed tag trigger the tag-driven Release
+          # workflow (image build + GitHub Release). GITHUB_TOKEN pushes do not.
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Fail if tag already exists
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          distribution: temurin
+          java-version: 25
 
-      # The Dockerfile build runs the full test suite, so a failing build blocks the release.
-      - name: Build, test and publish the release image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Configure git identity
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
 
+      - name: Set release version and tag
+        env:
+          RELEASE: ${{ steps.version.outputs.release }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          mvn -B -q versions:set -DnewVersion="$RELEASE" -DgenerateBackupPoms=false
+          git commit -am "Release $RELEASE"
+          git tag -a "$TAG" -m "Release $RELEASE"
+
+      - name: Set next development version
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+        run: |
+          mvn -B -q versions:set -DnewVersion="$NEXT" -DgenerateBackupPoms=false
+          git commit -am "Prepare next development iteration $NEXT"
+
+      - name: Push branch and tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git push origin HEAD:main
+          git push origin "refs/tags/$TAG"
+
+      # Created here directly so a release always exists, even when a GITHUB_TOKEN
+      # push does not trigger the tag-driven Release workflow (image build).
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
