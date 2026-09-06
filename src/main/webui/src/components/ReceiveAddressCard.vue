@@ -85,7 +85,8 @@ onScopeDispose(() => controller?.abort());
       >{{ tab.label }}</button>
     </div>
 
-    <div v-show="activeTab === 'receive'" id="receive-panel-receive" role="tabpanel" aria-labelledby="receive-tab-receive" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+    <div class="grid">
+      <div id="receive-panel-receive" role="tabpanel" aria-labelledby="receive-tab-receive" :tabindex="activeTab === 'receive' ? 0 : -1" :aria-hidden="activeTab !== 'receive'" class="[grid-area:1/1] rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent" :class="{ invisible: activeTab !== 'receive' }">
       <p class="mb-4 text-xs text-slate-500">Your next unused address · share it to receive Bitcoin.</p>
       <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
         <button
@@ -107,7 +108,7 @@ onScopeDispose(() => controller?.abort());
       </div>
     </div>
 
-    <div v-show="activeTab === 'check'" id="receive-panel-check" role="tabpanel" aria-labelledby="receive-tab-check" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+      <div id="receive-panel-check" role="tabpanel" aria-labelledby="receive-tab-check" :tabindex="activeTab === 'check' ? 0 : -1" :aria-hidden="activeTab !== 'check'" class="flex flex-col justify-center [grid-area:1/1] rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent" :class="{ invisible: activeTab !== 'check' }">
       <form @submit.prevent="verify">
         <p class="mb-3 text-xs text-slate-500">Check that an address was derived from this wallet's extended public key.</p>
         <div class="flex flex-col gap-2 sm:flex-row">
@@ -131,6 +132,7 @@ onScopeDispose(() => controller?.abort());
         </p>
         <p v-else-if="result" role="status" class="mt-3 text-xs text-amber-400">Not derived from this wallet (checked the first {{ result.checked }} receive and change addresses).</p>
       </form>
+      </div>
     </div>
   </section>
 </template>
