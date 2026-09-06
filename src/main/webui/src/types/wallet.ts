@@ -33,6 +33,15 @@ export interface ReceiveAddress {
   path: string;
 }
 
+export interface AddressCheck {
+  address: string;
+  belongs: boolean;
+  chain: number | null;
+  index: number | null;
+  path: string | null;
+  checked: number;
+}
+
 export interface TransactionInput {
   txid: string | null;
   vout: number;

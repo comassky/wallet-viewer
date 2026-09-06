@@ -2,6 +2,7 @@ package com.comassky.wallet.service;
 
 import com.comassky.wallet.derivation.HdWallet;
 import com.comassky.wallet.electrum.ElectrumClient;
+import com.comassky.wallet.model.AddressCheckDto;
 import com.comassky.wallet.model.AddressInfo;
 import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.ReceiveAddressDto;
@@ -16,6 +17,7 @@ import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.BadRequestException;
 import org.bitcoinj.base.internal.ByteUtils;
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Transaction;
@@ -105,6 +107,26 @@ public class WalletService {
 
     public AddressInfo derive(int chain, int index) {
         return wallet.address(chain, index);
+    }
+
+    /**
+     * Checks whether an address is derived from the configured key by comparing it against the
+     * first {@code maxAddresses} receive (chain 0) and change (chain 1) addresses. Purely local.
+     */
+    public AddressCheckDto verifyAddress(String address) {
+        String target = address == null ? "" : address.trim();
+        if (target.isEmpty() || target.length() > 128) {
+            throw new BadRequestException("Provide a Bitcoin address to verify");
+        }
+        for (int chain = 0; chain <= 1; chain++) {
+            for (int index = 0; index < maxAddresses; index++) {
+                AddressInfo info = wallet.address(chain, index);
+                if (info.address.equals(target)) {
+                    return new AddressCheckDto(info.address, true, chain, index, info.path, maxAddresses);
+                }
+            }
+        }
+        return new AddressCheckDto(target, false, null, null, null, maxAddresses);
     }
 
     /** Thread-safe O(1) local lookup; no RPC, derivation or registration. Null means unknown. */
