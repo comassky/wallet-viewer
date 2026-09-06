@@ -9,6 +9,7 @@ import CopyValue from './CopyValue.vue';
 import ConfirmationStatus from './ConfirmationStatus.vue';
 import TransactionBadge from './TransactionBadge.vue';
 import TransactionDetailsDialog from './TransactionDetailsDialog.vue';
+import UiIcon from './UiIcon.vue';
 
 const props = defineProps<{
   transactions: Transaction[];
@@ -70,7 +71,7 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
         </span>
         <button type="button" aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="mt-3 flex w-full items-center justify-end gap-2 rounded-lg text-xs text-accent" @click.stop="toggle(tx.txid)">
           Show details
-          <span aria-hidden="true">→</span>
+          <UiIcon name="arrow-right" />
         </button>
         </div>
       </li>
@@ -102,14 +103,18 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
             <td class="px-3 py-2.5 text-right">
               <button type="button" @click.stop="toggle(tx.txid)" aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="inline-flex items-center gap-2 rounded-lg px-2 text-xs text-accent transition hover:bg-accent/10">
                 Details
-                <span aria-hidden="true">→</span>
+                <UiIcon name="arrow-right" />
               </button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-    <div v-else class="wallet-panel p-10 text-center"><p class="text-sm text-slate-300">No activity yet</p><p class="mt-2 text-xs text-slate-500">Transactions will appear here as your wallet synchronizes.</p></div>
+    <div v-else class="wallet-panel p-10 text-center">
+      <UiIcon name="inbox" class="mx-auto mb-3 h-8 w-8 text-slate-600" />
+      <p class="text-sm text-slate-300">No activity yet</p>
+      <p class="mt-2 text-xs text-slate-500">Transactions will appear here as your wallet synchronizes.</p>
+    </div>
     <TransactionDetailsDialog :transaction="selectedTransaction" :details="details" :loading="loading" :error="error" :currency="currency" :amount="amount" @close="closeDialog" @retry="retry" />
   </section>
 </template>
