@@ -1,5 +1,5 @@
 import { requestJson, type RequestOptions } from './http.ts';
-import type { Balance, ElectrumServer, PriceRates, ReceiveAddress, Transaction, TransactionDetails, Utxo, WalletSnapshot } from '../types/wallet';
+import type { AddressCheck, Balance, ElectrumServer, PriceRates, ReceiveAddress, Transaction, TransactionDetails, Utxo, WalletSnapshot } from '../types/wallet';
 
 const BASE = '/api/wallet';
 
@@ -14,5 +14,6 @@ export const walletApi = {
   utxos: (options?: RequestOptions) => requestJson<Utxo[]>(`${BASE}/utxos`, options),
   receive: (options?: RequestOptions) => requestJson<ReceiveAddress>(`${BASE}/receive`, options),
   receiveAt: (index: number, options?: RequestOptions) => requestJson<ReceiveAddress>(`${BASE}/receive/${index}`, options),
+  verifyAddress: (address: string, options?: RequestOptions) => requestJson<AddressCheck>(`${BASE}/verify?address=${encodeURIComponent(address)}`, options),
   qrAtUrl: (index: number) => `${BASE}/receive/${index}/qr`,
 };

@@ -2,6 +2,7 @@ package com.comassky.wallet.service;
 
 import com.comassky.wallet.derivation.HdWallet;
 import com.comassky.wallet.electrum.ElectrumClient;
+import com.comassky.wallet.model.AddressCheckDto;
 import com.comassky.wallet.model.AddressInfo;
 import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.TransactionDto;
@@ -10,6 +11,7 @@ import com.comassky.wallet.model.WalletSnapshot;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import jakarta.ws.rs.BadRequestException;
 import org.bitcoinj.base.Coin;
 import org.bitcoinj.base.Sha256Hash;
 import org.bitcoinj.base.internal.ByteUtils;
@@ -254,6 +256,47 @@ class WalletServiceTest {
         assertEquals(7, address.index);
         assertEquals("address:1:7", address.address);
         assertTrue(electrum.calls.isEmpty());
+    }
+
+    @Test
+    void verifyAddressMatchesReceiveAndChangeAddressesLocally() {
+        StubElectrum electrum = new StubElectrum(index -> false);
+        WalletService service = service(electrum);
+
+        AddressCheckDto receive = service.verifyAddress("address:0:3");
+        assertTrue(receive.belongs());
+        assertEquals("address:0:3", receive.address());
+        assertEquals(Integer.valueOf(0), receive.chain());
+        assertEquals(Integer.valueOf(3), receive.index());
+        assertEquals("m/0/3", receive.path());
+        assertEquals(service.maxAddresses, receive.checked());
+
+        AddressCheckDto change = service.verifyAddress("  address:1:2  "); // surrounding whitespace is trimmed
+        assertTrue(change.belongs());
+        assertEquals(Integer.valueOf(1), change.chain());
+        assertEquals(Integer.valueOf(2), change.index());
+
+        assertTrue(electrum.calls.isEmpty(), "Verification derives locally and performs no RPC");
+    }
+
+    @Test
+    void verifyAddressReturnsFalseBeyondTheScanCap() {
+        WalletService service = service(new StubElectrum(index -> false));
+        AddressCheckDto result = service.verifyAddress("address:0:5"); // maxAddresses is 5, so indices 0..4 only
+        assertFalse(result.belongs());
+        assertNull(result.chain());
+        assertNull(result.index());
+        assertNull(result.path());
+        assertEquals(5, result.checked());
+    }
+
+    @Test
+    void verifyAddressRejectsBlankOrOversizedInput() {
+        WalletService service = service(new StubElectrum(index -> false));
+        for (String invalid : new String[]{null, "", "   "}) {
+            assertThrows(BadRequestException.class, () -> service.verifyAddress(invalid));
+        }
+        assertThrows(BadRequestException.class, () -> service.verifyAddress("x".repeat(129)));
     }
 
     @Test
