@@ -139,13 +139,17 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
         <div v-show="activeTab === 'io'" :id="`${idPrefix}-panel-io`" role="tabpanel" :aria-labelledby="`${idPrefix}-tab-io`" tabindex="0" class="space-y-6 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
           <div class="grid min-w-0 gap-6 lg:grid-cols-2">
             <section class="min-w-0" :aria-labelledby="`${idPrefix}-inputs-title`">
-              <h4 :id="`${idPrefix}-inputs-title`" class="section-title mb-3 text-sky-400">Inputs <span class="text-slate-500">({{ details.inputs.length }})</span></h4>
-              <p :id="`${idPrefix}-inputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="mb-2 text-xs text-slate-400">{{ inputPage.total ? inputPage.start + 1 : 0 }}–{{ inputPage.end }} of {{ inputPage.total }} inputs · Page {{ inputPage.page + 1 }} / {{ inputPage.pageCount }}</p>
-              <nav v-if="inputPage.pageCount > 1" :aria-labelledby="`${idPrefix}-inputs-title ${idPrefix}-inputs-list-nav-label`" class="mb-3 flex gap-2">
-                <span :id="`${idPrefix}-inputs-list-nav-label`" class="sr-only">list pagination</span>
-                <button type="button" class="button-secondary rounded-lg px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page === 0" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page - 1">Previous</button>
-                <button type="button" class="button-secondary rounded-lg px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page + 1 === inputPage.pageCount" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page + 1">Next</button>
-              </nav>
+              <div class="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <h4 :id="`${idPrefix}-inputs-title`" class="section-title text-sky-400">Inputs <span class="text-slate-500">({{ details.inputs.length }})</span></h4>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <p :id="`${idPrefix}-inputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ inputPage.total ? inputPage.start + 1 : 0 }}–{{ inputPage.end }} of {{ inputPage.total }} inputs · Page {{ inputPage.page + 1 }} / {{ inputPage.pageCount }}</p>
+                  <nav v-if="inputPage.pageCount > 1" :aria-labelledby="`${idPrefix}-inputs-title ${idPrefix}-inputs-list-nav-label`" class="flex gap-2">
+                    <span :id="`${idPrefix}-inputs-list-nav-label`" class="sr-only">list pagination</span>
+                    <button type="button" class="button-secondary rounded-lg px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page === 0" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page - 1">Previous</button>
+                    <button type="button" class="button-secondary rounded-lg px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page + 1 === inputPage.pageCount" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page + 1">Next</button>
+                  </nav>
+                </div>
+              </div>
               <ol :id="`${idPrefix}-inputs-list`" :start="inputPage.start + 1" class="space-y-2.5">
                 <li v-for="{ item: input, index } in inputPage.entries" :key="`${details.txid}-input-${index}`" :value="index + 1" class="rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 transition hover:border-slate-600/60">
                   <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
@@ -157,22 +161,26 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
                       <span v-else class="text-slate-500">{{ input.coinbase ? 'N/A' : 'Unknown' }}</span>
                     </b>
                   </div>
-                  <p v-if="input.txid" class="mt-2 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-slate-800/60 pt-2 font-mono text-[11px] text-slate-500">
-                    <span class="uppercase tracking-wide text-slate-600">Prev out</span>
-                    <CopyValue :value="input.txid" label="transaction ID" /><span class="text-slate-600">:{{ input.vout }}</span>
-                  </p>
+                  <details v-if="input.txid" class="mt-2 border-t border-slate-800/60 pt-2 text-[11px] text-slate-500">
+                    <summary class="cursor-pointer select-none uppercase tracking-wide text-slate-600 transition hover:text-slate-300">Previous output</summary>
+                    <p class="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 break-all font-mono text-slate-400"><CopyValue :value="input.txid" label="transaction ID" /><span class="text-slate-500">:{{ input.vout }}</span></p>
+                  </details>
                 </li>
               </ol>
               <p v-if="!inputPage.total" class="text-xs text-slate-500">No inputs.</p>
             </section>
             <section class="min-w-0" :aria-labelledby="`${idPrefix}-outputs-title`">
-              <h4 :id="`${idPrefix}-outputs-title`" class="section-title mb-3 text-emerald-400">Outputs <span class="text-slate-500">({{ details.outputs.length }})</span></h4>
-              <p :id="`${idPrefix}-outputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="mb-2 text-xs text-slate-400">{{ outputPage.total ? outputPage.start + 1 : 0 }}–{{ outputPage.end }} of {{ outputPage.total }} outputs · Page {{ outputPage.page + 1 }} / {{ outputPage.pageCount }}</p>
-              <nav v-if="outputPage.pageCount > 1" :aria-labelledby="`${idPrefix}-outputs-title ${idPrefix}-outputs-list-nav-label`" class="mb-3 flex gap-2">
-                <span :id="`${idPrefix}-outputs-list-nav-label`" class="sr-only">list pagination</span>
-                <button type="button" class="button-secondary rounded-lg px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page === 0" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page - 1">Previous</button>
-                <button type="button" class="button-secondary rounded-lg px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page + 1 === outputPage.pageCount" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page + 1">Next</button>
-              </nav>
+              <div class="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <h4 :id="`${idPrefix}-outputs-title`" class="section-title text-emerald-400">Outputs <span class="text-slate-500">({{ details.outputs.length }})</span></h4>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <p :id="`${idPrefix}-outputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ outputPage.total ? outputPage.start + 1 : 0 }}–{{ outputPage.end }} of {{ outputPage.total }} outputs · Page {{ outputPage.page + 1 }} / {{ outputPage.pageCount }}</p>
+                  <nav v-if="outputPage.pageCount > 1" :aria-labelledby="`${idPrefix}-outputs-title ${idPrefix}-outputs-list-nav-label`" class="flex gap-2">
+                    <span :id="`${idPrefix}-outputs-list-nav-label`" class="sr-only">list pagination</span>
+                    <button type="button" class="button-secondary rounded-lg px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page === 0" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page - 1">Previous</button>
+                    <button type="button" class="button-secondary rounded-lg px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page + 1 === outputPage.pageCount" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page + 1">Next</button>
+                  </nav>
+                </div>
+              </div>
               <ol :id="`${idPrefix}-outputs-list`" :start="outputPage.start + 1" class="space-y-2.5">
                 <li v-for="{ item: output, index } in outputPage.entries" :key="`${details.txid}-output-${output.index}`" :value="index + 1" class="rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 transition hover:border-slate-600/60">
                   <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
