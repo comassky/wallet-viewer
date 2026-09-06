@@ -26,8 +26,8 @@ const dialog = ref<HTMLDialogElement | null>(null);
 const { showModal, close, handleClose, closeOnBackdrop, isDisposed } = useModalDialog(dialog, () => emit('close'));
 const tabButtons = ref<HTMLButtonElement[]>([]);
 const tabs = [
-  { id: 'graph', label: 'Graph' },
-  { id: 'io', label: 'Inputs / Outputs' },
+  { id: 'graph', label: 'Graph', icon: 'graph' },
+  { id: 'io', label: 'Inputs / Outputs', icon: 'list' },
 ] as const;
 const activeTab = ref<(typeof tabs)[number]['id']>('graph');
 
@@ -125,11 +125,11 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
             :aria-selected="activeTab === tab.id"
             :aria-controls="`${idPrefix}-panel-${tab.id}`"
             :tabindex="activeTab === tab.id ? 0 : -1"
-            class="-mb-px rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            class="-mb-px inline-flex items-center gap-2 rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             :class="activeTab === tab.id ? 'border-accent bg-accent/5 text-accent' : 'border-transparent text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200'"
             @click="activeTab = tab.id"
             @keydown="navigateTabs($event, index)"
-          >{{ tab.label }}</button>
+          ><UiIcon :name="tab.icon" />{{ tab.label }}</button>
         </div>
 
         <div v-show="activeTab === 'graph'" :id="`${idPrefix}-panel-graph`" role="tabpanel" :aria-labelledby="`${idPrefix}-tab-graph`" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
@@ -145,8 +145,8 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
                   <p :id="`${idPrefix}-inputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ inputPage.total ? inputPage.start + 1 : 0 }}–{{ inputPage.end }} of {{ inputPage.total }} inputs · Page {{ inputPage.page + 1 }} / {{ inputPage.pageCount }}</p>
                   <nav v-if="inputPage.pageCount > 1" :aria-labelledby="`${idPrefix}-inputs-title ${idPrefix}-inputs-list-nav-label`" class="flex gap-1.5">
                     <span :id="`${idPrefix}-inputs-list-nav-label`" class="sr-only">list pagination</span>
-                    <button type="button" class="button-secondary rounded-md px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page === 0" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page - 1">Previous</button>
-                    <button type="button" class="button-secondary rounded-md px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page + 1 === inputPage.pageCount" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page + 1">Next</button>
+                    <button type="button" class="graph-page-button" :disabled="inputPage.page === 0" aria-label="Previous inputs page" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page - 1"><UiIcon name="chevron-left" /></button>
+                    <button type="button" class="graph-page-button" :disabled="inputPage.page + 1 === inputPage.pageCount" aria-label="Next inputs page" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page + 1"><UiIcon name="chevron-right" /></button>
                   </nav>
                 </div>
               </div>
@@ -176,8 +176,8 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
                   <p :id="`${idPrefix}-outputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ outputPage.total ? outputPage.start + 1 : 0 }}–{{ outputPage.end }} of {{ outputPage.total }} outputs · Page {{ outputPage.page + 1 }} / {{ outputPage.pageCount }}</p>
                   <nav v-if="outputPage.pageCount > 1" :aria-labelledby="`${idPrefix}-outputs-title ${idPrefix}-outputs-list-nav-label`" class="flex gap-1.5">
                     <span :id="`${idPrefix}-outputs-list-nav-label`" class="sr-only">list pagination</span>
-                    <button type="button" class="button-secondary rounded-md px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page === 0" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page - 1">Previous</button>
-                    <button type="button" class="button-secondary rounded-md px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page + 1 === outputPage.pageCount" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page + 1">Next</button>
+                    <button type="button" class="graph-page-button" :disabled="outputPage.page === 0" aria-label="Previous outputs page" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page - 1"><UiIcon name="chevron-left" /></button>
+                    <button type="button" class="graph-page-button" :disabled="outputPage.page + 1 === outputPage.pageCount" aria-label="Next outputs page" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page + 1"><UiIcon name="chevron-right" /></button>
                   </nav>
                 </div>
               </div>
