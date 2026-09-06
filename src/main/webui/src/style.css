@@ -74,6 +74,18 @@
     @apply rounded-xl border border-slate-700/40 bg-slate-950/40 p-3;
   }
 
+  .technical-details > summary {
+    list-style: none;
+  }
+
+  .technical-details > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .technical-details[open] > summary .chevron {
+    transform: rotate(90deg);
+  }
+
   .wallet-shell {
     min-width: 0;
     max-width: 1440px;
