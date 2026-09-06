@@ -92,7 +92,7 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
         <span class="text-xs text-slate-400">{{ formatDate(transaction.timestamp) }}</span>
         <CopyValue :value="transaction.txid" label="transaction ID" class="min-w-0 break-all font-mono text-xs leading-relaxed text-slate-400" />
       </template>
-      <button type="button" autofocus @click="close" aria-label="Close" class="button-secondary ml-auto shrink-0 rounded-lg p-2">
+      <button type="button" autofocus @click="close" aria-label="Close" class="button-secondary ml-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
         <UiIcon name="close" class="h-4 w-4" />
       </button>
     </div>
@@ -139,14 +139,14 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
         <div v-show="activeTab === 'io'" :id="`${idPrefix}-panel-io`" role="tabpanel" :aria-labelledby="`${idPrefix}-tab-io`" tabindex="0" class="space-y-6 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
           <div class="grid min-w-0 gap-6 lg:grid-cols-2">
             <section class="min-w-0" :aria-labelledby="`${idPrefix}-inputs-title`">
-              <div class="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div class="mb-3 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <h4 :id="`${idPrefix}-inputs-title`" class="section-title text-sky-400">Inputs <span class="text-slate-500">({{ details.inputs.length }})</span></h4>
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <p :id="`${idPrefix}-inputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ inputPage.total ? inputPage.start + 1 : 0 }}–{{ inputPage.end }} of {{ inputPage.total }} inputs · Page {{ inputPage.page + 1 }} / {{ inputPage.pageCount }}</p>
-                  <nav v-if="inputPage.pageCount > 1" :aria-labelledby="`${idPrefix}-inputs-title ${idPrefix}-inputs-list-nav-label`" class="flex gap-2">
+                  <nav v-if="inputPage.pageCount > 1" :aria-labelledby="`${idPrefix}-inputs-title ${idPrefix}-inputs-list-nav-label`" class="flex gap-1.5">
                     <span :id="`${idPrefix}-inputs-list-nav-label`" class="sr-only">list pagination</span>
-                    <button type="button" class="button-secondary rounded-lg px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page === 0" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page - 1">Previous</button>
-                    <button type="button" class="button-secondary rounded-lg px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page + 1 === inputPage.pageCount" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page + 1">Next</button>
+                    <button type="button" class="button-secondary rounded-md px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page === 0" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page - 1">Previous</button>
+                    <button type="button" class="button-secondary rounded-md px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-40" :disabled="inputPage.page + 1 === inputPage.pageCount" :aria-controls="`${idPrefix}-inputs-list`" :aria-describedby="`${idPrefix}-inputs-list-count`" @click="inputPageIndex = inputPage.page + 1">Next</button>
                   </nav>
                 </div>
               </div>
@@ -170,14 +170,14 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
               <p v-if="!inputPage.total" class="text-xs text-slate-500">No inputs.</p>
             </section>
             <section class="min-w-0" :aria-labelledby="`${idPrefix}-outputs-title`">
-              <div class="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div class="mb-3 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <h4 :id="`${idPrefix}-outputs-title`" class="section-title text-emerald-400">Outputs <span class="text-slate-500">({{ details.outputs.length }})</span></h4>
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <p :id="`${idPrefix}-outputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ outputPage.total ? outputPage.start + 1 : 0 }}–{{ outputPage.end }} of {{ outputPage.total }} outputs · Page {{ outputPage.page + 1 }} / {{ outputPage.pageCount }}</p>
-                  <nav v-if="outputPage.pageCount > 1" :aria-labelledby="`${idPrefix}-outputs-title ${idPrefix}-outputs-list-nav-label`" class="flex gap-2">
+                  <nav v-if="outputPage.pageCount > 1" :aria-labelledby="`${idPrefix}-outputs-title ${idPrefix}-outputs-list-nav-label`" class="flex gap-1.5">
                     <span :id="`${idPrefix}-outputs-list-nav-label`" class="sr-only">list pagination</span>
-                    <button type="button" class="button-secondary rounded-lg px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page === 0" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page - 1">Previous</button>
-                    <button type="button" class="button-secondary rounded-lg px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page + 1 === outputPage.pageCount" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page + 1">Next</button>
+                    <button type="button" class="button-secondary rounded-md px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page === 0" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page - 1">Previous</button>
+                    <button type="button" class="button-secondary rounded-md px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-40" :disabled="outputPage.page + 1 === outputPage.pageCount" :aria-controls="`${idPrefix}-outputs-list`" :aria-describedby="`${idPrefix}-outputs-list-count`" @click="outputPageIndex = outputPage.page + 1">Next</button>
                   </nav>
                 </div>
               </div>
