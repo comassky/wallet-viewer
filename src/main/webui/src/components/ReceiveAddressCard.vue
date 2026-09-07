@@ -2,13 +2,14 @@
 import { computed, ref } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
-import CopyButton from './CopyButton.vue';
+import { useClipboard } from '../composables/useClipboard';
 import AddressCheckForm from './AddressCheckForm.vue';
 import UiIcon from './UiIcon.vue';
 
 const props = defineProps<{ receive: ReceiveAddress }>();
 const emit = defineEmits<{ enlarge: [address: ReceiveAddress, trigger: HTMLButtonElement] }>();
 const qrUrl = computed(() => walletApi.qrAtUrl(props.receive.index));
+const { copied, error, copy } = useClipboard();
 
 function enlarge(event: MouseEvent): void {
   emit('enlarge', { ...props.receive }, event.currentTarget as HTMLButtonElement);
@@ -80,15 +81,20 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
           <img :src="qrUrl" alt="" class="h-32 w-32" />
         </button>
         <div class="min-w-0 w-full flex-1">
-          <p class="my-2 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-2.5 font-mono text-sm">{{ receive.address }}</p>
-          <CopyButton :value="receive.address" />
-          <details class="technical-details mt-3 text-xs">
-            <summary class="flex cursor-pointer select-none items-center gap-1.5 py-1.5 font-medium text-slate-400 transition hover:text-slate-200"><UiIcon name="chevron-right" class="chevron shrink-0 transition-transform" />Technical details</summary>
-            <div class="mt-2 rounded-lg border border-slate-700/50 bg-slate-950/40 p-3">
-              <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Derivation path</p>
-              <p class="mt-0.5 break-all font-mono text-slate-300">{{ receive.path }}</p>
-            </div>
-          </details>
+          <button
+            type="button"
+            :aria-label="`Copy receive address ${receive.address}`"
+            @click="copy(receive.address, 'address')"
+            class="group my-2 flex w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-800 p-2.5 text-left transition hover:border-accent/60 hover:bg-slate-800/80"
+          >
+            <span class="min-w-0 flex-1 select-text break-all font-mono text-sm text-slate-200">{{ receive.address }}</span>
+            <span class="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold" :class="copied ? 'text-emerald-400' : 'text-accent'"><UiIcon :name="copied ? 'check' : 'copy'" />{{ copied ? 'Copied' : 'Copy' }}</span>
+          </button>
+          <p v-if="error" role="status" class="text-xs text-rose-400">{{ error }}</p>
+          <div class="mt-3 flex items-baseline gap-2 rounded-lg border border-slate-700/50 bg-slate-950/40 px-3 py-2 text-xs">
+            <span class="shrink-0 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Path</span>
+            <span class="min-w-0 flex-1 break-all font-mono text-slate-300">{{ receive.path }}</span>
+          </div>
         </div>
       </div>
     </div>
