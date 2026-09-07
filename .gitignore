@@ -18,3 +18,5 @@ src/main/webui/node_modules/
 .idea/
 *.iml
 .vscode/
+
+/scripts
