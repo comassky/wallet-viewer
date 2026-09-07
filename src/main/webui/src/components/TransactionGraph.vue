@@ -5,6 +5,7 @@ import type { TransactionDetails } from '../types/wallet';
 import { shortId } from '../utils/format';
 import { paginationRange, summarizeValues, transactionGraphLayout, transactionGraphPage } from '../utils/transactionGraph';
 import CopyValue from './CopyValue.vue';
+import UiIcon from './UiIcon.vue';
 
 const props = defineProps<{
   idPrefix: string;
@@ -106,8 +107,8 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
             <p :id="`${idPrefix}-graph-${side.key}-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ side.page.total ? side.page.start + 1 : 0 }}–{{ side.page.end }} of {{ side.page.total }} {{ side.key }} · Page {{ side.page.page + 1 }} / {{ side.page.pageCount }}</p>
             <nav v-if="side.page.pageCount > 1" :aria-labelledby="`${idPrefix}-graph-${side.key}-heading ${idPrefix}-graph-${side.key}-nav-label`" class="flex gap-1.5">
               <span :id="`${idPrefix}-graph-${side.key}-nav-label`" class="sr-only">graph pagination</span>
-              <button type="button" class="graph-page-button" :disabled="side.page.page === 0" :aria-label="`Previous ${side.key} page`" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count`" @click="setPage(side.key, side.page.page - 1)">‹</button>
-              <button type="button" class="graph-page-button" :disabled="side.page.page + 1 === side.page.pageCount" :aria-label="`Next ${side.key} page`" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count`" @click="setPage(side.key, side.page.page + 1)">›</button>
+              <button type="button" class="graph-page-button" :disabled="side.page.page === 0" :aria-label="`Previous ${side.key} page`" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count`" @click="setPage(side.key, side.page.page - 1)"><UiIcon name="chevron-left" /></button>
+              <button type="button" class="graph-page-button" :disabled="side.page.page + 1 === side.page.pageCount" :aria-label="`Next ${side.key} page`" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count`" @click="setPage(side.key, side.page.page + 1)"><UiIcon name="chevron-right" /></button>
             </nav>
           </div>
         </header>
@@ -166,9 +167,6 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
 .branch-button { display: flex; min-width: 0; align-items: center; gap: .5rem; min-height: 44px; padding: .125rem .25rem; border-radius: .375rem; text-align: left; font-size: .75rem; color: var(--branch-color); }
 .branch-button:hover { background: color-mix(in srgb, var(--branch-color) 10%, transparent); }
 .graph-node:not(.graph-group) .branch-button > span:first-child { flex-shrink: 0; padding: .0625rem .375rem; border-radius: .375rem; background: color-mix(in srgb, var(--branch-color) 15%, transparent); font-weight: 600; font-variant-numeric: tabular-nums; }
-.graph-page-button { display: inline-flex; align-items: center; justify-content: center; min-width: 1.75rem; height: 1.75rem; padding: 0 .375rem; border: 1px solid #57534e; border-radius: .5rem; font-size: 1rem; line-height: 1; color: #e7e5e4; }
-.graph-page-button:disabled { opacity: .4; cursor: not-allowed; }
-.graph-page-button:not(:disabled):hover { background: #242220; border-color: #f7931a; }
 .graph-transaction { order: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .5rem; padding: .5rem; border: 1px solid #f7931a; border-radius: 1rem; background: #261e18; min-width: 0; }
 .transaction-active { outline: 2px solid #f7931a; outline-offset: 2px; }
 /* The same HTML controls serve both layouts: no duplicated IDs, copy buttons or live regions.

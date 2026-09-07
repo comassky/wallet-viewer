@@ -97,6 +97,20 @@
     background: rgb(2 6 23 / 85%);
     backdrop-filter: blur(4px);
   }
+
+  .graph-page-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    padding: 0 .375rem;
+    border: 1px solid #57534e;
+    border-radius: .5rem;
+    color: #e7e5e4;
+  }
+  .graph-page-button:disabled { opacity: .4; cursor: not-allowed; }
+  .graph-page-button:not(:disabled):hover { background: #242220; border-color: #f7931a; }
 }
 
 /* Event animations — skipped entirely when the user prefers reduced motion. */
