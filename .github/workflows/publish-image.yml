@@ -11,16 +11,23 @@ on:
         description: 'Existing tag to build and release, e.g. 1.0.2'
         required: true
         type: string
+  # Called by the Release workflow so the image builds in the same run (no PAT needed).
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Tag to build and release, e.g. 1.0.2'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ inputs.tag || github.ref }}
+  group: publish-image-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
+  publish:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
