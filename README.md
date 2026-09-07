@@ -94,7 +94,7 @@ docker compose pull
 docker compose up -d --no-build
 ```
 
-Prefer a release tag or digest; private GHCR images require authentication. The [Docker workflow](.github/workflows/docker.yml) runs Java/frontend tests, TypeScript checks and a **linux/amd64** build on PRs, and publishes `latest` on `main`. Pushing an **`X.Y.Z` tag** triggers the [Release workflow](.github/workflows/release.yml), which builds the image (running the full test suite), publishes versioned tags to GHCR (`1.0.0` → `1.0.0`, `1.0`, `latest`) and creates a GitHub Release.
+Prefer a release tag or digest; private GHCR images require authentication. The [Docker workflow](.github/workflows/docker.yml) runs Java/frontend tests, TypeScript checks and a **linux/amd64** build on PRs, and publishes `latest` on `main`. Cut a release from **Actions → [Release](.github/workflows/release.yml)** (manual): it sets the version, tags **`X.Y.Z`**, bumps `main` to the next `-SNAPSHOT` and creates the GitHub Release. Pushing that tag runs the [Publish image workflow](.github/workflows/publish-image.yml), which builds the image (running the full test suite) and pushes `X.Y.Z` and `latest` to GHCR. Set a `RELEASE_TOKEN` secret (PAT) so the tag push triggers it automatically; otherwise run **Publish image** manually for the tag.
 
 ## Demo mode
 
