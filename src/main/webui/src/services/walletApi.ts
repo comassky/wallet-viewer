@@ -1,5 +1,5 @@
 import { requestJson, type RequestOptions } from './http.ts';
-import type { AddressCheck, Balance, ElectrumServer, FeeRates, PriceRates, ReceiveAddress, Transaction, TransactionDetails, Utxo, WalletSnapshot } from '../types/wallet';
+import type { AddressCheck, Balance, BalancePoint, ElectrumServer, FeeRates, PriceRates, ReceiveAddress, Transaction, TransactionDetails, Utxo, WalletSnapshot } from '../types/wallet';
 
 const BASE = '/api/wallet';
 
@@ -8,6 +8,7 @@ export const walletApi = {
   server: (options?: RequestOptions) => requestJson<ElectrumServer>(`${BASE}/server`, options),
   prices: (options?: RequestOptions) => requestJson<PriceRates>(`${BASE}/prices`, options),
   fees: (options?: RequestOptions) => requestJson<FeeRates>(`${BASE}/fees`, options),
+  balanceHistory: (options?: RequestOptions) => requestJson<BalancePoint[]>(`${BASE}/balance-history`, options),
   snapshot: (options?: RequestOptions) => requestJson<WalletSnapshot>(BASE, options),
   balance: (options?: RequestOptions) => requestJson<Balance>(`${BASE}/balance`, options),
   transactions: (options?: RequestOptions) => requestJson<Transaction[]>(`${BASE}/transactions`, options),

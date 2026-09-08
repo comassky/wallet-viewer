@@ -102,6 +102,13 @@ export interface FeeRates {
   timestamp: number;
 }
 
+export interface BalancePoint {
+  time: number;
+  balanceSats: number;
+  valueEur: number;
+  valueUsd: number;
+}
+
 export interface ElectrumServer {
   host: string;
   port: number;

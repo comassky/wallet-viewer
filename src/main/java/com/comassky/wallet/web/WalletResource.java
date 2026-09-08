@@ -7,12 +7,14 @@ import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.ElectrumServerDto;
 import com.comassky.wallet.model.FeeRatesDto;
 import com.comassky.wallet.model.PriceRatesDto;
+import com.comassky.wallet.model.BalancePointDto;
 import com.comassky.wallet.model.ReceiveAddressDto;
 import com.comassky.wallet.model.TransactionDetailsDto;
 import com.comassky.wallet.model.TransactionDto;
 import com.comassky.wallet.model.UtxoDto;
 import com.comassky.wallet.model.WalletSnapshot;
 import com.comassky.wallet.service.PriceService;
+import com.comassky.wallet.service.BalanceHistoryService;
 import com.comassky.wallet.service.FeeService;
 import com.comassky.wallet.service.TransactionDetailsService;
 import com.comassky.wallet.service.WalletLiveService;
@@ -44,6 +46,9 @@ public class WalletResource {
     PriceService prices;
 
     @Inject
+    BalanceHistoryService balanceHistory;
+
+    @Inject
     FeeService feeService;
 
     @Inject
@@ -68,6 +73,12 @@ public class WalletResource {
     @Path("/fees")
     public Uni<FeeRatesDto> fees() {
         return feeService.fees();
+    }
+
+    @GET
+    @Path("/balance-history")
+    public Uni<List<BalancePointDto>> balanceHistory() {
+        return balanceHistory.history();
     }
 
     @GET
