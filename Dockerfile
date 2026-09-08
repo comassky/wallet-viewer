@@ -8,6 +8,7 @@ COPY src ./src
 # Run the regression tests here too: no image is produced if verification fails.
 RUN --mount=type=cache,target=/root/.m2 \
     --mount=type=cache,target=/workspace/.quinoa \
+    --mount=type=cache,target=/root/.npm \
     mvn --batch-mode --no-transfer-progress verify -Dquarkus.quinoa.ci=true
 
 FROM gcr.io/distroless/java25-debian13:nonroot@sha256:fce4a1d66284e8866c46113d9bdc286c46fb8c3c3f0a098f877034349e88debe AS runtime
