@@ -69,6 +69,12 @@
             <artifactId>quarkus-vertx</artifactId>
         </dependency>
 
+        <!-- Vert.x Mutiny Web Client (reactive HTTP to mempool.space) -->
+        <dependency>
+            <groupId>io.smallrye.reactive</groupId>
+            <artifactId>smallrye-mutiny-vertx-web-client</artifactId>
+        </dependency>
+
         <!-- Quinoa: build & serve the Vue.js frontend from Quarkus -->
         <dependency>
             <groupId>io.quarkiverse.quinoa</groupId>

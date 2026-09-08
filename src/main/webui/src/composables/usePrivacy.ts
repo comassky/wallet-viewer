@@ -1,16 +1,13 @@
 import { ref, watch } from 'vue';
+import { readStorage, writeStorage } from '../utils/storage';
 
 const storageKey = 'wallet-viewer.privacy';
 
-function read(): boolean {
-  try { return localStorage.getItem(storageKey) === '1'; } catch { return false; }
-}
-
 // Shared singleton so every component reflects the same blur state.
-const hidden = ref(read());
+const hidden = ref(readStorage(storageKey) === '1');
 
 watch(hidden, value => {
-  try { localStorage.setItem(storageKey, value ? '1' : '0'); } catch { /* Storage is optional. */ }
+  writeStorage(storageKey, value ? '1' : '0');
   document.documentElement.classList.toggle('privacy-blur', value);
 }, { immediate: true });
 

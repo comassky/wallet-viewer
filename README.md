@@ -49,7 +49,8 @@ _Screenshots from [demo mode](#demo-mode)._
 
 - 💰 **Live wallet:** balances, confirmations, Activity / UTXO tabs, sorting and click-to-copy identifiers.
 - 🔍 **Transaction details:** a full-width dialog with **Graph** and **Inputs / Outputs** tabs, fees and compact input/output graphs with independent pagination (five items per side).
-- 💱 **Display units:** BTC, SAT, EUR and USD; switch beside the balance, with the preference saved locally.
+- � **Balance history:** an interactive balance-over-time chart (lightweight-charts) with an optional fiat-value curve, selectable periods and per-curve visibility saved locally, plus a live mempool fee gauge in the header.
+- �💱 **Display units:** BTC, SAT, EUR and USD; switch beside the balance, with the preference saved locally.
 - 📥 **Receive:** next address, derivation path and enlargeable QR code; BIP44, BIP49, BIP84 and BIP86 support.
 - 🎨 **Bitcoin dark theme:** responsive layout, keyboard controls and a live badge with Electrum server details.
 
@@ -61,16 +62,16 @@ flowchart LR
 	subgraph Backend[Quarkus backend]
 		S[Serialized wallet scan] --> C[Versioned Caffeine state]
 		C --> A[REST API / WebSocket]
-		P[Fiat price service] --> A
+		P[Fiat / fee / history services] --> A
 	end
 	S -->|Script-hash queries| E
-	M[mempool.space] -->|Public quotes| P
+	M[mempool.space] -->|Public quotes via Vert.x Web Client| P
 	A <-->|REST / live snapshots| V[Vue dashboard]
 ```
 
 - Addresses are derived locally; only script hashes reach Electrum, never the extended public key. Notifications trigger serialized scans, not periodic wallet polling.
 - WebSocket pushes versioned snapshots; REST reads the same cache. Refresh replays cached data, and transaction details load on demand via Axios.
-- State is in memory and rebuilt after restart. During outages, the UI keeps the last snapshot with a stale/offline warning. Fiat quotes come separately from [mempool.space](https://mempool.space/api/v1/prices), without wallet identifiers.
+- State is in memory and rebuilt after restart. During outages, the UI keeps the last snapshot with a stale/offline warning. Fiat quotes, fee estimates and price history come separately from [mempool.space](https://mempool.space/api/v1/prices), fetched by a reactive Vert.x Mutiny Web Client and shared/cached per TTL, without wallet identifiers.
 
 ## Stack
 
@@ -78,10 +79,10 @@ flowchart LR
 | --- | --- |
 | Java / Maven builder | Java **25**; Maven **3.9.16**, Eclipse Temurin 25 Docker build image |
 | Backend | Quarkus **3.39.2**, Quinoa **2.9.0**, bitcoinj **0.17.1**, ZXing **3.5.4** — [pom.xml](pom.xml) |
-| Reactive transport / cache | Vert.x, Mutiny and Caffeine — versions managed by the Quarkus BOM |
+| Reactive transport / cache | Vert.x (Mutiny Web Client for mempool.space calls), Mutiny and Caffeine — versions managed by the Quarkus BOM |
 | Node.js | **24.21.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
 | Frontend (locked) | Vue **3.5.42**, Vite **8.3.0**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite), @types/node **22.20.2** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
-| UI libraries | Material Design Icons (@mdi/js) **7.4.47**, Axios **1.20.0**, @formkit/auto-animate **0.10.0** |
+| UI libraries | Material Design Icons (@mdi/js) **7.4.47**, Axios **1.20.0**, @formkit/auto-animate **0.10.0**, lightweight-charts **5.2.1** |
 | Runtime image | Distroless Java **25**, Debian **13**, `nonroot` — [Dockerfile](Dockerfile) |
 
 Versions reflect declarations and the npm lockfile. For local development, use JDK 25 and `mvn quarkus:dev`; Quinoa manages Node automatically.

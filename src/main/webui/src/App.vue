@@ -14,6 +14,7 @@ import UiIcon from './components/UiIcon.vue';
 import ToastHost from './components/ToastHost.vue';
 import WalletSkeleton from './components/WalletSkeleton.vue';
 import { useIncomingNotifications } from './composables/useIncomingNotifications';
+import { useRovingTabs } from './composables/useRovingTabs';
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, fiatCurrency, rates, ratesLoading, ratesError, amount } = useCurrency();
@@ -25,22 +26,7 @@ const tabs = [
   { id: 'utxos', label: 'UTXO', icon: 'coins' },
   { id: 'chart', label: 'Chart', icon: 'chart' },
 ] as const;
-const activeTab = ref<(typeof tabs)[number]['id']>('activity');
-const tabButtons = ref<HTMLButtonElement[]>([]);
-
-function navigateTabs(event: KeyboardEvent, index: number): void {
-  let nextIndex: number;
-  switch (event.key) {
-    case 'ArrowRight': nextIndex = (index + 1) % tabs.length; break;
-    case 'ArrowLeft': nextIndex = (index + tabs.length - 1) % tabs.length; break;
-    case 'Home': nextIndex = 0; break;
-    case 'End': nextIndex = tabs.length - 1; break;
-    default: return;
-  }
-  event.preventDefault();
-  activeTab.value = tabs[nextIndex].id;
-  tabButtons.value[nextIndex]?.focus();
-}
+const { activeTab, tabButtons, onKeydown } = useRovingTabs(tabs.map(tab => tab.id), 'activity');
 
 function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): void {
   void qrDialog.value?.open(address, trigger);
@@ -77,7 +63,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
             class="-mb-px flex items-center gap-2 rounded-t-lg border-b-2 px-4 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:px-5"
             :class="activeTab === tab.id ? 'border-accent bg-accent/5 text-accent' : 'border-transparent text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200'"
             @click="activeTab = tab.id"
-            @keydown="navigateTabs($event, index)"
+            @keydown="onKeydown($event, index)"
           >
             <UiIcon :name="tab.icon" />{{ tab.label }}
             <span v-if="tab.id !== 'chart'" class="rounded-full px-2 py-0.5 text-xs tabular-nums" :class="activeTab === tab.id ? 'bg-accent/15 text-accent' : 'bg-slate-800 text-slate-400'">

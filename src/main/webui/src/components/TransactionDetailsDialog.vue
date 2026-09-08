@@ -5,6 +5,7 @@ import type { Transaction, TransactionDetails } from '../types/wallet';
 import { formatDate } from '../utils/format';
 import { paginateItems, paginationRange } from '../utils/transactionGraph';
 import { useModalDialog } from '../composables/useModalDialog';
+import { useRovingTabs } from '../composables/useRovingTabs';
 import TransactionGraph from './TransactionGraph.vue';
 import TransactionBadge from './TransactionBadge.vue';
 import ConfirmationStatus from './ConfirmationStatus.vue';
@@ -24,12 +25,11 @@ const emit = defineEmits<{ close: []; retry: [] }>();
 const idPrefix = 'transaction-dialog';
 const dialog = ref<HTMLDialogElement | null>(null);
 const { showModal, close, handleClose, closeOnBackdrop, isDisposed } = useModalDialog(dialog, () => emit('close'));
-const tabButtons = ref<HTMLButtonElement[]>([]);
 const tabs = [
   { id: 'graph', label: 'Graph', icon: 'graph' },
   { id: 'io', label: 'Inputs / Outputs', icon: 'list' },
 ] as const;
-const activeTab = ref<(typeof tabs)[number]['id']>('graph');
+const { activeTab, tabButtons, onKeydown } = useRovingTabs(tabs.map(tab => tab.id), 'graph');
 
 // Lists deliberately have independent pages from the graph and from one another.
 const inputPageIndex = ref(0);
@@ -58,20 +58,6 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
   inputPageIndex.value = paginationRange(props.details?.inputs.length ?? 0, inputPageIndex.value).page;
   outputPageIndex.value = paginationRange(props.details?.outputs.length ?? 0, outputPageIndex.value).page;
 }, { flush: 'sync' });
-
-function navigateTabs(event: KeyboardEvent, index: number): void {
-  let nextIndex: number;
-  switch (event.key) {
-    case 'ArrowRight': nextIndex = (index + 1) % tabs.length; break;
-    case 'ArrowLeft': nextIndex = (index + tabs.length - 1) % tabs.length; break;
-    case 'Home': nextIndex = 0; break;
-    case 'End': nextIndex = tabs.length - 1; break;
-    default: return;
-  }
-  event.preventDefault();
-  activeTab.value = tabs[nextIndex].id;
-  tabButtons.value[nextIndex]?.focus();
-}
 </script>
 
 <template>
@@ -128,7 +114,7 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
             class="-mb-px inline-flex items-center gap-2 rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             :class="activeTab === tab.id ? 'border-accent bg-accent/5 text-accent' : 'border-transparent text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200'"
             @click="activeTab = tab.id"
-            @keydown="navigateTabs($event, index)"
+            @keydown="onKeydown($event, index)"
           ><UiIcon :name="tab.icon" />{{ tab.label }}</button>
         </div>
 

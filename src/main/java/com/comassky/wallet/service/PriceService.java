@@ -4,15 +4,11 @@ import com.comassky.wallet.model.PriceRatesDto;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -22,27 +18,15 @@ public class PriceService {
     @ConfigProperty(name = "wallet.prices-url", defaultValue = "https://mempool.space/api/v1/prices")
     URI pricesUrl;
 
-    private HttpClient client;
+    @Inject
+    MempoolFetch fetch;
+
     private Uni<PriceRatesDto> cached;
 
     @PostConstruct
     void init() {
-        client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
-        HttpRequest request = HttpRequest.newBuilder(pricesUrl)
-                .timeout(Duration.ofSeconds(10))
-                .header("Accept", "application/json")
-                .GET().build();
-        // Share in-flight calls and cache outcomes briefly, including provider failures,
-        // to avoid hammering a rate-limited or unavailable service.
-        cached = Uni.createFrom().completionStage(() -> client.sendAsync(request, HttpResponse.BodyHandlers.ofString()))
-                .map(response -> {
-                    if (response.statusCode() != 200) {
-                        throw new IllegalStateException("Price provider unavailable");
-                    }
-                    return parse(response.body());
-                })
-                .onFailure().transform(failure -> new ServiceUnavailableException("BTC price temporarily unavailable"))
-                .memoize().atLeast(Duration.ofSeconds(60));
+        cached = fetch.cached(pricesUrl.toString(), Duration.ofSeconds(10), Duration.ofSeconds(60),
+                PriceService::parse, "BTC price temporarily unavailable");
     }
 
     public Uni<PriceRatesDto> rates() {
@@ -60,10 +44,5 @@ public class PriceService {
             throw new IllegalArgumentException("Invalid or outdated BTC quote");
         }
         return new PriceRatesDto(eur, usd, timestamp);
-    }
-
-    @PreDestroy
-    void close() {
-        if (client != null) client.close();
     }
 }

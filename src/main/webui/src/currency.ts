@@ -1,4 +1,5 @@
 import type { PriceRates } from './types/wallet';
+import { readStorage, writeStorage } from './utils/storage';
 
 export const currencies = ['EUR', 'USD', 'SATS', 'BTC'] as const;
 export type Currency = typeof currencies[number];
@@ -10,8 +11,7 @@ export type FiatCurrency = 'EUR' | 'USD';
 /** Migrate the previous single-unit preference without losing a chosen fiat currency. */
 export function readDisplayPreferences(): { currency: BitcoinUnit; fiatCurrency: FiatCurrency } {
   const previous = readCurrency();
-  let saved: string | null = null;
-  try { saved = localStorage.getItem(fiatCurrencyStorageKey); } catch { /* Storage is optional. */ }
+  const saved = readStorage(fiatCurrencyStorageKey);
   return {
     currency: previous === 'SATS' ? 'SATS' : 'BTC',
     fiatCurrency: saved === 'EUR' || saved === 'USD' ? saved : previous === 'USD' ? 'USD' : 'EUR',
@@ -19,7 +19,7 @@ export function readDisplayPreferences(): { currency: BitcoinUnit; fiatCurrency:
 }
 
 export function saveFiatCurrency(currency: FiatCurrency): void {
-  try { localStorage.setItem(fiatCurrencyStorageKey, currency); } catch { /* Storage is optional. */ }
+  writeStorage(fiatCurrencyStorageKey, currency);
 }
 
 export function currencyLabel(currency: Currency): string {
@@ -27,19 +27,13 @@ export function currencyLabel(currency: Currency): string {
 }
 
 export function readCurrency(): Currency {
-  try {
-    const saved = localStorage.getItem(currencyStorageKey);
-    if (saved === 'SAT') return 'SATS';
-    return isCurrency(saved) ? saved : 'BTC';
-  } catch {
-    return 'BTC';
-  }
+  const saved = readStorage(currencyStorageKey);
+  if (saved === 'SAT') return 'SATS';
+  return isCurrency(saved) ? saved : 'BTC';
 }
 
 export function saveCurrency(currency: Currency): void {
-  try {
-    localStorage.setItem(currencyStorageKey, currency);
-  } catch { /* Display preferences still work when storage is blocked. */ }
+  writeStorage(currencyStorageKey, currency);
 }
 
 export function isCurrency(value: unknown): value is Currency {
