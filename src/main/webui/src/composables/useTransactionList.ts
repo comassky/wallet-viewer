@@ -21,7 +21,9 @@ export function useTransactionList(transactions: Ref<Transaction[]>, columns: So
   const filter = ref<TransactionFilter>('all');
   const limit = ref(transactionPageSize);
   const normalizedQuery = computed(() => query.value.trim().toLowerCase());
-  const searched = computed(() => transactions.value.filter(tx => tx.txid.toLowerCase().includes(normalizedQuery.value)));
+  const searched = computed(() => transactions.value.filter(tx =>
+    tx.txid.toLowerCase().includes(normalizedQuery.value)
+    || (tx.addresses ?? []).some(address => address.toLowerCase().includes(normalizedQuery.value))));
   const counts = computed(() => Object.fromEntries(transactionFilters.map(item => [item.id, searched.value.filter(tx => matches(tx, item.id)).length])) as Record<TransactionFilter, number>);
   const filtered = computed(() => searched.value.filter(tx => matches(tx, filter.value)));
   const sort = useTableSort(filtered, columns);

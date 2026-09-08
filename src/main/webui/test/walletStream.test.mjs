@@ -44,7 +44,7 @@ function snapshot(total = 42) {
   return {
     balance: { confirmed: total, unconfirmed: 0, total },
     utxos: [{ txid: 'a'.repeat(64), vout: 0, value: total, height: 1, confirmations: 2, address: 'bc1ptest' }],
-    transactions: [{ txid: 'a'.repeat(64), amount: total, received: total, sent: 0, height: 1, confirmations: 2, timestamp: null, type: 'received' }],
+    transactions: [{ txid: 'a'.repeat(64), amount: total, received: total, sent: 0, height: 1, confirmations: 2, timestamp: null, type: 'received', addresses: ['bc1ptest'] }],
     receiveAddress: { index: 0, address: 'bc1ptest', path: "m/86'/0'/0'/0/0" },
   };
 }
