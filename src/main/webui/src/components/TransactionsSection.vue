@@ -48,7 +48,7 @@ const { query, filter, counts, filtered, visible, hasMore, showMore, resetFilter
   <section>
     <div v-if="transactions.length" class="mb-4 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
       <div role="group" aria-label="Filter transactions" class="flex flex-wrap gap-2">
-        <button v-for="item in transactionFilters" :key="item.id" type="button" :aria-pressed="filter === item.id" class="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition" :class="filter === item.id ? 'border-accent/60 bg-accent/10 text-accent' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500'" @click="filter = item.id">
+        <button v-for="item in transactionFilters" :key="item.id" type="button" :aria-pressed="filter === item.id" class="inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-sm transition" :class="filter === item.id ? 'border-accent/60 bg-accent/10 text-accent' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500'" @click="filter = item.id">
           {{ item.label }}<span class="rounded-full bg-slate-800 px-2 py-0.5 text-xs tabular-nums text-slate-300">{{ counts[item.id] }}</span>
         </button>
       </div>
@@ -56,7 +56,7 @@ const { query, filter, counts, filtered, visible, hasMore, showMore, resetFilter
         <label for="transaction-search" class="mb-1.5 block text-xs font-medium text-slate-300">Search transaction ID</label>
         <div class="flex items-center gap-2">
           <input id="transaction-search" v-model="query" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Full or partial transaction ID" class="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder:text-slate-500" />
-          <button v-if="query || filter !== 'all'" type="button" class="button-secondary rounded-lg px-3 text-xs" @click="resetFilters">Reset</button>
+          <button v-if="query || filter !== 'all'" type="button" class="button-secondary inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm font-medium" @click="resetFilters"><UiIcon name="close" />Reset</button>
         </div>
       </div>
     </div>

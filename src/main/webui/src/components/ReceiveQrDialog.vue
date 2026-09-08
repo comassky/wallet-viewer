@@ -3,7 +3,6 @@ import { nextTick, ref } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
 import { useModalDialog } from '../composables/useModalDialog';
-import CopyButton from './CopyButton.vue';
 import UiIcon from './UiIcon.vue';
 
 const dialog = ref<HTMLDialogElement | null>(null);
@@ -36,32 +35,24 @@ defineExpose({ open });
     ref="dialog"
     lang="en-US"
     aria-labelledby="receive-qr-title"
-    aria-describedby="receive-qr-description"
     class="receive-qr-dialog rounded-2xl border border-slate-700 bg-slate-900 p-4 text-slate-100 shadow-2xl sm:p-6"
     @close="handleClose"
     @click="closeOnBackdrop"
   >
-    <div class="mb-3 flex items-start justify-between gap-3">
-      <h2 id="receive-qr-title" class="pt-2 text-lg font-semibold">Receive address QR code</h2>
+    <div class="mb-3 flex items-center justify-between gap-3">
+      <h2 id="receive-qr-title" class="text-lg font-semibold">Receive address QR code</h2>
       <button
         type="button"
         autofocus
         @click="close"
-        class="button-secondary shrink-0 rounded-lg px-3 text-sm"
-      >Close</button>
+        aria-label="Close"
+        class="button-secondary inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+      >
+        <UiIcon name="close" class="h-4 w-4" />
+      </button>
     </div>
-    <p id="receive-qr-description" class="mb-4 text-sm text-slate-400">Scan this QR code to receive Bitcoin at the address below.</p>
     <template v-if="receive">
       <img :src="receive.url" alt="Receive address QR code" class="mx-auto aspect-square w-full max-w-96 rounded-xl bg-white p-3" />
-      <p class="mt-4 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-3 font-mono text-sm">{{ receive.address }}</p>
-      <CopyButton :key="receive.address" :value="receive.address" class="mt-3 text-center" />
-      <details :key="receive.address" class="technical-details mt-3 text-xs">
-        <summary class="flex cursor-pointer select-none items-center gap-1.5 py-1.5 font-medium text-slate-400 transition hover:text-slate-200"><UiIcon name="chevron-right" class="chevron shrink-0 transition-transform" />Technical details</summary>
-        <div class="mt-2 rounded-lg border border-slate-700/50 bg-slate-950/40 p-3">
-          <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Derivation path</p>
-          <p class="mt-0.5 break-all font-mono text-slate-300">{{ receive.path }}</p>
-        </div>
-      </details>
     </template>
   </dialog>
 </template>
