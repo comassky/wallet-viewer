@@ -36,6 +36,40 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # actions/cache stores each build cache dir; declared before the cache-dance
+      # step so their save (post) runs after the mounts are extracted back to disk.
+      - name: Cache Maven repository
+        uses: actions/cache@v4
+        with:
+          path: .m2-cache
+          key: m2-${{ hashFiles('pom.xml') }}
+          restore-keys: m2-
+
+      - name: Cache Quinoa Node install
+        uses: actions/cache@v4
+        with:
+          path: .quinoa-cache
+          key: quinoa-${{ hashFiles('src/main/resources/application.properties') }}
+          restore-keys: quinoa-
+
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: .npm-cache
+          key: npm-${{ hashFiles('src/main/webui/package-lock.json') }}
+          restore-keys: npm-
+
+      # Persist the BuildKit cache mounts (not covered by type=gha) across runs.
+      - name: Inject build caches into BuildKit
+        uses: reproducible-containers/buildkit-cache-dance@v3
+        with:
+          cache-map: |
+            {
+              ".m2-cache": "/root/.m2",
+              ".quinoa-cache": "/workspace/.quinoa",
+              ".npm-cache": "/root/.npm"
+            }
+
       - name: Image metadata
         id: meta
         uses: docker/metadata-action@v5

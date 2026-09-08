@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, toRef } from 'vue';
+import { computed, ref, toRef } from 'vue';
 import { currencyLabel, formatAmount, type Currency, type FiatCurrency } from '../currency';
 import type { PriceRates, Transaction } from '../types/wallet';
 import { shortId, formatDate, transactionLabels } from '../utils/format';
@@ -42,6 +42,11 @@ const columns: SortColumn<Transaction>[] = [
   { key: 'confirmations', label: 'Confirmations', value: tx => tx.confirmations, numeric: true },
 ];
 const { query, filter, counts, filtered, visible, hasMore, showMore, resetFilters, sortKey, descending, toggleSort, ariaSort } = useTransactionList(toRef(props, 'transactions'), columns);
+const searchInput = ref<HTMLInputElement | null>(null);
+function clearSearch(): void {
+  query.value = '';
+  searchInput.value?.focus();
+}
 </script>
 
 <template>
@@ -53,9 +58,9 @@ const { query, filter, counts, filtered, visible, hasMore, showMore, resetFilter
         </button>
       </div>
       <div class="w-full xl:max-w-sm">
-        <div class="flex items-center gap-2">
-          <input id="transaction-search" v-model="query" type="search" aria-label="Search by transaction ID or address" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Transaction ID or address" class="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder:text-slate-500" />
-          <button v-if="query || filter !== 'all'" type="button" class="button-secondary inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm font-medium" @click="resetFilters"><UiIcon name="close" />Reset</button>
+        <div class="relative">
+          <input ref="searchInput" id="transaction-search" v-model="query" type="search" aria-label="Search by transaction ID or address" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Transaction ID or address" class="search-input min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 pr-10 text-sm placeholder:text-slate-500" />
+          <button v-if="query" type="button" aria-label="Clear search" class="absolute inset-y-0 right-0 flex items-center rounded-r-xl px-3 text-slate-400 transition hover:text-accent" @click="clearSearch"><UiIcon name="close" /></button>
         </div>
       </div>
     </div>
