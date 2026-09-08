@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { Activity, ArrowRight, Check, ChevronLeft, ChevronRight, CircleCheck, Coins, Copy, Inbox, List, QrCode, SearchCheck, Server, ShieldCheck, TriangleAlert, Waypoints, X } from '@lucide/vue';
+import {
+  mdiShieldCheck, mdiServer, mdiPulse, mdiCashMultiple, mdiContentCopy, mdiCheck, mdiClose,
+  mdiChevronLeft, mdiChevronRight, mdiQrcode, mdiMagnify, mdiCheckCircleOutline, mdiAlertOutline,
+  mdiGraphOutline, mdiFormatListBulleted, mdiArrowRight, mdiInboxOutline, mdiGithub,
+} from '@mdi/js';
 
-defineProps<{ name: 'shield' | 'server' | 'activity' | 'coins' | 'copy' | 'check' | 'close' | 'chevron-left' | 'chevron-right' | 'qr-code' | 'search' | 'circle-check' | 'alert' | 'graph' | 'list' | 'arrow-right' | 'inbox' }>();
-// Explicit imports keep only the icons used by the interface in the production bundle.
-const icons = {
-  shield: ShieldCheck, server: Server,
-  activity: Activity, coins: Coins, copy: Copy, check: Check, close: X,
-  'chevron-left': ChevronLeft, 'chevron-right': ChevronRight,
-  'qr-code': QrCode, search: SearchCheck, 'circle-check': CircleCheck, alert: TriangleAlert,
-  graph: Waypoints, list: List, 'arrow-right': ArrowRight, inbox: Inbox,
+type IconName = 'shield' | 'server' | 'activity' | 'coins' | 'copy' | 'check' | 'close' | 'chevron-left' | 'chevron-right' | 'qr-code' | 'search' | 'circle-check' | 'alert' | 'graph' | 'list' | 'arrow-right' | 'inbox' | 'github';
+defineProps<{ name: IconName }>();
+// Single icon source: Material Design Icons paths, tree-shaken via named imports.
+const paths: Record<IconName, string> = {
+  shield: mdiShieldCheck, server: mdiServer,
+  activity: mdiPulse, coins: mdiCashMultiple, copy: mdiContentCopy, check: mdiCheck, close: mdiClose,
+  'chevron-left': mdiChevronLeft, 'chevron-right': mdiChevronRight,
+  'qr-code': mdiQrcode, search: mdiMagnify, 'circle-check': mdiCheckCircleOutline, alert: mdiAlertOutline,
+  graph: mdiGraphOutline, list: mdiFormatListBulleted, 'arrow-right': mdiArrowRight, inbox: mdiInboxOutline,
+  github: mdiGithub,
 };
 </script>
 
 <template>
-  <component :is="icons[name]" :stroke-width="1.7" aria-hidden="true" focusable="false" class="h-4 w-4 shrink-0" />
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor" class="h-4 w-4 shrink-0"><path :d="paths[name]" /></svg>
 </template>
