@@ -3,10 +3,10 @@ import {
   mdiShieldCheck, mdiServer, mdiPulse, mdiCashMultiple, mdiContentCopy, mdiCheck, mdiClose,
   mdiChevronLeft, mdiChevronRight, mdiQrcode, mdiMagnify, mdiCheckCircleOutline, mdiAlertOutline,
   mdiGraphOutline, mdiFormatListBulleted, mdiArrowRight, mdiInboxOutline, mdiGithub,
-  mdiChartLine, mdiEyeOutline, mdiEyeOffOutline, mdiBellOutline,
+  mdiChartLine, mdiEyeOutline, mdiEyeOffOutline, mdiBellOutline, mdiSpeedometer,
 } from '@mdi/js';
 
-type IconName = 'shield' | 'server' | 'activity' | 'coins' | 'copy' | 'check' | 'close' | 'chevron-left' | 'chevron-right' | 'qr-code' | 'search' | 'circle-check' | 'alert' | 'graph' | 'list' | 'arrow-right' | 'inbox' | 'github' | 'chart' | 'eye' | 'eye-off' | 'bell';
+type IconName = 'shield' | 'server' | 'activity' | 'coins' | 'copy' | 'check' | 'close' | 'chevron-left' | 'chevron-right' | 'qr-code' | 'search' | 'circle-check' | 'alert' | 'graph' | 'list' | 'arrow-right' | 'inbox' | 'github' | 'chart' | 'eye' | 'eye-off' | 'bell' | 'gauge';
 defineProps<{ name: IconName }>();
 // Single icon source: Material Design Icons paths, tree-shaken via named imports.
 const paths: Record<IconName, string> = {
@@ -16,6 +16,7 @@ const paths: Record<IconName, string> = {
   'qr-code': mdiQrcode, search: mdiMagnify, 'circle-check': mdiCheckCircleOutline, alert: mdiAlertOutline,
   graph: mdiGraphOutline, list: mdiFormatListBulleted, 'arrow-right': mdiArrowRight, inbox: mdiInboxOutline,
   github: mdiGithub, chart: mdiChartLine, eye: mdiEyeOutline, 'eye-off': mdiEyeOffOutline, bell: mdiBellOutline,
+  gauge: mdiSpeedometer,
 };
 </script>
 

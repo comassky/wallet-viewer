@@ -9,7 +9,6 @@ import ReceiveAddressCard from './components/ReceiveAddressCard.vue';
 import TransactionsSection from './components/TransactionsSection.vue';
 import UtxosSection from './components/UtxosSection.vue';
 import BalanceChart from './components/BalanceChart.vue';
-import FeeGauge from './components/FeeGauge.vue';
 import ReceiveQrDialog from './components/ReceiveQrDialog.vue';
 import UiIcon from './components/UiIcon.vue';
 import ToastHost from './components/ToastHost.vue';
@@ -18,7 +17,7 @@ import { useIncomingNotifications } from './composables/useIncomingNotifications
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, fiatCurrency, rates, ratesLoading, ratesError, amount } = useCurrency();
-const { enabled: notifyEnabled, supported: notifySupported, toggle: toggleNotify } = useIncomingNotifications(data);
+useIncomingNotifications(data);
 const qrDialog = ref<InstanceType<typeof ReceiveQrDialog> | null>(null);
 const appVersion = __APP_VERSION__;
 const tabs = [
@@ -51,7 +50,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
 
 <template>
   <main lang="en-US" class="wallet-shell w-full px-4 pb-16 pt-6 sm:px-6 lg:px-10 lg:pt-9">
-    <DashboardHeader :connection="connection" :status="status" :message="message" :notify-supported="notifySupported" :notify-enabled="notifyEnabled" @retry="refresh" @toggle-notify="toggleNotify" />
+    <DashboardHeader :connection="connection" :status="status" :message="message" @retry="refresh" />
     <Transition name="banner">
       <p v-if="data && (connection !== 'connected' || status !== 'live')" role="status" class="mb-5 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-xs text-amber-300">
         {{ message || 'Synchronizing wallet data.' }} Showing the last received snapshot; it may be out of date.
@@ -63,7 +62,6 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
         <BalanceCard v-model:currency="currency" v-model:fiat-currency="fiatCurrency" :balance="data.balance" :rates="rates" :rates-loading="ratesLoading" :rates-error="ratesError" :amount="amount" />
         <ReceiveAddressCard :receive="data.receiveAddress" @enlarge="enlargeReceive" />
       </div>
-      <FeeGauge class="mt-5" />
       <div class="mt-9">
         <div role="tablist" aria-label="Wallet details" class="mb-5 flex gap-2 border-b border-slate-800">
           <button
