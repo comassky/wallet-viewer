@@ -50,11 +50,11 @@ function priceTitle(unit: FiatCurrency): string | undefined {
       </div>
     </div>
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <span class="break-all text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl" :class="{ 'value-pop': pop }" @animationend="pop = false">{{ amount(balance.total) }}</span>
+      <span class="sensitive break-all text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl" :class="{ 'value-pop': pop }" @animationend="pop = false">{{ amount(balance.total) }}</span>
       <span class="text-lg font-medium text-accent">{{ currencyLabel(currency) }}</span>
     </div>
     <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-      <p class="text-lg tabular-nums text-slate-300"><span v-if="rates">≈ </span>{{ formatAmount(balance.total, fiatCurrency, rates) }} <span class="text-sm">{{ fiatCurrency }}</span></p>
+      <p class="text-lg tabular-nums text-slate-300"><span v-if="rates">≈ </span><span class="sensitive">{{ formatAmount(balance.total, fiatCurrency, rates) }}</span> <span class="text-sm">{{ fiatCurrency }}</span></p>
       <div role="group" aria-label="Fiat estimate currency" class="inline-flex rounded-lg border border-slate-700/60 bg-slate-950/40 p-0.5">
         <AppTooltip v-for="unit in fiatCurrencies" :key="unit" :text="priceTitle(unit)">
           <button type="button" :aria-pressed="fiatCurrency === unit" class="rounded-md px-2.5 text-xs font-semibold transition" :class="fiatCurrency === unit ? 'bg-slate-700 text-slate-100' : 'text-slate-400 hover:text-slate-200'" @click="$emit('update:fiatCurrency', unit)">{{ unit }}</button>
@@ -70,11 +70,11 @@ function priceTitle(unit: FiatCurrency): string | undefined {
     <dl class="mt-6 grid gap-4 border-t border-slate-700/40 pt-5 sm:grid-cols-2">
       <div>
         <dt class="mb-1.5 flex items-center gap-2 text-xs text-slate-400"><span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />Confirmed</dt>
-        <dd class="break-all text-sm font-medium tabular-nums">{{ amount(balance.confirmed) }} <span class="text-slate-500">{{ currencyLabel(currency) }}</span></dd>
+        <dd class="sensitive break-all text-sm font-medium tabular-nums">{{ amount(balance.confirmed) }} <span class="text-slate-500">{{ currencyLabel(currency) }}</span></dd>
       </div>
       <div>
         <dt class="mb-1.5 flex items-center gap-2 text-xs text-slate-400"><span class="h-1.5 w-1.5 rounded-full bg-amber-400" />Pending</dt>
-        <dd class="break-all text-sm font-medium tabular-nums">{{ amount(balance.unconfirmed) }} <span class="text-slate-500">{{ currencyLabel(currency) }}</span></dd>
+        <dd class="sensitive break-all text-sm font-medium tabular-nums">{{ amount(balance.unconfirmed) }} <span class="text-slate-500">{{ currencyLabel(currency) }}</span></dd>
       </div>
     </dl>
   </section>

@@ -36,7 +36,7 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
     </div>
     <ul v-if="utxos.length" class="grid min-w-0 gap-3 lg:hidden" aria-label="UTXOs">
       <li v-for="u in sorted" :key="`${u.txid}:${u.vout}`" class="wallet-panel min-w-0 p-4">
-        <p class="mb-3 text-sm font-semibold tabular-nums">{{ amount(u.value) }} {{ currencyLabel(currency) }}</p>
+        <p class="sensitive mb-3 text-sm font-semibold tabular-nums">{{ amount(u.value) }} {{ currencyLabel(currency) }}</p>
         <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
           <dt class="text-slate-400">Address</dt>
           <dd class="text-right"><CopyValue :value="u.address" :display="shortId(u.address)" label="address" /></dd>
@@ -63,7 +63,7 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
           <tr v-for="u in sorted" :key="`${u.txid}:${u.vout}`" class="border-t border-slate-800 hover:bg-slate-800/50">
             <td class="px-3 py-2.5"><CopyValue :value="u.address" :display="shortId(u.address)" label="address" /></td>
             <td class="px-3 py-2.5"><CopyValue :value="u.txid" :display="shortId(u.txid)" label="transaction ID" /><span class="font-mono text-slate-300">:{{ u.vout }}</span></td>
-            <td class="px-3 py-2.5 text-right tabular-nums">{{ amount(u.value) }}</td>
+            <td class="sensitive px-3 py-2.5 text-right tabular-nums">{{ amount(u.value) }}</td>
             <td class="px-3 py-2.5 text-right"><ConfirmationStatus :confirmations="u.confirmations" compact /></td>
           </tr>
         </tbody>

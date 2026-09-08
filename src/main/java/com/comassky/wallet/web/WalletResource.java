@@ -5,6 +5,7 @@ import com.comassky.wallet.model.AddressCheckDto;
 import com.comassky.wallet.model.AddressInfo;
 import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.ElectrumServerDto;
+import com.comassky.wallet.model.FeeRatesDto;
 import com.comassky.wallet.model.PriceRatesDto;
 import com.comassky.wallet.model.ReceiveAddressDto;
 import com.comassky.wallet.model.TransactionDetailsDto;
@@ -12,6 +13,7 @@ import com.comassky.wallet.model.TransactionDto;
 import com.comassky.wallet.model.UtxoDto;
 import com.comassky.wallet.model.WalletSnapshot;
 import com.comassky.wallet.service.PriceService;
+import com.comassky.wallet.service.FeeService;
 import com.comassky.wallet.service.TransactionDetailsService;
 import com.comassky.wallet.service.WalletLiveService;
 import com.comassky.wallet.service.WalletService;
@@ -42,6 +44,9 @@ public class WalletResource {
     PriceService prices;
 
     @Inject
+    FeeService feeService;
+
+    @Inject
     TransactionDetailsService transactionDetails;
 
     @Inject
@@ -57,6 +62,12 @@ public class WalletResource {
     @Path("/prices")
     public Uni<PriceRatesDto> prices() {
         return prices.rates();
+    }
+
+    @GET
+    @Path("/fees")
+    public Uni<FeeRatesDto> fees() {
+        return feeService.fees();
     }
 
     @GET

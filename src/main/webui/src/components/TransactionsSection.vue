@@ -86,7 +86,7 @@ function clearSearch(): void {
         >
         <span class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <TransactionBadge :type="tx.type" />
-          <span class="text-right text-sm font-semibold tabular-nums">
+          <span class="sensitive text-right text-sm font-semibold tabular-nums">
             <span :class="tx.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ amount(tx.amount, true) }} {{ currencyLabel(currency) }}</span>
             <span class="mt-1 block text-xs font-normal text-slate-400">{{ rates ? '≈ ' : '' }}{{ formatAmount(tx.amount, fiatCurrency, rates, true) }} {{ fiatCurrency }}</span>
           </span>
@@ -126,7 +126,7 @@ function clearSearch(): void {
               <CopyValue :value="tx.txid" :display="shortId(tx.txid)" label="transaction ID" />
             </td>
             <td class="px-3 py-2.5 text-slate-300">{{ formatDate(tx.timestamp) }}</td>
-            <td class="px-3 py-2.5 text-right tabular-nums">
+            <td class="sensitive px-3 py-2.5 text-right tabular-nums">
               <span :class="tx.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ amount(tx.amount, true) }}</span>
               <span class="mt-1 block text-xs text-slate-400">{{ rates ? '≈ ' : '' }}{{ formatAmount(tx.amount, fiatCurrency, rates, true) }} {{ fiatCurrency }}</span>
             </td>

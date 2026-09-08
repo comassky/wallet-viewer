@@ -93,6 +93,15 @@ export interface PriceRates {
   timestamp: number;
 }
 
+export interface FeeRates {
+  fastest: number;
+  halfHour: number;
+  hour: number;
+  economy: number;
+  minimum: number;
+  timestamp: number;
+}
+
 export interface ElectrumServer {
   host: string;
   port: number;

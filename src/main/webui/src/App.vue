@@ -8,18 +8,23 @@ import BalanceCard from './components/BalanceCard.vue';
 import ReceiveAddressCard from './components/ReceiveAddressCard.vue';
 import TransactionsSection from './components/TransactionsSection.vue';
 import UtxosSection from './components/UtxosSection.vue';
+import BalanceChart from './components/BalanceChart.vue';
+import FeeGauge from './components/FeeGauge.vue';
 import ReceiveQrDialog from './components/ReceiveQrDialog.vue';
 import UiIcon from './components/UiIcon.vue';
 import ToastHost from './components/ToastHost.vue';
 import WalletSkeleton from './components/WalletSkeleton.vue';
+import { useIncomingNotifications } from './composables/useIncomingNotifications';
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, fiatCurrency, rates, ratesLoading, ratesError, amount } = useCurrency();
+const { enabled: notifyEnabled, supported: notifySupported, toggle: toggleNotify } = useIncomingNotifications(data);
 const qrDialog = ref<InstanceType<typeof ReceiveQrDialog> | null>(null);
 const appVersion = __APP_VERSION__;
 const tabs = [
-  { id: 'activity', label: 'Activity' },
-  { id: 'utxos', label: 'UTXO' },
+  { id: 'activity', label: 'Activity', icon: 'activity' },
+  { id: 'utxos', label: 'UTXO', icon: 'coins' },
+  { id: 'chart', label: 'Chart', icon: 'chart' },
 ] as const;
 const activeTab = ref<(typeof tabs)[number]['id']>('activity');
 const tabButtons = ref<HTMLButtonElement[]>([]);
@@ -46,7 +51,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
 
 <template>
   <main lang="en-US" class="wallet-shell w-full px-4 pb-16 pt-6 sm:px-6 lg:px-10 lg:pt-9">
-    <DashboardHeader :connection="connection" :status="status" :message="message" @retry="refresh" />
+    <DashboardHeader :connection="connection" :status="status" :message="message" :notify-supported="notifySupported" :notify-enabled="notifyEnabled" @retry="refresh" @toggle-notify="toggleNotify" />
     <Transition name="banner">
       <p v-if="data && (connection !== 'connected' || status !== 'live')" role="status" class="mb-5 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-xs text-amber-300">
         {{ message || 'Synchronizing wallet data.' }} Showing the last received snapshot; it may be out of date.
@@ -58,6 +63,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
         <BalanceCard v-model:currency="currency" v-model:fiat-currency="fiatCurrency" :balance="data.balance" :rates="rates" :rates-loading="ratesLoading" :rates-error="ratesError" :amount="amount" />
         <ReceiveAddressCard :receive="data.receiveAddress" @enlarge="enlargeReceive" />
       </div>
+      <FeeGauge class="mt-5" />
       <div class="mt-9">
         <div role="tablist" aria-label="Wallet details" class="mb-5 flex gap-2 border-b border-slate-800">
           <button
@@ -75,8 +81,8 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
             @click="activeTab = tab.id"
             @keydown="navigateTabs($event, index)"
           >
-            <UiIcon :name="tab.id === 'activity' ? 'activity' : 'coins'" />{{ tab.label }}
-            <span class="rounded-full px-2 py-0.5 text-xs tabular-nums" :class="activeTab === tab.id ? 'bg-accent/15 text-accent' : 'bg-slate-800 text-slate-400'">
+            <UiIcon :name="tab.icon" />{{ tab.label }}
+            <span v-if="tab.id !== 'chart'" class="rounded-full px-2 py-0.5 text-xs tabular-nums" :class="activeTab === tab.id ? 'bg-accent/15 text-accent' : 'bg-slate-800 text-slate-400'">
               {{ tab.id === 'activity' ? data.transactions.length : data.utxos.length }}
             </span>
           </button>
@@ -86,6 +92,9 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
         </div>
         <div id="wallet-panel-utxos" v-show="activeTab === 'utxos'" role="tabpanel" aria-labelledby="wallet-tab-utxos" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
           <UtxosSection :utxos="data.utxos" :currency="currency" :amount="amount" />
+        </div>
+        <div id="wallet-panel-chart" v-show="activeTab === 'chart'" role="tabpanel" aria-labelledby="wallet-tab-chart" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+          <BalanceChart :transactions="data.transactions" :currency="currency" :amount="amount" />
         </div>
       </div>
     </template>
