@@ -39,7 +39,9 @@ function leave() {
   if (!root.value?.contains(document.activeElement)) opened.value = false;
 }
 function blur(event: FocusEvent) {
-  if (!(event.relatedTarget instanceof Node) || !root.value?.contains(event.relatedTarget)) opened.value = false;
+  // Focus lost to nothing (e.g. Refresh disabling itself while loading) must keep the panel open.
+  if (!(event.relatedTarget instanceof Node)) return;
+  if (!root.value?.contains(event.relatedTarget)) opened.value = false;
 }
 function outside(event: PointerEvent) {
   if (event.target instanceof Node && !root.value?.contains(event.target)) opened.value = false;
