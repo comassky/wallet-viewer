@@ -11,9 +11,10 @@ import UtxosSection from './components/UtxosSection.vue';
 import ReceiveQrDialog from './components/ReceiveQrDialog.vue';
 import UiIcon from './components/UiIcon.vue';
 import ToastHost from './components/ToastHost.vue';
+import WalletSkeleton from './components/WalletSkeleton.vue';
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
-const { currency, rates, fiat, amount } = useCurrency();
+const { currency, fiatCurrency, rates, ratesLoading, ratesError, amount } = useCurrency();
 const qrDialog = ref<InstanceType<typeof ReceiveQrDialog> | null>(null);
 const tabs = [
   { id: 'activity', label: 'Activity' },
@@ -53,7 +54,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
 
     <template v-if="data">
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <BalanceCard v-model:currency="currency" :balance="data.balance" :estimated="fiat && !!rates" :rates="rates" :amount="amount" />
+        <BalanceCard v-model:currency="currency" v-model:fiat-currency="fiatCurrency" :balance="data.balance" :rates="rates" :rates-loading="ratesLoading" :rates-error="ratesError" :amount="amount" />
         <ReceiveAddressCard :receive="data.receiveAddress" @enlarge="enlargeReceive" />
       </div>
       <div class="mt-9">
@@ -80,16 +81,14 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
           </button>
         </div>
         <div id="wallet-panel-activity" v-show="activeTab === 'activity'" role="tabpanel" aria-labelledby="wallet-tab-activity" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
-          <TransactionsSection :transactions="data.transactions" :currency="currency" :amount="amount" />
+          <TransactionsSection :transactions="data.transactions" :currency="currency" :fiat-currency="fiatCurrency" :rates="rates" :amount="amount" />
         </div>
         <div id="wallet-panel-utxos" v-show="activeTab === 'utxos'" role="tabpanel" aria-labelledby="wallet-tab-utxos" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
           <UtxosSection :utxos="data.utxos" :currency="currency" :amount="amount" />
         </div>
       </div>
     </template>
-    <div v-else-if="loading" class="py-20 text-center text-slate-400">
-      Waiting for the wallet cache…
-    </div>
+    <WalletSkeleton v-else-if="loading" />
     <div v-else class="py-20 text-center">
       <p role="alert" class="text-rose-400">{{ error || 'No wallet snapshot is available yet.' }}</p>
       <button type="button" @click="refresh" class="mt-4 rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm hover:border-accent">

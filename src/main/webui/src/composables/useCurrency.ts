@@ -1,20 +1,21 @@
-import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
+import { onMounted, onScopeDispose, ref, watch } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { PriceRates } from '../types/wallet';
-import { formatAmount, isFiat, readCurrency, saveCurrency, validRates, type Currency } from '../currency';
+import { formatAmount, readDisplayPreferences, saveCurrency, saveFiatCurrency, validRates, type BitcoinUnit, type FiatCurrency } from '../currency';
 
 /** Display preference and fiat quote lifecycle, independent of wallet snapshot loading. */
 export function useCurrency() {
-  const currency = ref<Currency>(readCurrency());
+  const preferences = readDisplayPreferences();
+  const currency = ref<BitcoinUnit>(preferences.currency);
+  const fiatCurrency = ref<FiatCurrency>(preferences.fiatCurrency);
   const rates = ref<PriceRates | null>(null);
   const ratesLoading = ref(false);
   const ratesError = ref(false);
-  const fiat = computed(() => isFiat(currency.value));
   const controller = new AbortController();
   let timer: ReturnType<typeof setInterval> | undefined;
 
   async function refreshRates(): Promise<void> {
-    if (controller.signal.aborted || !fiat.value || ratesLoading.value) return;
+    if (controller.signal.aborted || ratesLoading.value) return;
     ratesLoading.value = true;
     try {
       const result = await walletApi.prices({ signal: controller.signal });
@@ -30,7 +31,8 @@ export function useCurrency() {
   }
 
   watch(currency, saveCurrency, { flush: 'sync' });
-  watch(currency, () => void refreshRates());
+  // Persist both on a change so a legacy USD preference survives a unit switch.
+  watch([currency, fiatCurrency], () => saveFiatCurrency(fiatCurrency.value), { flush: 'sync' });
   onMounted(() => {
     void refreshRates();
     timer = setInterval(() => void refreshRates(), 60_000);
@@ -41,5 +43,5 @@ export function useCurrency() {
   });
 
   const amount = (sats: number, signed = false): string => formatAmount(sats, currency.value, rates.value, signed);
-  return { currency, rates, ratesLoading, ratesError, fiat, refreshRates, amount };
+  return { currency, fiatCurrency, rates, ratesLoading, ratesError, refreshRates, amount };
 }
