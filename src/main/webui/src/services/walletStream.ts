@@ -51,7 +51,8 @@ function validSnapshot(value: unknown): value is WalletSnapshot {
       && typeof tx.txid === 'string' && integer(tx.amount) && integer(tx.received) && integer(tx.sent)
       && integer(tx.height) && integer(tx.confirmations)
       && (tx.timestamp === null || integer(tx.timestamp))
-      && (tx.type === 'received' || tx.type === 'sent' || tx.type === 'self'))
+      && (tx.type === 'received' || tx.type === 'sent' || tx.type === 'self')
+      && Array.isArray(tx.addresses) && tx.addresses.every(address => typeof address === 'string'))
     && Array.isArray(utxos) && utxos.every(utxo => record(utxo)
       && typeof utxo.txid === 'string' && typeof utxo.address === 'string'
       && integer(utxo.vout) && integer(utxo.value) && integer(utxo.height) && integer(utxo.confirmations));
