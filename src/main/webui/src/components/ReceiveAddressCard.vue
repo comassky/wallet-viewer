@@ -68,7 +68,7 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
     <div class="grid">
       <div id="receive-panel-receive" role="tabpanel" aria-labelledby="receive-tab-receive" :tabindex="activeTab === 'receive' ? 0 : -1" :aria-hidden="activeTab !== 'receive'" class="[grid-area:1/1] rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent" :class="{ invisible: activeTab !== 'receive' }">
       <p class="mb-4 text-xs text-slate-500">Your next unused address · share it to receive Bitcoin.</p>
-      <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+      <div class="flex flex-col items-start gap-4 sm:flex-row sm:items-start">
         <button
           type="button"
           aria-haspopup="dialog"
@@ -82,9 +82,12 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
         <div class="min-w-0 w-full flex-1">
           <p class="my-2 select-text break-all rounded-lg border border-slate-700 bg-slate-800 p-2.5 font-mono text-sm">{{ receive.address }}</p>
           <CopyButton :value="receive.address" />
-          <details class="mt-2 text-xs text-slate-400">
-            <summary class="cursor-pointer py-2">Technical details</summary>
-            <p class="mt-1 break-all font-mono">Derivation path: {{ receive.path }}</p>
+          <details class="technical-details mt-3 text-xs">
+            <summary class="flex cursor-pointer select-none items-center gap-1.5 py-1.5 font-medium text-slate-400 transition hover:text-slate-200"><UiIcon name="chevron-right" class="chevron shrink-0 transition-transform" />Technical details</summary>
+            <div class="mt-2 rounded-lg border border-slate-700/50 bg-slate-950/40 p-3">
+              <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-500">Derivation path</p>
+              <p class="mt-0.5 break-all font-mono text-slate-300">{{ receive.path }}</p>
+            </div>
           </details>
         </div>
       </div>
