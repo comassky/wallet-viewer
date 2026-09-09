@@ -17,6 +17,14 @@
 
 **A self-hosted, read-only Bitcoin dashboard powered by Electrum.** One extended public key, one application. No database, signing or spending.
 
+### Why you'll love it
+
+- 🛡️ **Watch, never touch.** The app only ever sees a public key — nothing to sign, nothing to spend, nothing to steal.
+- 🚀 **Up in one command.** A single self-contained container. No database, no accounts, no background jobs to babysit.
+- ⚡ **Truly live.** Electrum notifications stream balance and transaction updates the instant they land — no refresh, no polling.
+- 🔎 **See everything.** Fees, UTXOs, input/output graphs and derivation paths in a fast, responsive Bitcoin-orange dark UI.
+- 🕵️ **Your node, your privacy.** Point it at your own Electrum server; only script hashes ever leave home, never your xpub.
+
 [Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Docker](#docker) · [Demo](#demo-mode) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations) · [License](#license)
 
 > 🔒 **Local by default, not authenticated.** Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
@@ -68,12 +76,12 @@ flowchart LR
 
 | Component | Version / source |
 | --- | --- |
-| Java / Maven builder | Java **25**; Maven **3.9.12**, Eclipse Temurin 25 Docker build image |
+| Java / Maven builder | Java **25**; Maven **3.9.16**, Eclipse Temurin 25 Docker build image |
 | Backend | Quarkus **3.39.2**, Quinoa **2.9.0**, bitcoinj **0.17.1**, ZXing **3.5.4** — [pom.xml](pom.xml) |
 | Reactive transport / cache | Vert.x, Mutiny and Caffeine — versions managed by the Quarkus BOM |
 | Node.js | **24.21.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
-| Frontend (locked) | Vue **3.5.42**, Vite **8.2.2**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite) — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
-| UI libraries | Lucide Vue **1.43.0**, Axios **1.20.0**, @formkit/auto-animate **0.10.0** |
+| Frontend (locked) | Vue **3.5.42**, Vite **8.3.0**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite), @types/node **22.20.2** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
+| UI libraries | Material Design Icons (@mdi/js) **7.4.47**, Axios **1.20.0**, @formkit/auto-animate **0.10.0** |
 | Runtime image | Distroless Java **25**, Debian **13**, `nonroot` — [Dockerfile](Dockerfile) |
 
 Versions reflect declarations and the npm lockfile. For local development, use JDK 25 and `mvn quarkus:dev`; Quinoa manages Node automatically.

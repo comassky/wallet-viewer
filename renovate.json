@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "enabledManagers": ["maven", "npm", "dockerfile", "docker-compose", "custom.regex"],
+  "enabledManagers": ["maven", "npm", "dockerfile", "docker-compose", "github-actions", "custom.regex"],
   "ignorePaths": ["**/node_modules/**", "**/bower_components/**", "target/**", "**/.quinoa/**", "**/dist/**", "config/**"],
   "automerge": false,
   "prHourlyLimit": 10,
@@ -44,6 +44,14 @@
       "dependencyDashboardCategory": "Docker",
       "addLabels": ["docker"],
       "pinDigests": true
+    },
+    {
+      "description": "GitHub Actions pinned in the CI and release workflows.",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "additionalBranchPrefix": "actions-",
+      "dependencyDashboardCategory": "Actions",
+      "addLabels": ["github-actions"]
     },
     {
       "description": "Keep the Maven builder on Java 25; JDK migrations require coordinated project/runtime changes.",
