@@ -22,7 +22,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -39,21 +39,21 @@ jobs:
       # actions/cache stores each build cache dir; declared before the cache-dance
       # step so their save (post) runs after the mounts are extracted back to disk.
       - name: Cache Maven repository
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .m2-cache
           key: m2-${{ hashFiles('pom.xml') }}
           restore-keys: m2-
 
       - name: Cache Quinoa Node install
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .quinoa-cache
           key: quinoa-${{ hashFiles('src/main/resources/application.properties') }}
           restore-keys: quinoa-
 
       - name: Cache npm downloads
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .npm-cache
           key: npm-${{ hashFiles('src/main/webui/package-lock.json') }}
