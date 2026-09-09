@@ -95,7 +95,7 @@ Prefer a release tag or digest for reproducibility; private packages require reg
 
 Node's version and version-specific install directory are updated together. Docker digest pinning also tracks rebuilds of the floating Distroless `nonroot` tag. Java stays on **25**: changing the JDK or Distroless Java/Debian image family requires a coordinated manual migration. The local Compose application image and generated build directories are excluded; GitHub Actions versions are outside these three scopes.
 
-**Activate:** install/authorize the [Renovate GitHub App](https://github.com/apps/renovate) for this repository and merge this configuration into the default branch. No extra workflow or repository token is needed for the hosted app; existing Docker PR checks verify proposed updates. The npm lockfile currently contains corporate registry URLs: the bot needs access to that registry (use an appropriately configured self-hosted runner if it is private), or the lockfile must first be regenerated against an accessible registry. Never commit registry credentials.
+**Activate:** install/authorize the [Renovate GitHub App](https://github.com/apps/renovate) for this repository and merge this configuration into the default branch. No extra workflow or repository token is needed for the hosted app; existing Docker PR checks verify proposed updates. The frontend [src/main/webui/.npmrc](src/main/webui/.npmrc) and lockfile use the public npm registry, so Docker and Renovate need no corporate registry access. Avoid overriding the project registry when updating dependencies; never commit registry credentials.
 
 ## Configuration
 
