@@ -1,5 +1,5 @@
 import type { PriceRates } from './types/wallet';
-import { readStorage, writeStorage } from './utils/storage';
+import { readStorage, writeStorage } from './utils/storage.ts';
 
 export const currencies = ['EUR', 'USD', 'SATS', 'BTC'] as const;
 export type Currency = typeof currencies[number];

@@ -1,5 +1,5 @@
 import { onMounted, onScopeDispose, ref, type Ref } from 'vue';
-import type { RequestOptions } from '../services/http';
+import type { RequestOptions } from '../services/http.ts';
 
 export interface PolledResource<T> {
   data: Ref<T>;
