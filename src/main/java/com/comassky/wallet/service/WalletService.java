@@ -1,13 +1,13 @@
-package com.example.walletviewer.service;
+package com.comassky.wallet.service;
 
-import com.example.walletviewer.derivation.HdWallet;
-import com.example.walletviewer.electrum.ElectrumClient;
-import com.example.walletviewer.model.AddressInfo;
-import com.example.walletviewer.model.BalanceDto;
-import com.example.walletviewer.model.ReceiveAddressDto;
-import com.example.walletviewer.model.TransactionDto;
-import com.example.walletviewer.model.UtxoDto;
-import com.example.walletviewer.model.WalletSnapshot;
+import com.comassky.wallet.derivation.HdWallet;
+import com.comassky.wallet.electrum.ElectrumClient;
+import com.comassky.wallet.model.AddressInfo;
+import com.comassky.wallet.model.BalanceDto;
+import com.comassky.wallet.model.ReceiveAddressDto;
+import com.comassky.wallet.model.TransactionDto;
+import com.comassky.wallet.model.UtxoDto;
+import com.comassky.wallet.model.WalletSnapshot;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.smallrye.mutiny.Uni;
@@ -19,19 +19,20 @@ import jakarta.inject.Inject;
 import org.bitcoinj.base.internal.ByteUtils;
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.TransactionInput;
-import org.bitcoinj.core.TransactionOutput;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Builds a wallet snapshot (balance, UTXOs, transactions, next receive address)
@@ -67,7 +68,20 @@ public class WalletService {
     private final Cache<String, String> rawTxCache = Caffeine.newBuilder().maximumSize(20_000).build();
     private final Cache<Integer, Long> headerTimeCache = Caffeine.newBuilder().maximumSize(20_000).build();
 
+    // Unconfirmed first (treated as the highest height), then newest confirmed height, then newest timestamp.
+    private static final Comparator<TransactionDto> TRANSACTION_ORDER =
+            Comparator.comparingInt((TransactionDto t) -> t.height() <= 0 ? Integer.MAX_VALUE : t.height())
+                    .reversed()
+                    .thenComparing(t -> t.timestamp() == null ? 0L : t.timestamp(), Comparator.reverseOrder());
+
     private record Coverage(int receiveIndex, int changeIndex, int nextReceiveIndex) {
+    }
+
+    /** One wallet-owned output; used to total received amounts and detect our own spends. */
+    private record OwnedOutput(String txid, long index, long value) {
+        String outpoint() {
+            return txid + ":" + index;
+        }
     }
 
     /** History is private to one scan, never attached to cached derivation data. */
@@ -120,27 +134,23 @@ public class WalletService {
                     List<ScannedAddress> all = new ArrayList<>(receive);
                     all.addAll(change);
 
-                    Set<String> ourScripts = new HashSet<>();
+                    Set<String> ourScripts = all.stream()
+                            .map(a -> a.address().scriptHex)
+                            .collect(Collectors.toSet());
                     List<AddressInfo> used = new ArrayList<>();
                     Map<String, Integer> txHeights = new LinkedHashMap<>();
-                    for (ScannedAddress a : all) {
-                        ourScripts.add(a.address().scriptHex);
-                        if (a.used()) {
-                            used.add(a.address());
-                            for (int i = 0; i < a.history().size(); i++) {
-                                JsonObject entry = a.history().getJsonObject(i);
-                                txHeights.put(entry.getString("tx_hash"), entry.getInteger("height"));
-                            }
-                        }
-                    }
+                    all.stream().filter(ScannedAddress::used).forEach(a -> {
+                        used.add(a.address());
+                        a.history().stream()
+                                .map(JsonObject.class::cast)
+                                .forEach(entry -> txHeights.put(entry.getString("tx_hash"), entry.getInteger("height")));
+                    });
 
                     // Do not reuse holes or regress an exposed receive index after history shrinks.
-                    int nextIndex = previous.nextReceiveIndex();
-                    for (ScannedAddress a : receive) {
-                        if (a.used()) {
-                            nextIndex = Math.max(nextIndex, a.address().index + 1);
-                        }
-                    }
+                    int nextIndex = receive.stream()
+                            .filter(ScannedAddress::used)
+                            .mapToInt(a -> a.address().index + 1)
+                            .reduce(previous.nextReceiveIndex(), Math::max);
                     AddressInfo recv = nextIndex < receive.size()
                             ? receive.get(nextIndex).address() : wallet.address(0, nextIndex);
                     ReceiveAddressDto recvDto = new ReceiveAddressDto(recv.index, recv.address, recv.path);
@@ -203,22 +213,15 @@ public class WalletService {
         if (used.isEmpty()) {
             return Uni.createFrom().item(new BalanceDto(0, 0));
         }
-        List<Uni<BalanceDto>> unis = new ArrayList<>();
-        for (AddressInfo a : used) {
-            unis.add(electrum.call("blockchain.scripthash.get_balance", a.scripthash)
-                    .map(r -> {
-                        JsonObject o = r.getJsonObject("result");
-                        return new BalanceDto(o.getLong("confirmed", 0L), o.getLong("unconfirmed", 0L));
-                    }));
-        }
-        return Uni.join().all(unis).andFailFast().map(list -> {
-            long confirmed = 0, unconfirmed = 0;
-            for (BalanceDto balance : list) {
-                confirmed += balance.confirmed();
-                unconfirmed += balance.unconfirmed();
-            }
-            return new BalanceDto(confirmed, unconfirmed);
-        });
+        List<Uni<BalanceDto>> unis = used.stream()
+                .map(a -> electrum.call("blockchain.scripthash.get_balance", a.scripthash).map(r -> {
+                    JsonObject o = r.getJsonObject("result");
+                    return new BalanceDto(o.getLong("confirmed", 0L), o.getLong("unconfirmed", 0L));
+                }))
+                .toList();
+        return Uni.join().all(unis).andFailFast().map(list -> new BalanceDto(
+                list.stream().mapToLong(BalanceDto::confirmed).sum(),
+                list.stream().mapToLong(BalanceDto::unconfirmed).sum()));
     }
 
     // ---- UTXOs ------------------------------------------------------------
@@ -227,30 +230,22 @@ public class WalletService {
         if (used.isEmpty()) {
             return Uni.createFrom().item(List.of());
         }
-        List<Uni<List<UtxoDto>>> unis = new ArrayList<>();
-        for (AddressInfo a : used) {
-            unis.add(electrum.call("blockchain.scripthash.listunspent", a.scripthash)
-                    .map(r -> {
-                        JsonArray arr = r.getJsonArray("result");
-                        List<UtxoDto> out = new ArrayList<>();
-                        for (int i = 0; i < arr.size(); i++) {
-                            JsonObject u = arr.getJsonObject(i);
-                            int h = u.getInteger("height", 0);
-                            int conf = h > 0 ? tip - h + 1 : 0;
-                            out.add(new UtxoDto(u.getString("tx_hash"), u.getInteger("tx_pos"),
-                                    u.getLong("value"), h, conf, a.address));
-                        }
-                        return out;
-                    }));
-        }
-        return Uni.join().all(unis).andFailFast().map(lists -> {
-            List<UtxoDto> out = new ArrayList<>();
-            for (List<UtxoDto> l : lists) {
-                out.addAll(l);
-            }
-            out.sort((x, y) -> Long.compare(y.value(), x.value()));
-            return out;
-        });
+        List<Uni<List<UtxoDto>>> unis = used.stream()
+                .map(a -> electrum.call("blockchain.scripthash.listunspent", a.scripthash)
+                        .map(r -> r.getJsonArray("result").stream()
+                                .map(JsonObject.class::cast)
+                                .map(u -> {
+                                    int h = u.getInteger("height", 0);
+                                    int conf = h > 0 ? tip - h + 1 : 0;
+                                    return new UtxoDto(u.getString("tx_hash"), u.getInteger("tx_pos"),
+                                            u.getLong("value"), h, conf, a.address);
+                                })
+                                .toList()))
+                .toList();
+        return Uni.join().all(unis).andFailFast().map(lists -> lists.stream()
+                .flatMap(List::stream)
+                .sorted(Comparator.comparingLong(UtxoDto::value).reversed())
+                .toList());
     }
 
     // ---- transactions -----------------------------------------------------
@@ -269,36 +264,33 @@ public class WalletService {
         // A buried block header time is immutable: only fetch heights missing from the cache.
         Map<Integer, Long> timeByHeight = new HashMap<>();
         List<Integer> heightMisses = new ArrayList<>();
-        for (int h : heights) {
+        heights.forEach(h -> {
             Long cached = headerTimeCache.getIfPresent(h);
             if (cached != null) {
                 timeByHeight.put(h, cached);
             } else {
                 heightMisses.add(h);
             }
-        }
-        List<Uni<Long>> headerUnis = new ArrayList<>();
-        for (int h : heightMisses) {
-            headerUnis.add(electrum.call("blockchain.block.header", h)
-                    .map(r -> headerTime(r.getString("result"))));
-        }
+        });
+        List<Uni<Long>> headerUnis = heightMisses.stream()
+                .map(h -> electrum.call("blockchain.block.header", h).map(r -> headerTime(r.getString("result"))))
+                .toList();
 
         // The txid commits a transaction's bytes, so cached raw copies stay valid every scan.
-        List<String> ids = new ArrayList<>(txHeights.keySet());
+        List<String> ids = List.copyOf(txHeights.keySet());
         Map<String, String> rawById = new HashMap<>();
         List<String> txMisses = new ArrayList<>();
-        for (String id : ids) {
+        ids.forEach(id -> {
             String cached = rawTxCache.getIfPresent(id);
             if (cached != null) {
                 rawById.put(id, cached);
             } else {
                 txMisses.add(id);
             }
-        }
-        List<Uni<String>> txUnis = new ArrayList<>();
-        for (String id : txMisses) {
-            txUnis.add(electrum.call("blockchain.transaction.get", id).map(r -> r.getString("result")));
-        }
+        });
+        List<Uni<String>> txUnis = txMisses.stream()
+                .map(id -> electrum.call("blockchain.transaction.get", id).map(r -> r.getString("result")))
+                .toList();
 
         Uni<List<Long>> headersUni = heightMisses.isEmpty()
                 ? Uni.createFrom().item(List.of())
@@ -311,75 +303,67 @@ public class WalletService {
             List<Long> headerTimes = t.getItem1();
             List<String> rawTxs = t.getItem2();
 
-            for (int i = 0; i < heightMisses.size(); i++) {
+            IntStream.range(0, heightMisses.size()).forEach(i -> {
                 int h = heightMisses.get(i);
                 long time = headerTimes.get(i);
                 timeByHeight.put(h, time);
                 if (tip - h >= HEADER_MATURITY) {
                     headerTimeCache.put(h, time); // Never cache reorg-prone heights near the tip.
                 }
-            }
-            for (int i = 0; i < txMisses.size(); i++) {
-                rawTxCache.put(txMisses.get(i), rawTxs.get(i));
-                rawById.put(txMisses.get(i), rawTxs.get(i));
-            }
-
-            Map<String, Transaction> parsed = new LinkedHashMap<>();
-            for (String id : ids) {
-                parsed.put(id, Transaction.read(ByteBuffer.wrap(ByteUtils.parseHex(rawById.get(id)))));
-            }
-
-            // Map of our own outputs "txid:vout" -> satoshis, to detect our spends without prevout lookups.
-            Map<String, Long> ourOut = new HashMap<>();
-            for (Map.Entry<String, Transaction> e : parsed.entrySet()) {
-                for (TransactionOutput o : e.getValue().getOutputs()) {
-                    if (ourScripts.contains(ByteUtils.formatHex(o.getScriptBytes()))) {
-                        ourOut.put(e.getKey() + ":" + o.getIndex(), o.getValue().value);
-                    }
-                }
-            }
-
-            List<TransactionDto> result = new ArrayList<>();
-            for (Map.Entry<String, Transaction> e : parsed.entrySet()) {
-                String txid = e.getKey();
-                Transaction tx = e.getValue();
-                long received = 0, sent = 0;
-
-                for (TransactionOutput o : tx.getOutputs()) {
-                    if (ourScripts.contains(ByteUtils.formatHex(o.getScriptBytes()))) {
-                        received += o.getValue().value;
-                    }
-                }
-                for (TransactionInput in : tx.getInputs()) {
-                    if (in.isCoinBase()) {
-                        continue;
-                    }
-                    Long v = ourOut.get(in.getOutpoint().getHash() + ":" + in.getOutpoint().getIndex());
-                    if (v != null) {
-                        sent += v;
-                    }
-                }
-
-                long net = received - sent;
-                int height = txHeights.getOrDefault(txid, 0);
-                int conf = height > 0 ? tip - height + 1 : 0;
-                Long ts = height > 0 ? timeByHeight.get(height) : null;
-                String type = net > 0 ? "received" : (net < 0 ? "sent" : "self");
-                result.add(new TransactionDto(txid, net, received, sent, height, conf, ts, type));
-            }
-
-            result.sort((a, b) -> {
-                int ha = a.height() <= 0 ? Integer.MAX_VALUE : a.height();
-                int hb = b.height() <= 0 ? Integer.MAX_VALUE : b.height();
-                if (ha != hb) {
-                    return Integer.compare(hb, ha);
-                }
-                long ta = a.timestamp() == null ? 0 : a.timestamp();
-                long tb = b.timestamp() == null ? 0 : b.timestamp();
-                return Long.compare(tb, ta);
             });
-            return result;
+            IntStream.range(0, txMisses.size()).forEach(i -> {
+                String id = txMisses.get(i);
+                rawTxCache.put(id, rawTxs.get(i));
+                rawById.put(id, rawTxs.get(i));
+            });
+
+            Map<String, Transaction> parsed = ids.stream().collect(Collectors.toMap(
+                    id -> id, id -> Transaction.read(ByteBuffer.wrap(ByteUtils.parseHex(rawById.get(id)))),
+                    (a, b) -> a, LinkedHashMap::new));
+
+            // One hash per output: our outputs give both received totals and the outpoints we can spend.
+            List<OwnedOutput> owned = parsed.entrySet().stream()
+                    .flatMap(e -> e.getValue().getOutputs().stream()
+                            .filter(o -> ourScripts.contains(ByteUtils.formatHex(o.getScriptBytes())))
+                            .map(o -> new OwnedOutput(e.getKey(), o.getIndex(), o.getValue().value)))
+                    .toList();
+            Map<String, Long> receivedByTx = owned.stream()
+                    .collect(Collectors.groupingBy(OwnedOutput::txid, Collectors.summingLong(OwnedOutput::value)));
+            Map<String, Long> ourOut = owned.stream()
+                    .collect(Collectors.toMap(OwnedOutput::outpoint, OwnedOutput::value));
+
+            return parsed.entrySet().stream()
+                    .map(e -> toTransaction(e.getKey(), e.getValue(), receivedByTx, ourOut, txHeights, timeByHeight, tip))
+                    .sorted(TRANSACTION_ORDER)
+                    .toList();
         });
+    }
+
+    private static TransactionDto toTransaction(String txid, Transaction tx, Map<String, Long> receivedByTx,
+                                                Map<String, Long> ourOut, Map<String, Integer> txHeights,
+                                                Map<Integer, Long> timeByHeight, int tip) {
+        long received = receivedByTx.getOrDefault(txid, 0L);
+        long sent = spentByUs(tx, ourOut);
+        long net = received - sent;
+        int height = txHeights.getOrDefault(txid, 0);
+        int conf = height > 0 ? tip - height + 1 : 0;
+        Long ts = height > 0 ? timeByHeight.get(height) : null;
+        String type = switch (Long.signum(net)) {
+            case 1 -> "received";
+            case -1 -> "sent";
+            default -> "self";
+        };
+        return new TransactionDto(txid, net, received, sent, height, conf, ts, type);
+    }
+
+    /** Sums the value of prior outputs of ours that this transaction spends, ignoring coinbase inputs. */
+    private static long spentByUs(Transaction tx, Map<String, Long> ourOut) {
+        return tx.getInputs().stream()
+                .filter(in -> !in.isCoinBase())
+                .map(in -> ourOut.get(in.getOutpoint().getHash() + ":" + in.getOutpoint().getIndex()))
+                .filter(Objects::nonNull)
+                .mapToLong(Long::longValue)
+                .sum();
     }
 
     /** Decodes the 80-byte block header and returns its timestamp in Unix seconds. */
