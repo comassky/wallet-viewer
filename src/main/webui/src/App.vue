@@ -26,7 +26,8 @@ const tabs = [
   { id: 'utxos', label: 'UTXO', icon: 'coins' },
   { id: 'chart', label: 'Chart', icon: 'chart' },
 ] as const;
-const { activeTab, tabButtons, onKeydown } = useRovingTabs(tabs.map(tab => tab.id), 'activity');
+const tabButtons = ref<HTMLButtonElement[]>([]);
+const { activeTab, onKeydown } = useRovingTabs(tabs.map(tab => tab.id), 'activity', tabButtons);
 
 function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): void {
   void qrDialog.value?.open(address, trigger);

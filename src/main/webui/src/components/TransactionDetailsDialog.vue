@@ -29,7 +29,8 @@ const tabs = [
   { id: 'graph', label: 'Graph', icon: 'graph' },
   { id: 'io', label: 'Inputs / Outputs', icon: 'list' },
 ] as const;
-const { activeTab, tabButtons, onKeydown } = useRovingTabs(tabs.map(tab => tab.id), 'graph');
+const tabButtons = ref<HTMLButtonElement[]>([]);
+const { activeTab, onKeydown } = useRovingTabs(tabs.map(tab => tab.id), 'graph', tabButtons);
 
 // Lists deliberately have independent pages from the graph and from one another.
 const inputPageIndex = ref(0);

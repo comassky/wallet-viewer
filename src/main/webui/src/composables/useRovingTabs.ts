@@ -1,9 +1,8 @@
 import { ref, type Ref } from 'vue';
 
 /** Roving-tabindex keyboard navigation for a WAI-ARIA tablist: Arrow keys wrap, Home/End jump to ends. */
-export function useRovingTabs<T extends string>(ids: readonly T[], initial: T) {
+export function useRovingTabs<T extends string>(ids: readonly T[], initial: T, tabButtons: Ref<HTMLButtonElement[]>) {
   const activeTab = ref(initial) as Ref<T>;
-  const tabButtons = ref<HTMLButtonElement[]>([]);
 
   function onKeydown(event: KeyboardEvent, index: number): void {
     let next: number;
@@ -19,5 +18,5 @@ export function useRovingTabs<T extends string>(ids: readonly T[], initial: T) {
     tabButtons.value[next]?.focus();
   }
 
-  return { activeTab, tabButtons, onKeydown };
+  return { activeTab, onKeydown };
 }
