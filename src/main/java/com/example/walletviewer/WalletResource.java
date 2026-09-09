@@ -24,6 +24,9 @@ public class WalletResource {
     @Inject
     PriceService prices;
 
+    @Inject
+    TransactionDetailsService transactionDetails;
+
     @GET
     @Path("/prices")
     public Uni<PriceRatesDto> prices() {
@@ -45,6 +48,12 @@ public class WalletResource {
     @Path("/transactions")
     public Uni<List<TransactionDto>> transactions() {
         return live.snapshot().map(WalletSnapshot::transactions);
+    }
+
+    @GET
+    @Path("/transactions/{txid}")
+    public Uni<TransactionDetailsDto> transactionDetails(@PathParam("txid") String txid) {
+        return transactionDetails.details(txid);
     }
 
     @GET
@@ -78,8 +87,7 @@ public class WalletResource {
     @Path("/receive/{index}/qr")
     @Produces("image/png")
     public byte[] receiveQrAt(@PathParam("index") int index) {
-        validateIndex(index);
-        return QrGenerator.png(service.derive(0, index).address, 320);
+        return QrGenerator.png(receiveAt(index).address(), 320);
     }
 
     private static void validateIndex(int index) {
