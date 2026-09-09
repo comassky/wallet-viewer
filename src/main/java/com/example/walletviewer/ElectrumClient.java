@@ -1,6 +1,8 @@
 package com.example.walletviewer;
 
+import io.smallrye.mutiny.TimeoutException;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.subscription.Cancellable;
 import io.smallrye.mutiny.subscription.UniEmitter;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
@@ -18,8 +20,12 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * Reactive (Vert.x) client for the ElectrumX / electrs JSON-RPC protocol.
@@ -29,21 +35,47 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ElectrumClient {
 
     @ConfigProperty(name = "electrum.host", defaultValue = "127.0.0.1")
-    String host;
+    String host = "127.0.0.1";
     @ConfigProperty(name = "electrum.port", defaultValue = "50001")
-    int port;
+    int port = 50001;
     @ConfigProperty(name = "electrum.ssl", defaultValue = "false")
     boolean ssl;
     @ConfigProperty(name = "electrum.request-timeout", defaultValue = "30s")
-    Duration requestTimeout;
+    Duration requestTimeout = Duration.ofSeconds(30);
 
     @Inject
     Vertx vertx;
 
+    // Package-visible timing overrides for local transport tests; no extra configuration required.
+    long heartbeatIntervalMillis = 30_000;
+    long reconnectInitialDelayMillis = 1_000;
+    long reconnectMaxDelayMillis = 30_000;
+
     private NetClient client;
-    private final Map<Integer, UniEmitter<? super JsonObject>> pending = new ConcurrentHashMap<>();
+    private final Map<Integer, Pending> pending = new ConcurrentHashMap<>();
     private final AtomicInteger counter = new AtomicInteger();
-    private volatile Uni<NetSocket> socketUni;
+    private final CopyOnWriteArrayList<Consumer<JsonObject>> notificationListeners = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<Consumer<Boolean>> connectionListeners = new CopyOnWriteArrayList<>();
+
+    // Lifecycle state is guarded by this monitor. A Connection also identifies a connect attempt,
+    // so late callbacks from an obsolete socket cannot fail requests on its replacement.
+    private Connection connection;
+    private boolean monitoring;
+    private boolean stopped;
+    private Boolean connected;
+    private long reconnectTimer = -1;
+    private long heartbeatTimer = -1;
+    private long nextReconnectDelay;
+    private Cancellable heartbeatRequest;
+
+    private static final class Connection {
+        final CompletableFuture<NetSocket> ready = new CompletableFuture<>();
+        NetSocket socket;
+        boolean connecting = true;
+        boolean retired;
+    }
+
+    private record Pending(Connection connection, UniEmitter<? super JsonObject> emitter) { }
 
     @PostConstruct
     void init() {
@@ -52,8 +84,7 @@ public class ElectrumClient {
         }
         NetClientOptions opts = new NetClientOptions()
                 .setConnectTimeout(10_000)
-                .setReconnectAttempts(3)
-                .setReconnectInterval(500);
+            .setReconnectAttempts(0);
         if (ssl) {
             opts.setSsl(true).setHostnameVerificationAlgorithm("HTTPS");
         }
@@ -61,37 +92,107 @@ public class ElectrumClient {
     }
 
     @PreDestroy
-    void close() {
+    synchronized void close() {
+        if (stopped) return;
+        stopped = true;
+        monitoring = false;
+        cancelReconnect();
+        cancelHeartbeat();
+        Connection old = connection;
+        connection = null;
+        IllegalStateException failure = new IllegalStateException("Electrum client stopped");
+        publishConnection(false);
+        if (old != null) {
+            old.ready.completeExceptionally(failure);
+            failPending(old, failure);
+        }
+        notificationListeners.clear();
+        connectionListeners.clear();
         if (client != null) {
             client.close();
         }
-        failAll(new IllegalStateException("Electrum client stopped"));
     }
 
-    private Uni<NetSocket> socket() {
-        Uni<NetSocket> s = socketUni;
-        if (s == null) {
-            synchronized (this) {
-                if (socketUni == null) {
-                    socketUni = Uni.createFrom().<NetSocket>emitter(em ->
-                            client.connect(port, host).onComplete(ar -> {
-                                if (ar.succeeded()) {
-                                    setup(ar.result());
-                                    em.complete(ar.result());
-                                } else {
-                                    socketUni = null;
-                                    em.fail(ar.cause());
-                                }
-                            })
-                    ).memoize().indefinitely();
+    /** Registers a non-blocking notification callback. Closing the registration removes it. */
+    public synchronized AutoCloseable onNotification(Consumer<JsonObject> listener) {
+        Objects.requireNonNull(listener, "listener");
+        Consumer<JsonObject> registration = listener::accept;
+        if (!stopped) notificationListeners.add(registration);
+        return () -> notificationListeners.remove(registration);
+    }
+
+    /** Registers a non-blocking state-change callback (no replay of the current state). */
+    public synchronized AutoCloseable onConnectionChange(Consumer<Boolean> listener) {
+        Objects.requireNonNull(listener, "listener");
+        Consumer<Boolean> registration = listener::accept;
+        if (!stopped) connectionListeners.add(registration);
+        return () -> connectionListeners.remove(registration);
+    }
+
+    /** Opts into proactive connections, bounded retries and heartbeats; idempotent. */
+    public synchronized void startMonitoring() {
+        if (stopped || monitoring) return;
+        monitoring = true;
+        nextReconnectDelay = reconnectInitialDelayMillis;
+        Connection current = connection();
+        if (current.socket != null) scheduleHeartbeat(current);
+    }
+
+    private synchronized Connection connection() {
+        if (stopped) throw new IllegalStateException("Electrum client stopped");
+        if (connection != null) return connection;
+        cancelReconnect();
+        Connection attempt = new Connection();
+        connection = attempt;
+        try {
+            client.connect(port, host).onComplete(ar -> {
+                synchronized (ElectrumClient.this) {
+                    if (stopped || connection != attempt) {
+                        if (ar.succeeded()) ar.result().close();
+                        return;
+                    }
+                    attempt.connecting = false;
+                    if (attempt.retired) {
+                        if (ar.succeeded()) ar.result().close();
+                        connection = null;
+                        scheduleReconnect();
+                        return;
+                    }
+                    if (ar.failed()) {
+                        lost(attempt, ar.cause());
+                        return;
+                    }
+                    attempt.socket = ar.result();
+                    setup(attempt);
+                    nextReconnectDelay = reconnectInitialDelayMillis;
+                    publishConnection(true);
+                    if (connection == attempt && !stopped) {
+                        attempt.ready.complete(attempt.socket);
+                        scheduleHeartbeat(attempt);
+                    }
                 }
-                s = socketUni;
+            });
+        } catch (RuntimeException failure) {
+            attempt.connecting = false;
+            lost(attempt, failure);
+        }
+        return attempt;
+    }
+
+    private void publishConnection(boolean state) {
+        if (Objects.equals(connected, state)) return;
+        connected = state;
+        for (Consumer<Boolean> listener : connectionListeners) {
+            try {
+                listener.accept(state);
+            } catch (Exception ignored) {
+                // Listener failures must not affect transport or expose wallet data in logs.
             }
         }
-        return s;
     }
 
-    private void setup(NetSocket sock) {
+    private void setup(Connection owner) {
+        NetSocket sock = owner.socket;
         RecordParser parser = RecordParser.newDelimited("\n", buffer -> {
             JsonObject resp;
             try {
@@ -101,38 +202,113 @@ public class ElectrumClient {
             }
             Object idVal = resp.getValue("id");
             if (!(idVal instanceof Number number)) {
-                return; // subscription notification, ignore
-            }
-            int id = number.intValue();
-            UniEmitter<? super JsonObject> em = pending.remove(id);
-            if (em == null) {
+                if (!resp.containsKey("id")) dispatchNotification(owner, resp);
                 return;
             }
-            Object err = resp.getValue("error");
-            if (err != null) {
-                em.fail(new RuntimeException("Electrum error: " + err));
-            } else {
-                em.complete(resp);
+            int id = number.intValue();
+            if (number.doubleValue() != id) return;
+            synchronized (ElectrumClient.this) {
+                Pending request = pending.get(id);
+                if (connection != owner || request == null || request.connection() != owner
+                        || !pending.remove(id, request)) return;
+                Object err = resp.getValue("error");
+                if (err != null) {
+                    // Server-provided errors may contain scripts or other wallet data.
+                    request.emitter().fail(new RuntimeException("Electrum error"));
+                } else {
+                    request.emitter().complete(resp);
+                }
             }
         });
         sock.handler(parser);
-        sock.closeHandler(v -> {
-            socketUni = null;
-            failAll(new RuntimeException("Electrum connection closed"));
-        });
-        sock.exceptionHandler(t -> {
-            failAll(t);
-            sock.close();
+        sock.closeHandler(v -> lost(owner, new RuntimeException("Electrum connection closed")));
+        sock.exceptionHandler(t -> lost(owner, t));
+    }
+
+    private synchronized void dispatchNotification(Connection owner, JsonObject message) {
+        if (stopped || connection != owner || message.containsKey("result") || message.containsKey("error")) return;
+        if (!(message.getValue("params") instanceof JsonArray params)) return;
+        Object method = message.getValue("method");
+        boolean valid = "blockchain.scripthash.subscribe".equals(method)
+                && params.size() == 2 && params.getValue(0) instanceof String
+                && (params.getValue(1) == null || params.getValue(1) instanceof String);
+        valid |= "blockchain.headers.subscribe".equals(method)
+                && params.size() == 1 && params.getValue(0) instanceof JsonObject;
+        if (!valid) return;
+        for (Consumer<JsonObject> listener : notificationListeners) {
+            try {
+                listener.accept(message.copy());
+            } catch (Exception ignored) {
+                // Isolate both listener exceptions and mutations from the other listeners.
+            }
+        }
+    }
+
+    private synchronized void lost(Connection owner, Throwable failure) {
+        if (connection != owner || owner.retired) return;
+        owner.retired = true;
+        // Vert.x connect futures are not cancellable. Keep the attempt reserved until its
+        // bounded connect completes, then discard its socket and retry without overlap.
+        if (!owner.connecting) connection = null;
+        cancelHeartbeat();
+        publishConnection(false);
+        owner.ready.completeExceptionally(failure);
+        failPending(owner, failure);
+        if (owner.socket != null) owner.socket.close();
+        scheduleReconnect();
+    }
+
+    private void failPending(Connection owner, Throwable failure) {
+        for (Map.Entry<Integer, Pending> entry : List.copyOf(pending.entrySet())) {
+            Pending request = entry.getValue();
+            if (request.connection() == owner && pending.remove(entry.getKey(), request)) {
+                request.emitter().fail(failure);
+            }
+        }
+    }
+
+    private void cancelReconnect() {
+        if (reconnectTimer != -1) vertx.cancelTimer(reconnectTimer);
+        reconnectTimer = -1;
+    }
+
+    private void scheduleReconnect() {
+        if (!monitoring || stopped || connection != null || reconnectTimer != -1) return;
+        long delay = Math.min(nextReconnectDelay, reconnectMaxDelayMillis);
+        nextReconnectDelay = Math.min(delay * 2, reconnectMaxDelayMillis);
+        reconnectTimer = vertx.setTimer(delay, id -> {
+            synchronized (ElectrumClient.this) {
+                if (reconnectTimer != id) return;
+                reconnectTimer = -1;
+                if (monitoring && !stopped) connection();
+            }
         });
     }
 
-    private void failAll(Throwable t) {
-        for (Integer id : List.copyOf(pending.keySet())) {
-            UniEmitter<? super JsonObject> em = pending.remove(id);
-            if (em != null) {
-                em.fail(t);
+    private void cancelHeartbeat() {
+        if (heartbeatTimer != -1) vertx.cancelTimer(heartbeatTimer);
+        heartbeatTimer = -1;
+        if (heartbeatRequest != null) heartbeatRequest.cancel();
+        heartbeatRequest = null;
+    }
+
+    private void scheduleHeartbeat(Connection owner) {
+        if (!monitoring || stopped || connection != owner || heartbeatTimer != -1) return;
+        heartbeatTimer = vertx.setTimer(heartbeatIntervalMillis, id -> {
+            synchronized (ElectrumClient.this) {
+                if (heartbeatTimer != id || connection != owner || stopped) return;
+                heartbeatTimer = -1;
+                heartbeatRequest = call("server.ping").subscribe().with(
+                        ignored -> {
+                            synchronized (ElectrumClient.this) {
+                                if (connection == owner) {
+                                    heartbeatRequest = null;
+                                    scheduleHeartbeat(owner);
+                                }
+                            }
+                        }, failure -> lost(owner, failure));
             }
-        }
+        });
     }
 
     /**
@@ -141,19 +317,36 @@ public class ElectrumClient {
     public Uni<JsonObject> call(String method, Object... params) {
         // Each subscription needs a fresh id and the current connection (including retries).
         return Uni.createFrom().deferred(() -> {
+            Connection owner = connection();
             int id = counter.incrementAndGet();
             String payload = new JsonObject()
                     .put("id", id)
                     .put("method", method)
                     .put("params", new JsonArray(List.of(params)))
                     .encode() + "\n";
-            return socket().flatMap(sock ->
+            // Do not cancel the shared connect future when an individual caller cancels.
+            return Uni.createFrom().<NetSocket>emitter(em -> owner.ready.whenComplete((sock, failure) -> {
+                if (failure != null) em.fail(failure);
+                else em.complete(sock);
+            })).flatMap(sock ->
                     Uni.createFrom().<JsonObject>emitter(em -> {
-                        pending.put(id, em);
-                        em.onTermination(() -> pending.remove(id, em));
-                        sock.write(payload).onFailure(em::fail);
+                        synchronized (ElectrumClient.this) {
+                            if (stopped || connection != owner) {
+                                em.fail(new IllegalStateException("Electrum connection closed"));
+                                return;
+                            }
+                            Pending request = new Pending(owner, em);
+                            pending.put(id, request);
+                            em.onTermination(() -> pending.remove(id, request));
+                            sock.write(payload).onFailure(failure -> lost(owner, failure));
+                        }
                     })
-            );
-        }).ifNoItem().after(requestTimeout).fail();
+            ).ifNoItem().after(requestTimeout).fail()
+                    .onFailure(TimeoutException.class).invoke(failure -> {
+                        synchronized (ElectrumClient.this) {
+                            if (monitoring) lost(owner, failure);
+                        }
+                    });
+        });
     }
 }

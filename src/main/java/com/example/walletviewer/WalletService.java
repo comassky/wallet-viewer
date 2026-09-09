@@ -13,7 +13,6 @@ import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.core.Utils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,8 +23,9 @@ import java.util.Set;
 
 /**
  * Builds a wallet snapshot (balance, UTXOs, transactions, next receive address)
- * by scanning derived addresses against the Electrum server. Results are cached
- * for a short TTL to avoid hammering electrs.
+ * by scanning derived addresses against the Electrum server. Every subscription
+ * performs a fresh scan; caching, retries and live events belong to the coordinator.
+ * Only monotonic address coverage is retained, never snapshots or scan accumulators.
  */
 @ApplicationScoped
 public class WalletService {
@@ -39,31 +39,23 @@ public class WalletService {
     int gapLimit;
     @ConfigProperty(name = "wallet.max-addresses", defaultValue = "200")
     int maxAddresses;
-    @ConfigProperty(name = "wallet.cache-ttl-seconds", defaultValue = "30")
-    int cacheTtl;
 
-    private volatile Uni<WalletSnapshot> cache;
+    // Process-local watermarks, committed only after an entire scan succeeds.
+    private volatile Coverage coverage = new Coverage(-1, -1, 0);
+
+    private record Coverage(int receiveIndex, int changeIndex, int nextReceiveIndex) {
+    }
 
     @PostConstruct
     void validateConfiguration() {
-        if (gapLimit <= 0 || maxAddresses <= 0 || cacheTtl < 0) {
-            throw new IllegalArgumentException("Wallet scan limits must be positive and cache TTL non-negative");
+        if (gapLimit <= 0 || maxAddresses <= 0) {
+            throw new IllegalArgumentException("Wallet scan limits must be positive");
         }
     }
 
-    public Uni<WalletSnapshot> snapshot() {
-        Uni<WalletSnapshot> c = cache;
-        if (c == null) {
-            synchronized (this) {
-                if (cache == null) {
-                    // Recreate scan accumulators and address histories on every cache refresh.
-                    Uni<WalletSnapshot> fresh = Uni.createFrom().deferred(this::build);
-                    cache = cacheTtl == 0 ? fresh : fresh.memoize().atLeast(Duration.ofSeconds(cacheTtl));
-                }
-                c = cache;
-            }
-        }
-        return c;
+    /** Cold, uncached scan. The coordinator should serialize scans and rescan on reconnect/notifications. */
+    public Uni<WalletSnapshot> scan() {
+        return Uni.createFrom().deferred(this::build);
     }
 
     public AddressInfo derive(int chain, int index) {
@@ -71,10 +63,11 @@ public class WalletService {
     }
 
     private Uni<WalletSnapshot> build() {
+        Coverage previous = coverage;
         Uni<Integer> tipUni = electrum.call("blockchain.headers.subscribe")
                 .map(r -> r.getJsonObject("result").getInteger("height"));
-        Uni<List<AddressInfo>> recvUni = scanChain(0);
-        Uni<List<AddressInfo>> changeUni = scanChain(1);
+        Uni<List<AddressInfo>> recvUni = scanChain(0, previous.receiveIndex());
+        Uni<List<AddressInfo>> changeUni = scanChain(1, previous.changeIndex());
 
         return Uni.combine().all().unis(tipUni, recvUni, changeUni).asTuple()
                 .flatMap(t -> {
@@ -95,16 +88,21 @@ public class WalletService {
                         }
                     }
 
-                    // Do not reuse holes before the last used external address.
-                    int nextIndex = 0;
+                    // Do not reuse holes or regress an exposed receive index after history shrinks.
+                    int nextIndex = previous.nextReceiveIndex();
                     for (AddressInfo a : receive) {
                         if (a.used()) {
-                            nextIndex = a.index + 1;
+                            nextIndex = Math.max(nextIndex, a.index + 1);
                         }
                     }
                     AddressInfo recv = nextIndex < receive.size()
                             ? receive.get(nextIndex) : wallet.address(0, nextIndex);
                     ReceiveAddressDto recvDto = new ReceiveAddressDto(recv.index, recv.address, recv.path);
+                    // maxAddresses caps history scans per chain, not the watch count. When the
+                    // cap is fully used, watch exactly one extra receive address (without history).
+                    Uni<Void> receiveWatch = nextIndex < receive.size()
+                            ? Uni.createFrom().voidItem()
+                            : electrum.call("blockchain.scripthash.subscribe", recv.scripthash).replaceWithVoid();
 
                     // Collect tx ids + heights from address histories
                     Map<String, Integer> txHeights = new LinkedHashMap<>();
@@ -119,27 +117,41 @@ public class WalletService {
                     Uni<List<UtxoDto>> utxoUni = fetchUtxos(used, tip);
                     Uni<List<TransactionDto>> txUni = fetchTransactions(txHeights, ourScripts, tip);
 
-                    return Uni.combine().all().unis(balanceUni, utxoUni, txUni).asTuple()
+                    return receiveWatch.flatMap(ignored -> Uni.combine().all().unis(balanceUni, utxoUni, txUni).asTuple()
                             .map(r -> {
                                 long[] bal = r.getItem1();
                                 BalanceDto balance = new BalanceDto(bal[0], bal[1], bal[0] + bal[1]);
                                 return new WalletSnapshot(balance, r.getItem2(), r.getItem3(), recvDto);
-                            });
+                            }))
+                            .invoke(snapshot -> rememberCoverage(receive.size() - 1, change.size() - 1, recv.index));
                 });
+    }
+
+    private synchronized void rememberCoverage(int receiveIndex, int changeIndex, int nextReceiveIndex) {
+        Coverage previous = coverage;
+        coverage = new Coverage(Math.max(previous.receiveIndex(), Math.max(receiveIndex, nextReceiveIndex)),
+                Math.max(previous.changeIndex(), changeIndex),
+                Math.max(previous.nextReceiveIndex(), nextReceiveIndex));
     }
 
     // ---- address scanning (gap-limit) -------------------------------------
 
-    private Uni<List<AddressInfo>> scanChain(int chain) {
-        return scanFrom(chain, 0, new ArrayList<>());
+    private Uni<List<AddressInfo>> scanChain(int chain, int highestIndex) {
+        return scanFrom(chain, 0, highestIndex, new ArrayList<>());
     }
 
-    private Uni<List<AddressInfo>> scanFrom(int chain, int start, List<AddressInfo> acc) {
+    private Uni<List<AddressInfo>> scanFrom(int chain, int start, int highestIndex, List<AddressInfo> acc) {
         List<Uni<AddressInfo>> batch = new ArrayList<>();
         int batchSize = Math.min(gapLimit, maxAddresses - start);
         for (int i = 0; i < batchSize; i++) {
-            AddressInfo ai = wallet.address(chain, start + i);
-            batch.add(electrum.call("blockchain.scripthash.get_history", ai.scripthash)
+            AddressInfo derived = wallet.address(chain, start + i);
+            // Histories belong to this subscription, even if the wallet reuses derivation objects.
+            AddressInfo ai = new AddressInfo(derived.chain, derived.index, derived.address,
+                    derived.scripthash, derived.scriptHex, derived.path);
+            // Reissue on every scan: the transport is not a persistent subscription registry.
+            // Only the public script hash is sent, never the address, derivation path or key.
+            batch.add(electrum.call("blockchain.scripthash.subscribe", ai.scripthash)
+                    .flatMap(ignored -> electrum.call("blockchain.scripthash.get_history", ai.scripthash))
                     .map(r -> {
                         ai.history = r.getJsonArray("result");
                         return ai;
@@ -151,10 +163,10 @@ public class WalletService {
             for (int i = acc.size() - 1; i >= 0 && !acc.get(i).used(); i--) {
                 trailing++;
             }
-            if (trailing >= gapLimit || acc.size() >= maxAddresses) {
+            if (acc.size() >= maxAddresses || (trailing >= gapLimit && acc.size() - 1 >= highestIndex)) {
                 return Uni.createFrom().item(acc);
             }
-            return scanFrom(chain, start + batchSize, acc);
+            return scanFrom(chain, start + batchSize, highestIndex, acc);
         });
     }
 

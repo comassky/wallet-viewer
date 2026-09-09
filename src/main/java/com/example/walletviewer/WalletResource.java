@@ -18,33 +18,45 @@ public class WalletResource {
     @Inject
     WalletService service;
 
+    @Inject
+    WalletLiveService live;
+
+    @Inject
+    PriceService prices;
+
+    @GET
+    @Path("/prices")
+    public Uni<PriceRatesDto> prices() {
+        return prices.rates();
+    }
+
     @GET
     public Uni<WalletSnapshot> snapshot() {
-        return service.snapshot();
+        return live.snapshot();
     }
 
     @GET
     @Path("/balance")
     public Uni<BalanceDto> balance() {
-        return service.snapshot().map(WalletSnapshot::balance);
+        return live.snapshot().map(WalletSnapshot::balance);
     }
 
     @GET
     @Path("/transactions")
     public Uni<List<TransactionDto>> transactions() {
-        return service.snapshot().map(WalletSnapshot::transactions);
+        return live.snapshot().map(WalletSnapshot::transactions);
     }
 
     @GET
     @Path("/utxos")
     public Uni<List<UtxoDto>> utxos() {
-        return service.snapshot().map(WalletSnapshot::utxos);
+        return live.snapshot().map(WalletSnapshot::utxos);
     }
 
     @GET
     @Path("/receive")
     public Uni<ReceiveAddressDto> receive() {
-        return service.snapshot().map(WalletSnapshot::receiveAddress);
+        return live.snapshot().map(WalletSnapshot::receiveAddress);
     }
 
     @GET
@@ -59,7 +71,7 @@ public class WalletResource {
     @Path("/receive/qr")
     @Produces("image/png")
     public Uni<byte[]> receiveQr() {
-        return service.snapshot().map(s -> QrGenerator.png(s.receiveAddress().address(), 320));
+        return live.snapshot().map(s -> QrGenerator.png(s.receiveAddress().address(), 320));
     }
 
     @GET
