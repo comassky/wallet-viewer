@@ -6,8 +6,8 @@
   html {
     @apply bg-slate-950 text-slate-100 antialiased;
     color-scheme: dark;
-    background-image: radial-gradient(ellipse at 5% 0%, rgb(247 147 26 / 7%), transparent 45%),
-      radial-gradient(ellipse at 95% 10%, rgb(56 189 248 / 5%), transparent 40%);
+    background-image: radial-gradient(ellipse at 15% 0%, rgb(247 147 26 / 9%), transparent 45%),
+      radial-gradient(ellipse at 95% 25%, rgb(247 147 26 / 3%), transparent 40%);
     background-attachment: fixed;
   }
 
@@ -28,11 +28,11 @@
 @layer components {
   .wallet-panel {
     @apply rounded-2xl border border-slate-700/40 bg-slate-900/80;
-    box-shadow: 0 8px 32px rgb(0 0 0 / 10%), inset 0 1px 0 rgb(255 255 255 / 3%);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 20%), inset 0 1px 0 rgb(255 255 255 / 3%);
   }
 
   .balance-card {
-    background: radial-gradient(ellipse at 100% 0%, rgb(247 147 26 / 12%), transparent 65%), rgb(15 23 42 / 90%);
+    background: radial-gradient(ellipse at 100% 0%, rgb(247 147 26 / 14%), transparent 65%), #161514;
   }
 
   .section-title {

@@ -1,11 +1,12 @@
 export interface RequestOptions {
   signal?: AbortSignal;
+  timeoutMs?: number;
 }
 
 const REQUEST_TIMEOUT_MS = 120_000;
 
 /** Shared JSON transport: bounded requests, caller cancellation and readable failures. */
-export async function requestJson<T>(url: string, { signal }: RequestOptions = {}): Promise<T> {
+export async function requestJson<T>(url: string, { signal, timeoutMs = REQUEST_TIMEOUT_MS }: RequestOptions = {}): Promise<T> {
   const controller = new AbortController();
   const abort = () => controller.abort(signal?.reason);
   signal?.addEventListener('abort', abort, { once: true });
@@ -14,7 +15,7 @@ export async function requestJson<T>(url: string, { signal }: RequestOptions = {
   const timeout = setTimeout(() => {
     timedOut = true;
     controller.abort();
-  }, REQUEST_TIMEOUT_MS);
+  }, timeoutMs);
   try {
     let response: Response;
     try {
