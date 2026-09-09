@@ -129,8 +129,7 @@ public class HdWallet {
             case P2WPKH -> SegwitAddress.fromKey(params, key);
             case P2TR -> taprootAddress(key);
             case P2SH_P2WPKH -> {
-                byte[] h160 = key.getPubKeyHash();
-                Script redeem = new ScriptBuilder().smallNum(0).data(h160).build();
+                Script redeem = ScriptBuilder.createP2WPKHOutputScript(key.getPubKeyHash());
                 yield LegacyAddress.fromScriptHash(params, CryptoUtils.sha256hash160(redeem.getProgram()));
             }
             case P2PKH -> LegacyAddress.fromKey(params, key);
