@@ -1,0 +1,92 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version X.Y.Z (without -SNAPSHOT)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # commit the version bumps and push the release tag
+    steps:
+      - name: Compute versions
+        id: version
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version must be X.Y.Z (e.g. 1.2.3), got '$VERSION'"
+            exit 1
+          fi
+          IFS='.' read -r major minor patch <<< "$VERSION"
+          {
+            echo "release=$VERSION"
+            echo "tag=$VERSION"
+            echo "next=${major}.${minor}.$((patch + 1))-SNAPSHOT"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          # A PAT (RELEASE_TOKEN) lets the pushed tag trigger the tag-driven Release
+          # workflow (image build + GitHub Release). GITHUB_TOKEN pushes do not.
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Fail if tag already exists
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Configure git identity
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Set release version and tag
+        env:
+          RELEASE: ${{ steps.version.outputs.release }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          mvn -B -q versions:set -DnewVersion="$RELEASE" -DgenerateBackupPoms=false
+          git commit -am "Release $RELEASE"
+          git tag -a "$TAG" -m "Release $RELEASE"
+
+      - name: Set next development version
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+        run: |
+          mvn -B -q versions:set -DnewVersion="$NEXT" -DgenerateBackupPoms=false
+          git commit -am "Prepare next development iteration $NEXT"
+
+      - name: Push branch and tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git push origin HEAD:main
+          git push origin "refs/tags/$TAG"
