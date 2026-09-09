@@ -4,7 +4,7 @@ export function shortId(id: string): string {
   return id ? `${id.slice(0, 10)}…${id.slice(-6)}` : '';
 }
 
-const dateFormat = new Intl.DateTimeFormat('en-US', {
+const dateFormat = new Intl.DateTimeFormat(navigator.language, {
   year: 'numeric', month: 'numeric', day: 'numeric',
   hour: 'numeric', minute: 'numeric', second: 'numeric',
 });
