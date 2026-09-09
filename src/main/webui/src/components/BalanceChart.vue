@@ -4,6 +4,7 @@ import { createChart, AreaSeries, LineSeries, ColorType, CrosshairMode, LineStyl
 import { currencyLabel, type BitcoinUnit, type FiatCurrency } from '../currency';
 import { useBalanceHistory } from '../composables/useBalanceHistory';
 import type { BalancePoint } from '../types/wallet';
+import { readStorage, writeStorage } from '../utils/storage.ts';
 import UiIcon from './UiIcon.vue';
 
 const props = defineProps<{
@@ -17,6 +18,7 @@ const container = ref<HTMLDivElement | null>(null);
 let chart: IChartApi | null = null;
 let balanceSeries: ISeriesApi<'Area'> | null = null;
 let valueSeries: ISeriesApi<'Line'> | null = null;
+let resizeObserver: ResizeObserver | null = null;
 
 type ChartPeriod = 'daily' | 'weekly' | 'monthly' | 'ytd' | 'all';
 const periods = [
@@ -28,16 +30,29 @@ const periods = [
 ] as const;
 const PERIOD_KEY = 'wallet-viewer.chart-period';
 function readPeriod(): ChartPeriod {
-  try {
-    const saved = localStorage.getItem(PERIOD_KEY);
-    if (saved && periods.some(option => option.id === saved)) return saved as ChartPeriod;
-  } catch { /* Storage is optional. */ }
-  return 'all';
+  const saved = readStorage(PERIOD_KEY);
+  return saved && periods.some(option => option.id === saved) ? saved as ChartPeriod : 'all';
 }
 const period = ref<ChartPeriod>(readPeriod());
-watch(period, value => { try { localStorage.setItem(PERIOD_KEY, value); } catch { /* Storage is optional. */ } });
+watch(period, value => writeStorage(PERIOD_KEY, value));
 const DAY = 86_400;
 const FIAT_COLOR = '#38bdf8';
+
+const BALANCE_KEY = 'wallet-viewer.chart-balance';
+const VALUE_KEY = 'wallet-viewer.chart-value';
+function readFlag(key: string): boolean {
+  return readStorage(key) !== '0';
+}
+const showBalance = ref(readFlag(BALANCE_KEY));
+const showValue = ref(readFlag(VALUE_KEY));
+watch(showBalance, value => {
+  writeStorage(BALANCE_KEY, value ? '1' : '0');
+  balanceSeries?.applyOptions({ visible: value });
+});
+watch(showValue, value => {
+  writeStorage(VALUE_KEY, value ? '1' : '0');
+  valueSeries?.applyOptions({ visible: value });
+});
 
 const enoughData = computed(() => history.value.length >= 2);
 const last = computed<BalancePoint | null>(() => history.value.at(-1) ?? null);
@@ -124,21 +139,26 @@ onMounted(() => {
   });
   balanceSeries = chart.addSeries(AreaSeries, {
     lineColor: '#f7931a', topColor: 'rgba(247, 147, 26, 0.35)', bottomColor: 'rgba(247, 147, 26, 0)',
-    lineWidth: 2, priceLineVisible: false, priceFormat: btcFormat(), priceScaleId: 'right',
+    lineWidth: 2, priceLineVisible: false, priceFormat: btcFormat(), priceScaleId: 'right', visible: showBalance.value,
   });
   valueSeries = chart.addSeries(LineSeries, {
-    color: FIAT_COLOR, lineWidth: 2, priceLineVisible: false, priceFormat: fiatFormat, priceScaleId: 'left',
+    color: FIAT_COLOR, lineWidth: 2, priceLineVisible: false, priceFormat: fiatFormat, priceScaleId: 'left', visible: showValue.value,
   });
   renderBalance();
   renderFiat();
   chart.timeScale().fitContent();
+  // The panel mounts inside a hidden tab (width 0); refit the content once the container gains size.
+  resizeObserver = new ResizeObserver(() => {
+    if ((container.value?.clientWidth ?? 0) > 0) chart?.timeScale().fitContent();
+  });
+  resizeObserver.observe(container.value);
 });
 
 // Split watchers: BTC/SAT touches only the balance curve, EUR/USD only the value curve.
 watch([points, () => props.currency], renderBalance);
 watch([points, () => props.fiatCurrency], renderFiat);
 watch(points, () => chart?.timeScale().fitContent());
-onBeforeUnmount(() => { chart?.remove(); chart = null; balanceSeries = null; valueSeries = null; });
+onBeforeUnmount(() => { resizeObserver?.disconnect(); resizeObserver = null; chart?.remove(); chart = null; balanceSeries = null; valueSeries = null; });
 </script>
 
 <template>
@@ -154,9 +174,13 @@ onBeforeUnmount(() => { chart?.remove(); chart = null; balanceSeries = null; val
       <div class="inline-flex flex-wrap rounded-xl border border-slate-700/60 bg-slate-950/40 p-0.5" role="group" aria-label="Chart period">
         <button v-for="option in periods" :key="option.id" type="button" :aria-pressed="period === option.id" class="rounded-lg px-2.5 py-1 text-xs font-semibold transition" :class="period === option.id ? 'bg-accent text-slate-950' : 'text-slate-400 hover:text-slate-200'" @click="period = option.id">{{ option.label }}</button>
       </div>
-      <div class="flex items-center gap-4 text-xs text-slate-400">
-        <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-accent" aria-hidden="true" />Balance ({{ currencyLabel(currency) }})</span>
-        <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" :style="{ background: FIAT_COLOR }" aria-hidden="true" />Value ({{ fiatCurrency }})</span>
+      <div class="flex items-center gap-4 text-xs">
+        <button type="button" :aria-pressed="showBalance" class="flex items-center gap-1.5 transition" :class="showBalance ? 'text-slate-300' : 'text-slate-600 line-through'" @click="showBalance = !showBalance">
+          <span class="h-2 w-2 rounded-full bg-accent" :class="{ 'opacity-40': !showBalance }" aria-hidden="true" />Balance ({{ currencyLabel(currency) }})
+        </button>
+        <button type="button" :aria-pressed="showValue" class="flex items-center gap-1.5 transition" :class="showValue ? 'text-slate-300' : 'text-slate-600 line-through'" @click="showValue = !showValue">
+          <span class="h-2 w-2 rounded-full" :class="{ 'opacity-40': !showValue }" :style="{ background: FIAT_COLOR }" aria-hidden="true" />Value ({{ fiatCurrency }})
+        </button>
       </div>
     </div>
     <p v-show="!enoughData" class="py-16 text-center text-sm" :class="error ? 'text-amber-300' : 'text-slate-400'">{{ error ? 'Balance history unavailable.' : 'Not enough history to plot a curve yet.' }}</p>

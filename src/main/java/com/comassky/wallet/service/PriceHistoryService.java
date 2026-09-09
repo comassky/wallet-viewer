@@ -5,15 +5,11 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,26 +21,16 @@ public class PriceHistoryService {
     @ConfigProperty(name = "wallet.price-history-url", defaultValue = "https://mempool.space/api/v1/historical-price")
     URI historyUrl;
 
-    private HttpClient client;
+    @Inject
+    MempoolFetch fetch;
+
     private Uni<List<PricePointDto>> cached;
 
     @PostConstruct
     void init() {
-        client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
-        HttpRequest request = HttpRequest.newBuilder(historyUrl)
-                .timeout(Duration.ofSeconds(15))
-                .header("Accept", "application/json")
-                .GET().build();
         // Historical prices move slowly, so cache for a while and share in-flight calls.
-        cached = Uni.createFrom().completionStage(() -> client.sendAsync(request, HttpResponse.BodyHandlers.ofString()))
-                .map(response -> {
-                    if (response.statusCode() != 200) {
-                        throw new IllegalStateException("Price history unavailable");
-                    }
-                    return parse(response.body());
-                })
-                .onFailure().transform(failure -> new ServiceUnavailableException("Price history temporarily unavailable"))
-                .memoize().atLeast(Duration.ofMinutes(30));
+        cached = fetch.cached(historyUrl.toString(), Duration.ofSeconds(15), Duration.ofMinutes(30),
+                PriceHistoryService::parse, "Price history temporarily unavailable");
     }
 
     public Uni<List<PricePointDto>> history() {
@@ -72,10 +58,5 @@ public class PriceHistoryService {
         }
         points.sort(Comparator.comparingLong(PricePointDto::time));
         return points;
-    }
-
-    @PreDestroy
-    void close() {
-        if (client != null) client.close();
     }
 }

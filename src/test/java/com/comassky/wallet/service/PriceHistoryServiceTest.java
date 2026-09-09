@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.mutiny.core.Vertx;
 import jakarta.ws.rs.ServiceUnavailableException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PriceHistoryServiceTest {
     private HttpServer server;
+    private Vertx vertx;
+    private MempoolFetch fetch;
     private PriceHistoryService service;
     private final AtomicInteger requests = new AtomicInteger();
     private volatile int status = 200;
@@ -40,15 +43,18 @@ class PriceHistoryServiceTest {
             }
         });
         server.start();
+        vertx = Vertx.vertx();
+        fetch = new MempoolFetch(vertx);
         service = new PriceHistoryService();
+        service.fetch = fetch;
         service.historyUrl = URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/history");
         service.init();
     }
 
     @AfterEach
     void stop() {
-        if (service != null) service.close();
         if (server != null) server.stop(0);
+        if (vertx != null) vertx.closeAndAwait();
     }
 
     @Test
