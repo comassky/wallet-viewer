@@ -129,7 +129,11 @@ public class HdWallet {
      * @param index address index
      */
     public AddressInfo address(int chain, int index) {
-        ensureInit();        DeterministicKey chainKey = chainKeys.computeIfAbsent(chain,
+        if ((chain != 0 && chain != 1) || index < 0) {
+            throw new IllegalArgumentException("Expected chain 0 or 1 and a non-negative address index");
+        }
+        ensureInit();
+        DeterministicKey chainKey = chainKeys.computeIfAbsent(chain,
                 c -> HDKeyDerivation.deriveChildKey(account, new ChildNumber(c, false)));
         DeterministicKey key = HDKeyDerivation.deriveChildKey(chainKey, new ChildNumber(index, false));
 

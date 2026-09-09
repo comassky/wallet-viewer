@@ -3,6 +3,7 @@ package com.example.walletviewer;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.bitcoinj.core.NetworkParameters;
@@ -43,12 +44,21 @@ public class WalletService {
 
     private volatile Uni<WalletSnapshot> cache;
 
+    @PostConstruct
+    void validateConfiguration() {
+        if (gapLimit <= 0 || maxAddresses <= 0 || cacheTtl < 0) {
+            throw new IllegalArgumentException("Wallet scan limits must be positive and cache TTL non-negative");
+        }
+    }
+
     public Uni<WalletSnapshot> snapshot() {
         Uni<WalletSnapshot> c = cache;
         if (c == null) {
             synchronized (this) {
                 if (cache == null) {
-                    cache = build().memoize().atLeast(Duration.ofSeconds(cacheTtl));
+                    // Recreate scan accumulators and address histories on every cache refresh.
+                    Uni<WalletSnapshot> fresh = Uni.createFrom().deferred(this::build);
+                    cache = cacheTtl == 0 ? fresh : fresh.memoize().atLeast(Duration.ofSeconds(cacheTtl));
                 }
                 c = cache;
             }
@@ -85,17 +95,15 @@ public class WalletService {
                         }
                     }
 
-                    // Next receive address = first unused external address
-                    AddressInfo recv = null;
+                    // Do not reuse holes before the last used external address.
+                    int nextIndex = 0;
                     for (AddressInfo a : receive) {
-                        if (!a.used()) {
-                            recv = a;
-                            break;
+                        if (a.used()) {
+                            nextIndex = a.index + 1;
                         }
                     }
-                    if (recv == null) {
-                        recv = wallet.address(0, receive.size());
-                    }
+                    AddressInfo recv = nextIndex < receive.size()
+                            ? receive.get(nextIndex) : wallet.address(0, nextIndex);
                     ReceiveAddressDto recvDto = new ReceiveAddressDto(recv.index, recv.address, recv.path);
 
                     // Collect tx ids + heights from address histories
@@ -128,7 +136,8 @@ public class WalletService {
 
     private Uni<List<AddressInfo>> scanFrom(int chain, int start, List<AddressInfo> acc) {
         List<Uni<AddressInfo>> batch = new ArrayList<>();
-        for (int i = 0; i < gapLimit; i++) {
+        int batchSize = Math.min(gapLimit, maxAddresses - start);
+        for (int i = 0; i < batchSize; i++) {
             AddressInfo ai = wallet.address(chain, start + i);
             batch.add(electrum.call("blockchain.scripthash.get_history", ai.scripthash)
                     .map(r -> {
@@ -145,7 +154,7 @@ public class WalletService {
             if (trailing >= gapLimit || acc.size() >= maxAddresses) {
                 return Uni.createFrom().item(acc);
             }
-            return scanFrom(chain, start + gapLimit, acc);
+            return scanFrom(chain, start + batchSize, acc);
         });
     }
 

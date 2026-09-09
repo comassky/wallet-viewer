@@ -2,6 +2,7 @@ package com.example.walletviewer;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -49,6 +50,7 @@ public class WalletResource {
     @GET
     @Path("/receive/{index}")
     public ReceiveAddressDto receiveAt(@PathParam("index") int index) {
+        validateIndex(index);
         AddressInfo a = service.derive(0, index);
         return new ReceiveAddressDto(a.index, a.address, a.path);
     }
@@ -64,6 +66,13 @@ public class WalletResource {
     @Path("/receive/{index}/qr")
     @Produces("image/png")
     public byte[] receiveQrAt(@PathParam("index") int index) {
+        validateIndex(index);
         return QrGenerator.png(service.derive(0, index).address, 320);
+    }
+
+    private static void validateIndex(int index) {
+        if (index < 0) {
+            throw new BadRequestException("Address index must be non-negative");
+        }
     }
 }

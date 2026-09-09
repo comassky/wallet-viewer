@@ -1,32 +1,40 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { walletApi, type WalletSnapshot, type TxType } from './api';
 
 const data = ref<WalletSnapshot | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
-const qrTs = ref<number>(Date.now());
 const copied = ref(false);
+const copyError = ref<string | null>(null);
+let copyTimer: ReturnType<typeof setTimeout> | undefined;
+const controller = new AbortController();
+const btcFormatter = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 8,
+  maximumFractionDigits: 8,
+});
 
 async function load(): Promise<void> {
   loading.value = true;
   error.value = null;
   try {
-    data.value = await walletApi.snapshot();
-    qrTs.value = Date.now();
+    data.value = await walletApi.snapshot({ signal: controller.signal });
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e);
+    if (!controller.signal.aborted) {
+      error.value = e instanceof Error ? e.message : String(e);
+    }
   } finally {
     loading.value = false;
   }
 }
 onMounted(load);
+onUnmounted(() => {
+  controller.abort();
+  clearTimeout(copyTimer);
+});
 
 function btc(sats: number): string {
-  return (Number(sats) / 1e8).toLocaleString('en-US', {
-    minimumFractionDigits: 8,
-    maximumFractionDigits: 8,
-  });
+  return btcFormatter.format(sats / 1e8);
 }
 function shortId(id: string): string {
   return id ? `${id.slice(0, 10)}…${id.slice(-6)}` : '';
@@ -35,16 +43,21 @@ function fmtDate(ts: number | null): string {
   return ts ? new Date(ts * 1000).toLocaleString() : '—';
 }
 async function copyAddr(text: string): Promise<void> {
+  clearTimeout(copyTimer);
+  copied.value = false;
+  copyError.value = null;
   try {
     await navigator.clipboard.writeText(text);
+    if (controller.signal.aborted) return;
     copied.value = true;
-    setTimeout(() => (copied.value = false), 1500);
+    copyTimer = setTimeout(() => (copied.value = false), 1500);
   } catch {
-    /* clipboard unavailable */
+    copyError.value = 'Copie indisponible. Sélectionnez et copiez l’adresse manuellement.';
   }
 }
 
-const qrUrl = computed<string>(() => walletApi.qrUrl(qrTs.value));
+// Use the displayed index: a second snapshot could otherwise yield a different address.
+const qrUrl = computed(() => data.value ? walletApi.qrAtUrl(data.value.receiveAddress.index) : undefined);
 // data is guaranteed non-null wherever these are rendered (v-if="data").
 const balance = computed(() => data.value!.balance);
 const receive = computed(() => data.value!.receiveAddress);
@@ -117,6 +130,7 @@ const tagLabel: Record<TxType, string> = { received: 'Reçu', sent: 'Envoyé', s
               >
                 {{ copied ? '✓ Copié' : 'Copier' }}
               </button>
+              <p v-if="copyError" role="status" class="mt-2 text-xs text-rose-400">{{ copyError }}</p>
             </div>
           </div>
         </section>
@@ -127,7 +141,7 @@ const tagLabel: Record<TxType, string> = { received: 'Reçu', sent: 'Envoyé', s
         <h2 class="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
           Transactions ({{ transactions.length }})
         </h2>
-        <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+        <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900">
           <table v-if="transactions.length" class="w-full text-sm">
             <thead>
               <tr class="text-xs uppercase text-slate-400">
@@ -153,7 +167,7 @@ const tagLabel: Record<TxType, string> = { received: 'Reçu', sent: 'Envoyé', s
                   <a
                     :href="`https://mempool.space/tx/${tx.txid}`"
                     target="_blank"
-                    rel="noopener"
+                    rel="noopener noreferrer"
                     class="font-mono text-sky-400 hover:underline"
                   >
                     {{ shortId(tx.txid) }}
@@ -184,7 +198,7 @@ const tagLabel: Record<TxType, string> = { received: 'Reçu', sent: 'Envoyé', s
         <h2 class="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
           UTXO ({{ utxos.length }})
         </h2>
-        <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+        <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900">
           <table v-if="utxos.length" class="w-full text-sm">
             <thead>
               <tr class="text-xs uppercase text-slate-400">
