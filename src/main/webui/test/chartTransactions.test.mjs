@@ -69,7 +69,11 @@ test('BTC price series follows fiat currency, visibility and privacy independent
   assert.equal(series.length, 3);
   const price = series[2];
   assert.equal(price.options.priceScaleId, 'left');
+  assert.equal(price.options.visible, false);
+  instance.$.setupState.showPrice = true;
+  await Vue.nextTick();
   assert.equal(price.options.visible, true);
+  assert.equal(storage.get('wallet-viewer.chart-price'), '1');
   assert.deepEqual(price.data.map(entry => entry.value), [undefined, 70000]);
   props.fiatCurrency = 'EUR';
   await Vue.nextTick();

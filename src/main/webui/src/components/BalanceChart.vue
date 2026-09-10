@@ -57,7 +57,7 @@ function readFlag(key: string): boolean {
 }
 const showBalance = ref(readFlag(BALANCE_KEY));
 const showValue = ref(readFlag(VALUE_KEY));
-const showPrice = ref(readFlag(PRICE_KEY));
+const showPrice = ref(readStorage(PRICE_KEY) === '1');
 watch(showBalance, value => {
   writeStorage(BALANCE_KEY, value ? '1' : '0');
   balanceSeries?.applyOptions({ visible: value });
