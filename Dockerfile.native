@@ -11,6 +11,8 @@ WORKDIR /app
 COPY --chown=65532:65532 target/*-runner /app/application
 
 ENV QUARKUS_HTTP_HOST=0.0.0.0
+# Force UTF-8 so startup banner/log symbols render in docker logs (distroless sets no locale).
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 EXPOSE 8080
 USER 65532:65532
 ENTRYPOINT ["/app/application"]

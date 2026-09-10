@@ -84,15 +84,21 @@ public class HdWallet {
         final String override = scriptTypeCfg == null ? "auto" : scriptTypeCfg.trim().toLowerCase();
         scriptType = resolveScriptType(prefix, override);
         basePath = "m/" + scriptType.purpose + "'/0'/0'";
-        if ("auto".equals(override)) {
-            LOG.infof("Wallet script type auto-detected: %s (BIP%d, %s) from %s key",
-                    scriptType, scriptType.purpose, basePath, prefix);
-        } else {
-            LOG.infof("Wallet script type configured: %s (BIP%d, %s)",
-                    scriptType, scriptType.purpose, basePath);
-        }
+        final String detection = "auto".equals(override) ? "auto-detected" : "configured";
+        LOG.info("\u20bf Wallet ------------------------------------------------");
+        LOG.infof("\u20bf   key     \u2192  %s", mask(p));
+        LOG.infof("\u20bf   script  \u2192  %s  (BIP%d, %s)  [%s]", scriptType, scriptType.purpose, basePath, detection);
+        LOG.info("\u20bf -----------------------------------------------------");
         account = DeterministicKey.deserializeB58(null, xpub, params);
         initialized = true;
+    }
+
+    /** Masks the extended public key for logs: keeps the first 8 and last 4 characters. */
+    static String mask(String key) {
+        if (key.length() <= 12) {
+            return "*".repeat(key.length());
+        }
+        return key.substring(0, 8) + "*".repeat(key.length() - 12) + key.substring(key.length() - 4);
     }
 
     static ScriptType resolveScriptType(String prefix, String override) {
