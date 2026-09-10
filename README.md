@@ -6,6 +6,9 @@
   <img alt="Bitcoin: read-only" src="https://img.shields.io/badge/Bitcoin-read--only-F7931A?style=flat-square&logo=bitcoin&logoColor=white">
   <img alt="Java 25" src="https://img.shields.io/badge/Java-25-ED8B00?style=flat-square&logo=openjdk&logoColor=white">
   <img alt="Quarkus 3.39" src="https://img.shields.io/badge/Quarkus-3.39-4695EB?style=flat-square&logo=quarkus&logoColor=white">
+  <img alt="GraalVM native" src="https://img.shields.io/badge/GraalVM-native-3776AB?style=flat-square&logo=graalvm&logoColor=white">
+  <img alt="Startup ~20ms" src="https://img.shields.io/badge/startup-~20ms-44CC11?style=flat-square&logo=rocket&logoColor=white">
+  <img alt="Memory ~55MB" src="https://img.shields.io/badge/RSS-~55MB-44CC11?style=flat-square&logo=speedtest&logoColor=white">
   <img alt="bitcoinj 0.17" src="https://img.shields.io/badge/bitcoinj-0.17-F7931A?style=flat-square&logo=bitcoin&logoColor=white">
   <img alt="Vue 3.5" src="https://img.shields.io/badge/Vue-3.5-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white">
   <img alt="Vite 8" src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white">
