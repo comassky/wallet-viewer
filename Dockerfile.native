@@ -6,7 +6,7 @@
 #
 # The runner is built on the UBI9 (glibc 2.34) Mandrel builder; this Debian 13 distroless
 # base provides a newer, compatible glibc plus CA certificates for Electrum/mempool TLS.
-FROM gcr.io/distroless/base-debian13:nonroot
+FROM gcr.io/distroless/base-debian13:nonroot@sha256:d199d20fb09c898d8822ae5cbd5cf3c6d424e9b5e1fc2eb9a719a7752cd9d861
 WORKDIR /app
 COPY --chown=65532:65532 target/*-runner /app/application
 
