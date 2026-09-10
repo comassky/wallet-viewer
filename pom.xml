@@ -23,6 +23,8 @@
         <zxing.version>3.5.4</zxing.version>
 
         <maven.compiler.parameters>true</maven.compiler.parameters>
+        <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
+        <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
         <surefire-plugin.version>3.6.0</surefire-plugin.version>
     </properties>
 
@@ -47,11 +49,6 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-websockets</artifactId>
         </dependency>
-        <!-- Core / DI -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-arc</artifactId>
-        </dependency>
 
         <!-- Reactive REST + JSON -->
         <dependency>
@@ -61,6 +58,12 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jackson</artifactId>
+        </dependency>
+
+        <!-- OpenAPI / Swagger UI for the REST API -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-openapi</artifactId>
         </dependency>
 
         <!-- Declarative reactive HTTP client (mempool.space) -->
@@ -101,16 +104,18 @@
             <artifactId>core</artifactId>
             <version>${zxing.version}</version>
         </dependency>
+        <!-- javase is only needed by tests (QR decode); production uses core + JDK ImageIO. -->
         <dependency>
             <groupId>com.google.zxing</groupId>
             <artifactId>javase</artifactId>
             <version>${zxing.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- Test -->
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit</artifactId>
+            <artifactId>quarkus-junit5</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -120,7 +125,28 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.16.0</version>
+                <version>${maven-compiler-plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>enforce-jdk</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[25,)</version>
+                                    <message>This project requires JDK 25 or newer.</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>${quarkus.platform.group-id}</groupId>
