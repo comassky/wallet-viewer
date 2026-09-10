@@ -34,7 +34,7 @@ public class BalanceHistoryService {
         cached = Uni.createFrom().deferred(() ->
                 Uni.combine().all().unis(live.snapshot(), priceHistory.history()).asTuple()
                         .map(tuple -> compute(tuple.getItem1().transactions(), tuple.getItem2())))
-                .memoize().atLeast(Duration.ofSeconds(60));
+                .memoize().forFixedDuration(Duration.ofSeconds(60));
     }
 
     public Uni<List<BalancePointDto>> history() {

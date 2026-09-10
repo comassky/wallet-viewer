@@ -24,6 +24,9 @@ services:
       ELECTRUM_REQUEST_TIMEOUT: "${ELECTRUM_REQUEST_TIMEOUT:-30s}"
       # Application log level (classic Quarkus). Use DEBUG for Electrum/scan lifecycle logs.
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      # Global (root) log level. Set to DEBUG for full diagnostics, e.g. native/GraalVM
+      # connection issues to Electrum (low-level network/TLS included).
+      ROOT_LOG_LEVEL: "${ROOT_LOG_LEVEL:-INFO}"
     security_opt:
       - no-new-privileges:true
     cap_drop:

@@ -30,7 +30,7 @@ public class FeeService {
                 .ifNoItem().after(REQUEST_TIMEOUT).fail()
                 .map(FeeService::toFees)
                 .onFailure().transform(failure -> new ServiceUnavailableException("Fee estimates temporarily unavailable"))
-                .memoize().atLeast(TTL);
+                .memoize().forFixedDuration(TTL);
     }
 
     public Uni<FeeRatesDto> fees() {

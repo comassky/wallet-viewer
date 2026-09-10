@@ -31,7 +31,7 @@ public class PriceHistoryService {
                 .ifNoItem().after(REQUEST_TIMEOUT).fail()
                 .map(PriceHistoryService::toPoints)
                 .onFailure().transform(failure -> new ServiceUnavailableException("Price history temporarily unavailable"))
-                .memoize().atLeast(TTL);
+                .memoize().forFixedDuration(TTL);
     }
 
     public Uni<List<PricePointDto>> history() {

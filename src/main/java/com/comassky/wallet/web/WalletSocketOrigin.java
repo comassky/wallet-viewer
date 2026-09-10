@@ -1,5 +1,6 @@
 package com.comassky.wallet.web;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.websocket.HandshakeResponse;
 import jakarta.websocket.server.HandshakeRequest;
 import jakarta.websocket.server.ServerEndpointConfig;
@@ -7,6 +8,8 @@ import jakarta.websocket.server.ServerEndpointConfig;
 import java.net.URI;
 
 /** Prevent a foreign website from reading a localhost/private wallet through a browser socket. */
+// Instantiated reflectively by the JSR-356 handshake; must be registered for native image.
+@RegisterForReflection
 public final class WalletSocketOrigin extends ServerEndpointConfig.Configurator {
     @Override
     public void modifyHandshake(ServerEndpointConfig config, HandshakeRequest request, HandshakeResponse response) {

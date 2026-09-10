@@ -30,7 +30,7 @@ public class PriceService {
                 .ifNoItem().after(REQUEST_TIMEOUT).fail()
                 .map(PriceService::toRates)
                 .onFailure().transform(failure -> new ServiceUnavailableException("BTC price temporarily unavailable"))
-                .memoize().atLeast(TTL);
+                .memoize().forFixedDuration(TTL);
     }
 
     public Uni<PriceRatesDto> rates() {
