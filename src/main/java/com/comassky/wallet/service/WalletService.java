@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,7 +81,7 @@ public class WalletService {
     }
 
     /** One wallet-owned output; used to total received amounts and detect our own spends. */
-    private record OwnedOutput(String txid, long index, long value) {
+    private record OwnedOutput(String txid, long index, long value, String address) {
         String outpoint() {
             return txid + ":" + index;
         }
@@ -159,6 +160,8 @@ public class WalletService {
                     Set<String> ourScripts = all.stream()
                             .map(a -> a.address().scriptHex)
                             .collect(Collectors.toSet());
+                    Map<String, String> addressByScript = all.stream()
+                            .collect(Collectors.toMap(a -> a.address().scriptHex, a -> a.address().address, (x, y) -> x));
                     List<AddressInfo> used = new ArrayList<>();
                     Map<String, Integer> txHeights = new LinkedHashMap<>();
                     all.stream().filter(ScannedAddress::used).forEach(a -> {
@@ -184,7 +187,7 @@ public class WalletService {
 
                     Uni<BalanceDto> balanceUni = sumBalances(used);
                     Uni<List<UtxoDto>> utxoUni = fetchUtxos(used, tip);
-                    Uni<List<TransactionDto>> txUni = fetchTransactions(txHeights, ourScripts, tip);
+                    Uni<List<TransactionDto>> txUni = fetchTransactions(txHeights, ourScripts, addressByScript, tip);
 
                     return receiveWatch.flatMap(ignored -> Uni.combine().all().unis(balanceUni, utxoUni, txUni).asTuple()
                             .map(r -> new WalletSnapshot(r.getItem1(), r.getItem2(), r.getItem3(), recvDto)))
@@ -277,7 +280,7 @@ public class WalletService {
      * server (verbose transaction.get is not universally supported, e.g. esplora electrs).
      */
     private Uni<List<TransactionDto>> fetchTransactions(Map<String, Integer> txHeights,
-                                                        Set<String> ourScripts, int tip) {
+                                                        Set<String> ourScripts, Map<String, String> addressByScript, int tip) {
         if (txHeights.isEmpty()) {
             return Uni.createFrom().item(List.of());
         }
@@ -347,22 +350,33 @@ public class WalletService {
             List<OwnedOutput> owned = parsed.entrySet().stream()
                     .flatMap(e -> e.getValue().getOutputs().stream()
                             .filter(o -> ourScripts.contains(ByteUtils.formatHex(o.getScriptBytes())))
-                            .map(o -> new OwnedOutput(e.getKey(), o.getIndex(), o.getValue().value)))
+                            .map(o -> new OwnedOutput(e.getKey(), o.getIndex(), o.getValue().value,
+                                    addressByScript.get(ByteUtils.formatHex(o.getScriptBytes())))))
                     .toList();
             Map<String, Long> receivedByTx = owned.stream()
                     .collect(Collectors.groupingBy(OwnedOutput::txid, Collectors.summingLong(OwnedOutput::value)));
             Map<String, Long> ourOut = owned.stream()
                     .collect(Collectors.toMap(OwnedOutput::outpoint, OwnedOutput::value));
+            // Addresses credited by each tx (our owned outputs) and the address behind each owned outpoint.
+            Map<String, Set<String>> receivedAddressesByTx = owned.stream()
+                    .filter(o -> o.address() != null)
+                    .collect(Collectors.groupingBy(OwnedOutput::txid,
+                            Collectors.mapping(OwnedOutput::address, Collectors.toCollection(LinkedHashSet::new))));
+            Map<String, String> addressByOutpoint = owned.stream()
+                    .filter(o -> o.address() != null)
+                    .collect(Collectors.toMap(OwnedOutput::outpoint, OwnedOutput::address, (x, y) -> x));
 
             return parsed.entrySet().stream()
-                    .map(e -> toTransaction(e.getKey(), e.getValue(), receivedByTx, ourOut, txHeights, timeByHeight, tip))
+                    .map(e -> toTransaction(e.getKey(), e.getValue(), receivedByTx, ourOut,
+                            receivedAddressesByTx, addressByOutpoint, txHeights, timeByHeight, tip))
                     .sorted(TRANSACTION_ORDER)
                     .toList();
         });
     }
 
     private static TransactionDto toTransaction(String txid, Transaction tx, Map<String, Long> receivedByTx,
-                                                Map<String, Long> ourOut, Map<String, Integer> txHeights,
+                                                Map<String, Long> ourOut, Map<String, Set<String>> receivedAddressesByTx,
+                                                Map<String, String> addressByOutpoint, Map<String, Integer> txHeights,
                                                 Map<Integer, Long> timeByHeight, int tip) {
         long received = receivedByTx.getOrDefault(txid, 0L);
         long sent = spentByUs(tx, ourOut);
@@ -375,7 +389,21 @@ public class WalletService {
             case -1 -> "sent";
             default -> "self";
         };
-        return new TransactionDto(txid, net, received, sent, height, conf, ts, type);
+        return new TransactionDto(txid, net, received, sent, height, conf, ts, type,
+                involvedAddresses(tx, txid, receivedAddressesByTx, addressByOutpoint));
+    }
+
+    /** Wallet addresses credited (owned outputs) or debited (spent owned inputs) by this transaction. */
+    private static List<String> involvedAddresses(Transaction tx, String txid,
+                                                  Map<String, Set<String>> receivedAddressesByTx,
+                                                  Map<String, String> addressByOutpoint) {
+        Set<String> addresses = new LinkedHashSet<>(receivedAddressesByTx.getOrDefault(txid, Set.of()));
+        tx.getInputs().stream()
+                .filter(in -> !in.isCoinBase())
+                .map(in -> addressByOutpoint.get(in.getOutpoint().getHash() + ":" + in.getOutpoint().getIndex()))
+                .filter(Objects::nonNull)
+                .forEach(addresses::add);
+        return List.copyOf(addresses);
     }
 
     /** Sums the value of prior outputs of ours that this transaction spends, ignoring coinbase inputs. */

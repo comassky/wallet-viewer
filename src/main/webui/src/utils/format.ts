@@ -18,7 +18,13 @@ export const transactionLabels: Record<TxType, string> = {
 };
 
 export const transactionClasses: Record<TxType, string> = {
-  received: 'bg-emerald-500/15 text-emerald-400',
-  sent: 'bg-rose-500/15 text-rose-400',
-  self: 'bg-sky-500/15 text-sky-400',
+  received: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
+  sent: 'border-rose-500/20 bg-rose-500/10 text-rose-300',
+  self: 'border-sky-500/20 bg-sky-500/10 text-sky-300',
+};
+
+export const transactionDotClasses: Record<TxType, string> = {
+  received: 'bg-emerald-400',
+  sent: 'bg-rose-400',
+  self: 'bg-sky-400',
 };

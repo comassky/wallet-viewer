@@ -53,19 +53,15 @@ const { query, filter, counts, filtered, visible, hasMore, showMore, resetFilter
         </button>
       </div>
       <div class="w-full xl:max-w-sm">
-        <label for="transaction-search" class="mb-1.5 block text-xs font-medium text-slate-300">Search transaction ID</label>
         <div class="flex items-center gap-2">
-          <input id="transaction-search" v-model="query" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Full or partial transaction ID" class="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder:text-slate-500" />
+          <input id="transaction-search" v-model="query" type="search" aria-label="Search by transaction ID or address" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Transaction ID or address" class="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder:text-slate-500" />
           <button v-if="query || filter !== 'all'" type="button" class="button-secondary inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-4 text-sm font-medium" @click="resetFilters"><UiIcon name="close" />Reset</button>
         </div>
       </div>
     </div>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="sr-only">Activity</h2>
-      <div class="space-y-1 text-xs text-slate-400">
-        <p v-if="transactions.length" role="status" aria-atomic="true">Showing {{ visible.length }} of {{ filtered.length }} transactions<span v-if="query || filter !== 'all'"> · {{ transactions.length }} total</span></p>
-        <p>Fiat estimates use the current price, not the price at the time of each transaction.</p>
-      </div>
+      <p v-if="transactions.length" role="status" aria-atomic="true" class="sr-only">Showing {{ visible.length }} of {{ filtered.length }} transactions<span v-if="query || filter !== 'all'"> · {{ transactions.length }} total</span></p>
       <div class="flex items-center gap-2 text-xs lg:hidden">
         <label>Sort by
           <select v-model="sortKey" class="ml-2 min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-2">
