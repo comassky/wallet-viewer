@@ -92,7 +92,7 @@ flowchart LR
 | Component | Version / source |
 | --- | --- |
 | Java / Maven builder | Java **25**; Maven **3.9.16**, Eclipse Temurin 25 Docker build image |
-| Backend | Quarkus **3.39.3**, SmallRye OpenAPI, Quinoa **2.9.0**, bitcoinj **0.17.1**, ZXing **3.5.4** — [pom.xml](pom.xml) |
+| Backend | Quarkus **3.39.3**, SmallRye OpenAPI, Quinoa **2.9.0**, bitcoinj **0.17.1** (QR codes via a vendored, dependency-free encoder) — [pom.xml](pom.xml) |
 | Reactive transport / cache | Vert.x (TCP client for Electrum), MicroProfile REST Client (mempool.space), Mutiny and Caffeine — versions managed by the Quarkus BOM |
 | Node.js | **24.21.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
 | Frontend (locked) | Vue **3.5.42**, Vite **8.3.0**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite), @types/node **22.20.2** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |

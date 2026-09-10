@@ -194,23 +194,23 @@ public class WalletResource {
 
     @GET
     @Path("/receive/qr")
-    @Produces("image/png")
-    @Operation(summary = "Next receive address QR", description = "PNG QR code for the next receive address.")
-    @APIResponse(responseCode = "200", description = "PNG QR image",
-            content = @Content(mediaType = "image/png", schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public Uni<byte[]> receiveQr() {
-        return live.snapshot().map(s -> QrGenerator.png(s.receiveAddress().address(), 320));
+    @Produces("image/svg+xml")
+    @Operation(summary = "Next receive address QR", description = "SVG QR code for the next receive address.")
+    @APIResponse(responseCode = "200", description = "SVG QR image",
+            content = @Content(mediaType = "image/svg+xml", schema = @Schema(type = SchemaType.STRING)))
+    public Uni<String> receiveQr() {
+        return live.snapshot().map(s -> QrGenerator.svg(s.receiveAddress().address(), 320));
     }
 
     @GET
     @Path("/receive/{index}/qr")
-    @Produces("image/png")
-    @Operation(summary = "Receive address QR at index", description = "PNG QR code for the receive address at the given index.")
-    @APIResponse(responseCode = "200", description = "PNG QR image",
-            content = @Content(mediaType = "image/png", schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    @Produces("image/svg+xml")
+    @Operation(summary = "Receive address QR at index", description = "SVG QR code for the receive address at the given index.")
+    @APIResponse(responseCode = "200", description = "SVG QR image",
+            content = @Content(mediaType = "image/svg+xml", schema = @Schema(type = SchemaType.STRING)))
     @APIResponse(responseCode = "400", description = "Negative index")
-    public byte[] receiveQrAt(
+    public String receiveQrAt(
             @Parameter(description = "Receive address index (>= 0)", required = true) @PathParam("index") @Min(0) int index) {
-        return QrGenerator.png(receiveAt(index).address(), 320);
+        return QrGenerator.svg(receiveAt(index).address(), 320);
     }
 }
