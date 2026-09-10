@@ -45,6 +45,13 @@ _Screenshots from [demo mode](#demo-mode)._
 
 <p align="center"><img src="docs/transaction.png" alt="Bitcoin Wallet Viewer transaction details popup showing mock data" width="820"></p>
 
+## Why I built this
+
+Like many people, I run an Electrum node that I deliberately keep off the public internet. I wanted to check my wallet and balance from anywhere — **without a VPN** and **without pasting my public key into third-party websites**. Wallet Viewer does exactly that: point it at your own Electrum server, feed it a watch-only xpub, and get a dashboard you fully host and control.
+
+> [!WARNING]
+> **No built-in authentication.** This application ships no login or access control of its own. Never expose it directly to the internet — always place it behind a secure, authenticated reverse proxy (HTTPS, with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90s). The built-in origin checks are hardening, not access control.
+
 ## Features
 
 - 💰 **Live wallet:** balances, confirmations, Activity / UTXO tabs, sorting and click-to-copy identifiers.
