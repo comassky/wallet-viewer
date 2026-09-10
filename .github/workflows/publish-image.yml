@@ -29,7 +29,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       contents: write # create the GitHub Release
       packages: write # push the image to GHCR
@@ -70,42 +70,29 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      # actions/cache stores each build cache dir; declared before the cache-dance
-      # step so their save (post) runs after the mounts are extracted back to disk.
-      - name: Cache Maven repository
-        uses: actions/cache@v6
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
         with:
-          path: .m2-cache
-          key: m2-${{ hashFiles('pom.xml') }}
-          restore-keys: m2-
+          distribution: temurin
+          java-version: 25
+          cache: maven
 
       - name: Cache Quinoa Node install
         uses: actions/cache@v6
         with:
-          path: .quinoa-cache
+          path: .quinoa
           key: quinoa-${{ hashFiles('src/main/resources/application.properties') }}
           restore-keys: quinoa-
 
       - name: Cache npm downloads
         uses: actions/cache@v6
         with:
-          path: .npm-cache
+          path: ~/.npm
           key: npm-${{ hashFiles('src/main/webui/package-lock.json') }}
           restore-keys: npm-
 
-      # Persist the BuildKit cache mounts (not covered by type=gha) across runs.
-      - name: Inject build caches into BuildKit
-        uses: reproducible-containers/buildkit-cache-dance@v3
-        with:
-          cache-map: |
-            {
-              ".m2-cache": "/root/.m2",
-              ".quinoa-cache": "/workspace/.quinoa",
-              ".npm-cache": "/root/.npm"
-            }
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
@@ -114,19 +101,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The Dockerfile build runs the full test suite, so a failing build blocks the release.
-      - name: Build, test and publish the release image
+      # Runs the full test suite, builds the Vue frontend (Quinoa) and compiles the GraalVM
+      # native runner. Mandrel runs in a container, so no local GraalVM is required.
+      - name: Build native runner (tests, frontend, native compile)
+        run: mvn -B --no-transfer-progress package -Dnative -Dquarkus.native.container-build=true -Dquarkus.quinoa.ci=true
+
+      - name: Build and publish the native image
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Dockerfile.native
           platforms: linux/amd64
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           provenance: false
           sbom: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3

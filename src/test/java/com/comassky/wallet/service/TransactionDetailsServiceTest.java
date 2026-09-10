@@ -245,16 +245,16 @@ class TransactionDetailsServiceTest {
     }
 
     @Test
-    void detailsAreNotCachedAndMembershipIsCheckedOnEachSubscription() {
+    void detailsAreCachedButMembershipIsCheckedOnEachSubscription() {
         Transaction tx = parent(40, 500);
         authorize(tx);
         Uni<TransactionDetailsDto> details = service.details(tx.getTxId().toString());
         await(details);
-        await(details);
-        assertEquals(2, electrum.calls.size());
+        await(details); // Immutable details are served from the cache without a second fetch.
+        assertEquals(1, electrum.calls.size());
         live.snapshot = snapshot();
-        assertThrows(NotFoundException.class, () -> await(details));
-        assertEquals(2, electrum.calls.size());
+        assertThrows(NotFoundException.class, () -> await(details)); // Membership is still re-checked before the cache.
+        assertEquals(1, electrum.calls.size());
     }
 
     @Test

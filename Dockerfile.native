@@ -1,0 +1,16 @@
+# Native (GraalVM) runtime image.
+#
+# Build the native runner first (frontend + native compilation), then this image:
+#   JAVA_HOME=/path/to/jdk25 mvn package -Dnative -Dquarkus.native.container-build=true
+#   docker build -f Dockerfile.native -t wallet-viewer:native .
+#
+# The runner is built on the UBI9 (glibc 2.34) Mandrel builder; this Debian 13 distroless
+# base provides a newer, compatible glibc plus CA certificates for Electrum/mempool TLS.
+FROM gcr.io/distroless/base-debian13:nonroot
+WORKDIR /app
+COPY --chown=65532:65532 target/*-runner /app/application
+
+ENV QUARKUS_HTTP_HOST=0.0.0.0
+EXPOSE 8080
+USER 65532:65532
+ENTRYPOINT ["/app/application"]

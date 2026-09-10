@@ -43,3 +43,22 @@ Image tags:
 - `dev` — latest `main`
 - `latest` — latest release
 - `X.Y.Z` — specific release
+
+## Native image (GraalVM)
+
+The app also builds and runs as a GraalVM **native** executable (sub-second startup, low memory, no JVM); bitcoinj/BouncyCastle need no extra configuration.
+
+1. Build the native runner — Docker runs the Mandrel builder, so no local GraalVM is required:
+
+```sh
+mvn package -Dnative -Dquarkus.native.container-build=true
+```
+
+2. Package the runner into a minimal distroless image and run it:
+
+```sh
+docker build -f Dockerfile.native -t wallet-viewer:native .
+docker run --rm -p 8080:8080 -e WALLET_XPUB=your-xpub wallet-viewer:native
+```
+
+The native process starts in ~20 ms. The `native` Maven profile is inert for normal JVM builds (activated only by `-Dnative`).

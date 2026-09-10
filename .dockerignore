@@ -4,7 +4,9 @@
 !src/
 !src/**
 !Dockerfile
+!Dockerfile.native
 !.dockerignore
+!target/*-runner
 **/node_modules/
 **/dist/
 **/.env

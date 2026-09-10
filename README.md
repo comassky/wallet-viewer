@@ -113,7 +113,7 @@ Requires Docker with Compose v2 — no local Java, Maven or Node needed.
 docker compose up -d --build
 ```
 
-See **[Docker & deployment](docs/DOCKER.md)** for GHCR images, script-type/network options, security hardening, custom ports and releases.
+See **[Docker & deployment](docs/DOCKER.md)** for GHCR images, the **native (GraalVM)** build, script-type/network options, security hardening, custom ports and releases.
 
 ## Demo mode
 
