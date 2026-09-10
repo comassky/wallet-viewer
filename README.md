@@ -17,14 +17,14 @@
 
 **A self-hosted, read-only Bitcoin dashboard powered by Electrum.** One extended public key, one application. No database, signing or spending.
 
-## Why I built this
-
-Like many people, I run an Electrum node that I deliberately keep off the public internet. I wanted to check my wallet and balance from anywhere — **without a VPN** and **without pasting my public key into third-party websites**. Wallet Viewer does exactly that: point it at your own Electrum server, feed it a watch-only xpub, and get a dashboard you fully host and control.
-
 > [!WARNING]
 > **No built-in authentication.** This application ships no login or access control of its own. Never expose it directly to the internet — always place it behind a secure, authenticated reverse proxy (HTTPS, with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90s). The built-in origin checks are hardening, not access control.
 > 
 >🔒  Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
+
+### Why I built this
+
+Like many people, I run an Electrum node that I deliberately keep off the public internet. I wanted to check my wallet and balance from anywhere — **without a VPN** and **without pasting my public key into third-party websites**. Wallet Viewer does exactly that: point it at your own Electrum server, feed it a watch-only xpub, and get a dashboard you fully host and control.
 
 ### Why you'll love it
 
