@@ -4,6 +4,8 @@ import com.comassky.wallet.derivation.HdWallet;
 import com.comassky.wallet.electrum.ElectrumClient;
 import com.comassky.wallet.electrum.ElectrumMethod;
 import com.comassky.wallet.model.TransactionDetailsDto;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -35,6 +37,9 @@ public class TransactionDetailsService {
     @Inject HdWallet wallet;
     @Inject DemoService demo;
 
+    // A txid commits to immutable bytes, so rendered details never change once produced.
+    private final Cache<String, TransactionDetailsDto> detailsCache = Caffeine.newBuilder().maximumSize(10_000).build();
+
     public Uni<TransactionDetailsDto> details(String txid) {
         if (txid == null || !txid.matches("[0-9a-fA-F]{64}")) {
             throw new BadRequestException("Transaction id must be 64 hexadecimal characters");
@@ -55,6 +60,8 @@ public class TransactionDetailsService {
     }
 
     private Uni<TransactionDetailsDto> fetchAuthorized(String txid) {
+        TransactionDetailsDto hit = detailsCache.getIfPresent(txid);
+        if (hit != null) return Uni.createFrom().item(hit);
         // Defer even synchronous setup failures into this boundary. Authorization/loading errors stay outside it.
         return Uni.createFrom().deferred(() -> {
             NetworkParameters params = wallet.params();
@@ -76,6 +83,7 @@ public class TransactionDetailsService {
                         });
             });
         }).ifNoItem().after(Duration.ofSeconds(30)).fail()
+                .invoke(details -> detailsCache.put(txid, details)) // Only successful renders are cached.
                 // No server response, raw transaction, or original cause is exposed.
                 .onFailure().transform(ignored -> new WebApplicationException("Unable to load transaction details", 502));
     }

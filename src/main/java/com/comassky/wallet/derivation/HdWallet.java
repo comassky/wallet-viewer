@@ -1,6 +1,8 @@
 package com.comassky.wallet.derivation;
 
 import com.comassky.wallet.model.AddressInfo;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.bitcoinj.base.Address;
 import org.bitcoinj.base.Base58;
@@ -65,6 +67,8 @@ public class HdWallet {
     private ScriptType scriptType;
     private String basePath;
     private final Map<Integer, DeterministicKey> chainKeys = new ConcurrentHashMap<>();
+    // Derivation is deterministic for a fixed key, so memoize the immutable result by (chain, index).
+    private final Cache<Long, AddressInfo> addressCache = Caffeine.newBuilder().maximumSize(20_000).build();
 
     private synchronized void ensureInit() {
         if (initialized) {
@@ -131,6 +135,10 @@ public class HdWallet {
             throw new IllegalArgumentException("Expected chain 0 or 1 and a non-negative address index");
         }
         ensureInit();
+        return addressCache.get(((long) chain << 32) | (index & 0xFFFFFFFFL), key -> deriveAddress(chain, index));
+    }
+
+    private AddressInfo deriveAddress(int chain, int index) {
         final DeterministicKey chainKey = chainKeys.computeIfAbsent(chain,
                 c -> HDKeyDerivation.deriveChildKey(account, new ChildNumber(c, false)));
         final DeterministicKey key = HDKeyDerivation.deriveChildKey(chainKey, new ChildNumber(index, false));
