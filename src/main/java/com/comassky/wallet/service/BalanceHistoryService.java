@@ -8,8 +8,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import java.time.Clock;
 import java.time.Duration;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -78,7 +78,8 @@ public class BalanceHistoryService {
             final double btc = carried / 100_000_000.0;
             final Double eur = price == null ? null : btc * price.eur();
             final Double usd = price == null ? null : btc * price.usd();
-            out.add(new BalancePointDto(day, carried, eur, usd, price == null ? null : price.time(), priceStale));
+                out.add(new BalancePointDto(day, carried, eur, usd, price == null ? null : price.time(), priceStale,
+                    price == null ? null : price.eur(), price == null ? null : price.usd()));
         }
         return out;
     }

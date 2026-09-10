@@ -109,6 +109,8 @@ export interface BalancePoint {
   balanceSats: number;
   valueEur: number | null;
   valueUsd: number | null;
+  priceEur: number | null;
+  priceUsd: number | null;
   priceTime: number | null;
   priceStale: boolean;
 }

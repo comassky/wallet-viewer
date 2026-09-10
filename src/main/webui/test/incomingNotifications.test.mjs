@@ -1,8 +1,33 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import * as Vue from 'vue';
+import { compile } from '@vue/compiler-dom';
+import { parse } from '@vue/compiler-sfc';
+import { renderToString } from '@vue/server-renderer';
 import { effectScope, nextTick, ref } from 'vue';
 import { useIncomingNotifications } from '../src/composables/useIncomingNotifications.ts';
 import { useToasts } from '../src/composables/useToast.ts';
+
+test('reconnection toast has a spinner, coexists with action feedback and disappears after reconnecting', async () => {
+  const source = readFileSync(new URL('../src/components/ToastHost.vue', import.meta.url), 'utf8');
+  const { descriptor } = parse(source);
+  const { code } = compile(descriptor.template.content, { mode: 'function', prefixIdentifiers: true });
+  const component = {
+    props: ['reconnecting', 'toasts'],
+    components: { UiIcon: { render: () => null } },
+    render: new Function('Vue', code)(Vue),
+  };
+  for (const reconnecting of [false, true, true, false]) {
+    const html = await renderToString(Vue.createSSRApp(component, {
+      reconnecting, toasts: [{ id: 1, message: 'Address copied' }],
+    }));
+    assert.equal((html.match(/Reconnecting to wallet/g) ?? []).length, reconnecting ? 1 : 0);
+    assert.equal(html.includes('animate-spin'), reconnecting);
+    assert.ok(html.includes('Address copied'));
+    if (reconnecting) assert.ok(html.includes('motion-reduce:animate-none'));
+  }
+});
 
 test('notifications never disclose amounts and initial history is silent', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] });

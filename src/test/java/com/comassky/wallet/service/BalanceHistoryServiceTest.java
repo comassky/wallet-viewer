@@ -1,16 +1,16 @@
 package com.comassky.wallet.service;
 
-import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.BalancePointDto;
 import com.comassky.wallet.model.PricePointDto;
-import com.comassky.wallet.model.ReceiveAddressDto;
 import com.comassky.wallet.model.TransactionDto;
 import com.comassky.wallet.model.TransactionType;
 import com.comassky.wallet.model.WalletSnapshot;
+import com.comassky.wallet.model.BalanceDto;
+import com.comassky.wallet.model.ReceiveAddressDto;
 import io.smallrye.mutiny.Uni;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -44,6 +44,8 @@ class BalanceHistoryServiceTest {
         // 0.5 BTC * 60_000 EUR = 30_000 EUR; * 70_000 USD = 35_000 USD.
         assertEquals(30_000.0, last.valueEur(), 0.001);
         assertEquals(35_000.0, last.valueUsd(), 0.001);
+        assertEquals(60_000.0, last.priceEur(), 0.001);
+        assertEquals(70_000.0, last.priceUsd(), 0.001);
     }
 
     @Test
@@ -61,7 +63,23 @@ class BalanceHistoryServiceTest {
         assertNull(series.get(0).valueEur());
         assertNull(series.get(0).valueUsd());
         assertNull(series.get(0).priceTime());
+        assertNull(series.get(0).priceEur());
+        assertNull(series.get(0).priceUsd());
         assertEquals(100_000_000L, series.get(0).balanceSats());
+    }
+
+    @Test
+    void zeroBalanceStillIncludesTheBitcoinPrice() {
+        List<TransactionDto> transactions = List.of(
+                new TransactionDto("a", 0L, 0L, 0L, 0, 0, null, TransactionType.SELF));
+        List<PricePointDto> prices = List.of(new PricePointDto(0, 60_000, 70_000));
+
+        BalancePointDto point = BalanceHistoryService.compute(transactions, prices).getFirst();
+
+        assertEquals(0.0, point.valueEur(), 0.001);
+        assertEquals(0.0, point.valueUsd(), 0.001);
+        assertEquals(60_000.0, point.priceEur(), 0.001);
+        assertEquals(70_000.0, point.priceUsd(), 0.001);
     }
 
     @Test

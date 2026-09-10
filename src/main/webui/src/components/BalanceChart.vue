@@ -23,6 +23,7 @@ const container = useTemplateRef<HTMLDivElement>('container');
 let chart: IChartApi | null = null;
 let balanceSeries: ISeriesApi<'Area'> | null = null;
 let valueSeries: ISeriesApi<'Line'> | null = null;
+let priceSeries: ISeriesApi<'Line'> | null = null;
 let transactionMarkers: ISeriesMarkersPluginApi<Time> | null = null;
 const tooltip = ref<{ group: ChartTransactionGroup; left: number } | null>(null);
 const transactionIcons = { received: 'receive', sent: 'send', self: 'transfer' } as const;
@@ -46,14 +47,17 @@ const period = ref<ChartPeriod>(readPeriod());
 watch(period, value => writeStorage(PERIOD_KEY, value));
 const DAY = 86_400;
 const FIAT_COLOR = '#38bdf8';
+const PRICE_COLOR = '#34d399';
 
 const BALANCE_KEY = 'wallet-viewer.chart-balance';
 const VALUE_KEY = 'wallet-viewer.chart-value';
+const PRICE_KEY = 'wallet-viewer.chart-price';
 function readFlag(key: string): boolean {
   return readStorage(key) !== '0';
 }
 const showBalance = ref(readFlag(BALANCE_KEY));
 const showValue = ref(readFlag(VALUE_KEY));
+const showPrice = ref(readFlag(PRICE_KEY));
 watch(showBalance, value => {
   writeStorage(BALANCE_KEY, value ? '1' : '0');
   balanceSeries?.applyOptions({ visible: value });
@@ -62,6 +66,10 @@ watch(showBalance, value => {
 watch(showValue, value => {
   writeStorage(VALUE_KEY, value ? '1' : '0');
   valueSeries?.applyOptions({ visible: value });
+});
+watch(showPrice, value => {
+  writeStorage(PRICE_KEY, value ? '1' : '0');
+  priceSeries?.applyOptions({ visible: value });
 });
 
 const enoughData = computed(() => history.value.length >= 2);
@@ -115,10 +123,11 @@ function businessDay(seconds: number): BusinessDay {
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
 }
 
-interface ChartPoint { time: BusinessDay; balanceSats: number; valueEur: number | null; valueUsd: number | null; }
+interface ChartPoint { time: BusinessDay; balanceSats: number; valueEur: number | null; valueUsd: number | null; priceEur: number | null; priceUsd: number | null; }
 // Bucket once; each series updates independently so a unit toggle never redraws the other curve.
 const points = computed<ChartPoint[]>(() => hidden.value ? [] : bucketed().map(p => ({
   time: businessDay(p.time), balanceSats: p.balanceSats, valueEur: p.valueEur, valueUsd: p.valueUsd,
+  priceEur: p.priceEur, priceUsd: p.priceUsd,
 })));
 
 const transactionGroups = computed(() => groupChartTransactions(visibleHistory.value, props.transactions, bucketId));
@@ -153,9 +162,12 @@ function renderBalance(): void {
 }
 
 function renderFiat(): void {
-  if (!valueSeries) return;
-  valueSeries.setData(points.value.map(point => {
+  valueSeries?.setData(points.value.map(point => {
     const value = props.fiatCurrency === 'EUR' ? point.valueEur : point.valueUsd;
+    return value === null ? { time: point.time } : { time: point.time, value };
+  }));
+  priceSeries?.setData(points.value.map(point => {
+    const value = props.fiatCurrency === 'EUR' ? point.priceEur : point.priceUsd;
     return value === null ? { time: point.time } : { time: point.time, value };
   }));
 }
@@ -184,6 +196,10 @@ onMounted(() => {
   valueSeries = chart.addSeries(LineSeries, {
     color: FIAT_COLOR, lineWidth: 2, priceLineVisible: false, priceFormat: fiatFormat, priceScaleId: 'left', visible: showValue.value,
   });
+  priceSeries = chart.addSeries(LineSeries, {
+    color: PRICE_COLOR, lineWidth: 2, lineStyle: LineStyle.Dashed, priceLineVisible: false,
+    priceFormat: fiatFormat, priceScaleId: 'left', visible: showPrice.value,
+  });
   transactionMarkers = createSeriesMarkers(balanceSeries, [], { zOrder: 'top' });
   chart.subscribeCrosshairMove(showTransactionTooltip);
   chart.subscribeClick(showTransactionTooltip);
@@ -198,7 +214,7 @@ onMounted(() => {
   resizeObserver.observe(container.value);
 });
 
-// Split watchers: BTC/SAT touches only the balance curve, EUR/USD only the value curve.
+// Split watchers: BTC/SAT touches only the balance curve, EUR/USD the fiat curves.
 watch([points, () => props.currency], renderBalance);
 watch(transactionGroups, renderMarkers);
 watch([points, () => props.fiatCurrency], renderFiat);
@@ -214,6 +230,7 @@ onBeforeUnmount(() => {
   chart = null;
   balanceSeries = null;
   valueSeries = null;
+  priceSeries = null;
 });
 </script>
 
@@ -230,12 +247,15 @@ onBeforeUnmount(() => {
       <div class="inline-flex flex-wrap rounded-xl border border-slate-700/60 bg-slate-950/40 p-0.5" role="group" aria-label="Chart period">
         <button v-for="option in periods" :key="option.id" type="button" :aria-pressed="period === option.id" class="rounded-lg px-2.5 py-1 text-xs font-semibold transition" :class="period === option.id ? 'bg-accent text-slate-950' : 'text-slate-400 hover:text-slate-200'" @click="period = option.id">{{ option.label }}</button>
       </div>
-      <div class="flex items-center gap-4 text-xs">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         <button type="button" :aria-pressed="showBalance" class="flex items-center gap-1.5 transition" :class="showBalance ? 'text-slate-300' : 'text-slate-600 line-through'" @click="showBalance = !showBalance">
           <span class="h-2 w-2 rounded-full bg-accent" :class="{ 'opacity-40': !showBalance }" aria-hidden="true" />Balance ({{ currencyLabel(currency) }})
         </button>
         <button type="button" :aria-pressed="showValue" class="flex items-center gap-1.5 transition" :class="showValue ? 'text-slate-300' : 'text-slate-600 line-through'" @click="showValue = !showValue">
           <span class="h-2 w-2 rounded-full" :class="{ 'opacity-40': !showValue }" :style="{ background: FIAT_COLOR }" aria-hidden="true" />Value ({{ fiatCurrency }})
+        </button>
+        <button type="button" :aria-pressed="showPrice" class="flex items-center gap-1.5 transition" :class="showPrice ? 'text-slate-300' : 'text-slate-600 line-through'" @click="showPrice = !showPrice">
+          <span class="w-3 border-t-2 border-dashed" :class="{ 'opacity-40': !showPrice }" :style="{ borderColor: PRICE_COLOR }" aria-hidden="true" />BTC price ({{ fiatCurrency }})
         </button>
       </div>
     </div>

@@ -146,8 +146,8 @@ test('cancellation while reading the response body preserves the caller reason',
 
 test('all REST endpoints accept their contract and reject a malformed successful response', async t => {
   const fees = { fastest: 2.5, halfHour: 2, hour: 1, economy: 1, minimum: 1, timestamp: 1 };
-  const point = { time: 0, balanceSats: 42, valueEur: null, valueUsd: null, priceTime: null, priceStale: true };
-  const signedPoint = { ...point, balanceSats: -42, valueEur: -0.01, valueUsd: -0.02, priceTime: 0 };
+  const point = { time: 0, balanceSats: 42, valueEur: null, valueUsd: null, priceEur: null, priceUsd: null, priceTime: null, priceStale: true };
+  const signedPoint = { ...point, balanceSats: -42, valueEur: -0.01, valueUsd: -0.02, priceEur: 60000, priceUsd: 70000, priceTime: 0 };
   const check = { address: 'other', belongs: false, chain: null, index: null, path: null, checked: 20 };
   const cases = [
     [walletApi.server, server], [walletApi.prices, prices], [walletApi.fees, fees],

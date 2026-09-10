@@ -92,6 +92,7 @@ export function validFees(value: unknown): value is FeeRates {
 export function validBalancePoint(value: unknown): value is BalancePoint {
   return record(value) && nonNegativeInteger(value.time) && integer(value.balanceSats)
     && nullable(finiteNumber)(value.valueEur) && nullable(finiteNumber)(value.valueUsd)
+    && nullable(nonNegativeNumber)(value.priceEur) && nullable(nonNegativeNumber)(value.priceUsd)
     && nullable(nonNegativeInteger)(value.priceTime) && typeof value.priceStale === 'boolean';
 }
 

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, useTemplateRef, watch } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import { useWallet } from './composables/useWallet';
 import { useCurrency } from './composables/useCurrency';
 import type { ReceiveAddress } from './types/wallet';
 import DashboardHeader from './components/DashboardHeader.vue';
 import BalanceCard from './components/BalanceCard.vue';
+import BalanceChart from './components/BalanceChart.vue';
 import ReceiveAddressCard from './components/ReceiveAddressCard.vue';
 import TransactionsSection from './components/TransactionsSection.vue';
 import UtxosSection from './components/UtxosSection.vue';
@@ -15,14 +16,12 @@ import WalletSkeleton from './components/WalletSkeleton.vue';
 import { useIncomingNotifications } from './composables/useIncomingNotifications';
 import { useRovingTabs } from './composables/useRovingTabs';
 import { useMediaQuery } from './composables/useMediaQuery';
-import { formatDate } from './utils/format';
 
-const { data, updatedAt, loading, error, refresh, connection, status, message } = useWallet();
+const { data, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, fiatCurrency, rates, ratesLoading, ratesError, amount } = useCurrency();
 useIncomingNotifications(data);
 const qrDialog = useTemplateRef<InstanceType<typeof ReceiveQrDialog>>('qrDialog');
 const appVersion = __APP_VERSION__;
-const BalanceChart = defineAsyncComponent(() => import('./components/BalanceChart.vue'));
 const tabs = [
   { id: 'activity', label: 'Activity', icon: 'activity' },
   { id: 'utxos', label: 'UTXO', icon: 'coins' },
@@ -52,7 +51,6 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
     </Transition>
 
     <template v-if="data">
-      <p v-if="updatedAt !== null" class="mb-4 text-xs text-slate-400">Last successful sync: {{ formatDate(updatedAt) }}</p>
       <p v-if="data.discovery && !data.discovery.complete" role="alert" class="mb-5 rounded-lg border border-amber-400/30 bg-amber-400/5 px-4 py-3 text-sm text-amber-300">
         Incomplete address discovery: {{ data.discovery.receiveScanned }} receive and {{ data.discovery.changeScanned }} change addresses scanned (limit {{ data.discovery.addressLimit }} per chain).
         The balance may exclude funds. Increase WALLET_MAX_ADDRESSES before relying on this balance or receiving more Bitcoin.
@@ -116,5 +114,5 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
 
   <!-- Keep the native dialog and its snapshot alive across loading and error states. -->
   <ReceiveQrDialog ref="qrDialog" />
-  <ToastHost />
+  <ToastHost :reconnecting="connection === 'reconnecting'" />
 </template>
