@@ -13,6 +13,7 @@ import com.comassky.wallet.model.TransactionDetailsDto;
 import com.comassky.wallet.model.TransactionDto;
 import com.comassky.wallet.model.UtxoDto;
 import com.comassky.wallet.model.WalletSnapshot;
+import com.comassky.wallet.model.WalletState;
 import com.comassky.wallet.service.PriceService;
 import com.comassky.wallet.service.BalanceHistoryService;
 import com.comassky.wallet.service.FeeService;
@@ -125,6 +126,14 @@ public class WalletResource {
     public Uni<BalanceDto> balance() {
         return live.snapshot().map(WalletSnapshot::balance);
     }
+
+        @GET
+        @Path("/state")
+        @Operation(summary = "Wallet state and freshness",
+                        description = "Versioned cache envelope shared with WebSocket. updatedAt is the last successful snapshot time in Unix seconds, preserved during outages.")
+        public WalletState state() {
+                return live.current();
+        }
 
     @GET
     @Path("/transactions")

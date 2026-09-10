@@ -87,7 +87,7 @@ flowchart LR
 ```
 
 - Addresses are derived locally; only script hashes reach Electrum, never the extended public key. Notifications trigger serialized scans, not periodic wallet polling.
-- WebSocket pushes versioned snapshots; REST reads the same cache. Refresh replays cached data, and transaction details load on demand via Axios.
+- WebSocket pushes versioned snapshots; REST reads the same cache. Refresh replays cached data, and transaction details load on demand via native `fetch`, with cancellation and request deadlines.
 - State is in memory and rebuilt after restart. During outages, the UI keeps the last snapshot with a stale/offline warning. Fiat quotes, fee estimates and price history come separately from [mempool.space](https://mempool.space/api/v1/prices), fetched by a declarative reactive REST client (MicroProfile REST Client) and shared/cached per TTL, without wallet identifiers.
 - Receive-address QR codes use a small vendored, dependency-free encoder (adapted from [Project Nayuki's QR-Code-generator](https://www.nayuki.io/page/qr-code-generator-library), MIT) and are served as **SVG** (crisp at any zoom, no image library); an address's QR is immutable, so results are memoized in a bounded cache.
 
@@ -100,7 +100,7 @@ flowchart LR
 | Reactive transport / cache | Vert.x (TCP client for Electrum), MicroProfile REST Client (mempool.space), Mutiny and Caffeine — versions managed by the Quarkus BOM |
 | Node.js | **24.21.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
 | Frontend (locked) | Vue **3.5.42**, Vite **8.3.0**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite), @types/node **22.20.2** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
-| UI libraries | Material Design Icons (@mdi/js) **7.4.47**, Axios **1.20.0**, @formkit/auto-animate **0.10.0**, lightweight-charts **5.2.1** |
+| UI libraries | Material Design Icons (@mdi/js) **7.4.47**, @formkit/auto-animate **0.10.0**, lightweight-charts **5.2.1** |
 | Runtime image | **Native (GraalVM)** on Distroless Debian **13**, `nonroot` — [Dockerfile.native](Dockerfile.native); JVM variant on Distroless Java **25** — [Dockerfile](Dockerfile) |
 
 Versions reflect declarations and the npm lockfile. For local development, use JDK 25 and `mvn quarkus:dev`; Quinoa manages Node automatically.
@@ -162,6 +162,7 @@ Supply wallet settings **at runtime**, never as build arguments or in source. De
 | `WALLET_NETWORK` | `mainnet` | `mainnet` or `testnet`; use a compatible Electrum server on the same network |
 | `WALLET_GAP_LIMIT` | `20` | Consecutive unused addresses stopping discovery on each chain |
 | `WALLET_MAX_ADDRESSES` | `200` | Maximum history-scanned addresses per receive/change chain |
+| `WALLET_RPC_CONCURRENCY` | `8` | Maximum concurrent RPCs per scan group; up to four groups run together (balance, UTXOs, headers, transactions), not a global transport limit |
 | `ELECTRUM_HOST` | `electrum.blockstream.info` | Reachable Electrum hostname; the default targets mainnet |
 | `ELECTRUM_PORT` | `50002` | Server port; application-only default is `50001` |
 | `ELECTRUM_SSL` | `true` | TLS with certificate/hostname verification; application-only default is `false` |
@@ -175,8 +176,14 @@ Inside Docker, `localhost` means the container: use a reachable server hostname.
 The REST API is documented with OpenAPI 3.1.
 
 - **Hosted docs (ReDoc):** https://comassky.github.io/wallet-viewer/ (published on each release).
-- **Swagger UI (running app):** `/q/swagger-ui`
+- **Swagger UI (development only, `mvn quarkus:dev`):** `/q/swagger-ui`. Disabled in tests and excluded from production builds; `/q/openapi` remains available in production.
 - **OpenAPI spec (running app):** `/q/openapi` (add `?format=json` for JSON).
+
+`GET /api/wallet/state` returns the same versioned envelope as the WebSocket: `status`, `message`, `snapshot` and `updatedAt` (Unix seconds of the last successful snapshot, or `null` before the first scan). The timestamp is retained through outages. Existing snapshot endpoints keep their response shape and may return cached data; use `/state` when freshness matters.
+
+Real scan snapshots include `discovery`: `complete`, `receiveScanned`, `changeScanned`, `addressLimit` and `gapLimit`. Complete means both configured unused-address gaps were reached and the receive address is covered, not that addresses beyond those gaps were searched. Synthetic snapshots may omit discovery metadata.
+
+Balance-history points retain `balanceSats` when market data is unavailable. `valueEur` and `valueUsd` are nullable, with `priceTime` identifying the quote used and `priceStale` indicating a failed provider refresh. No future quote is substituted for dates before price history begins. Successful price history is cached for 30 minutes; failed refreshes retain the last valid quotes and can retry after 30 seconds. The balance-history endpoint itself has a 60-second cache.
 
 ## Logs
 
@@ -188,6 +195,7 @@ Control verbosity with **`LOG_LEVEL`** (default `INFO`; set `DEBUG` for Electrum
 
 - 🔓 **No authentication:** keep access local or use an authenticated HTTPS proxy with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90 seconds. Origin checks are not access control.
 - 🕵️ **Privacy:** public keys expose account history; Electrum can correlate scripts. Use a trusted server and never provide spending secrets.
+- **Hide amounts:** replaces displayed wallet amounts, including dialogue values, with a neutral label and clears the history chart. Notifications never include amounts. This is a display preference, not access control: identifiers and API data remain available to authorized users of the browser.
 - 🎯 **Bounded discovery:** funds beyond the gap/address limits may be missed. An extra receive address beyond the cap is watched without history; raise `WALLET_MAX_ADDRESSES` before relying on its balance.
 - 📊 **Estimates:** missing parent transactions prevent fee calculation; graph edges do not allocate inputs to outputs. Fiat on balances and transactions uses current quotes; only the balance-history chart values each day at its historical price.
 

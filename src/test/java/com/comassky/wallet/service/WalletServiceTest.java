@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -321,6 +322,9 @@ class WalletServiceTest {
             service.maxAddresses = invalid;
             assertThrows(IllegalArgumentException.class, service::validateConfiguration);
             service.maxAddresses = 5;
+            service.rpcConcurrency = invalid;
+            assertThrows(IllegalArgumentException.class, service::validateConfiguration);
+            service.rpcConcurrency = 8;
         }
         service.maxAddresses = 1; // A gap larger than the per-chain cap is valid.
         assertDoesNotThrow(service::validateConfiguration);
@@ -352,6 +356,73 @@ class WalletServiceTest {
     @Test
     void internalTransferWithoutFeesIsSelf() {
         assertEquals(TransactionType.SELF, walletTransaction(2000, 0, 0, false).type());
+    }
+
+    @Test
+    void largeScanBoundsConcurrentRequestsInEachGroup() {
+        ArrayDeque<Runnable> replies = new ArrayDeque<>();
+        Map<String, Integer> active = new HashMap<>();
+        Map<String, Integer> peaks = new HashMap<>();
+        StubElectrum electrum = new StubElectrum(index -> true) {
+            @Override public Uni<JsonObject> call(String method, Object... params) {
+                Uni<JsonObject> response = super.call(method, params);
+                return Uni.createFrom().emitter(emitter -> {
+                    int count = active.merge(method, 1, Integer::sum);
+                    peaks.merge(method, count, Math::max);
+                    replies.add(() -> {
+                        active.merge(method, -1, Integer::sum);
+                        response.subscribe().with(emitter::complete, emitter::fail);
+                    });
+                });
+            }
+        };
+        for (int index = 0; index < 30; index++) {
+            Transaction transaction = new Transaction(MainNetParams.get());
+            transaction.addInput(Sha256Hash.ZERO_HASH, index, new Script(new byte[]{0x51}));
+            transaction.addOutput(Coin.valueOf(2000 + index), new Script(new byte[]{0x51}));
+            electrum.transactions.add(transaction);
+        }
+        WalletService service = service(electrum);
+        service.maxAddresses = 30;
+        service.gapLimit = 20;
+        service.rpcConcurrency = 2;
+        CompletableFuture<WalletSnapshot> result = service.scan().subscribeAsCompletionStage().toCompletableFuture();
+        assertFalse(result.isDone());
+        int processed = 0;
+        while (!result.isDone() && processed++ < 1000) {
+            assertFalse(replies.isEmpty());
+            replies.remove().run();
+        }
+        assertTrue(result.isDone());
+        assertEquals(31, result.join().transactions().size());
+        assertEquals(2, peaks.get("blockchain.transaction.get"));
+        assertEquals(2, peaks.get("blockchain.scripthash.get_balance"));
+        assertEquals(2, peaks.get("blockchain.scripthash.listunspent"));
+        assertTrue(peaks.get("blockchain.scripthash.subscribe") <= 4);
+        assertTrue(peaks.get("blockchain.scripthash.get_history") <= 4);
+        assertTrue(active.values().stream().allMatch(count -> count == 0));
+    }
+
+    @Test
+    void invalidTransactionResponsesNeverPoisonTheScanCache() {
+        for (String corruption : List.of("wrong-id", "trailing-bytes", "invalid-hex")) {
+            StubElectrum electrum = new StubElectrum(index -> index == 0);
+            WalletService service = service(electrum);
+            Transaction other = new Transaction(MainNetParams.get());
+            other.addInput(Sha256Hash.ZERO_HASH, 0, new Script(new byte[]{0x51}));
+            other.addOutput(Coin.valueOf(2000), new Script(new byte[]{0x51}));
+            electrum.transactionHexOverride = switch (corruption) {
+                case "wrong-id" -> ByteUtils.formatHex(other.bitcoinSerialize());
+                case "trailing-bytes" -> ByteUtils.formatHex(electrum.transaction.bitcoinSerialize()) + "00";
+                default -> "not-hex";
+            };
+            assertThrows(RuntimeException.class, () -> await(service.scan()));
+            electrum.transactionHexOverride = null;
+            assertEquals(1, await(service.scan()).transactions().size());
+            assertEquals(2, electrum.calls.stream().filter(call -> call.startsWith("blockchain.transaction.get")).count());
+            await(service.scan());
+            assertEquals(2, electrum.calls.stream().filter(call -> call.startsWith("blockchain.transaction.get")).count());
+        }
     }
 
     @Test
@@ -438,6 +509,7 @@ class WalletServiceTest {
         private String failMethod;
         private String failHash;
         private long unconfirmed;
+        private String transactionHexOverride;
         private Consumer<String> beforeSubscribe = ignored -> { };
         private final List<String> calls = new ArrayList<>();
         private final List<String> subscribed = new ArrayList<>();
@@ -496,7 +568,7 @@ class WalletServiceTest {
                     case "blockchain.scripthash.listunspent" -> new JsonArray().add(new JsonObject()
                             .put("tx_hash", transaction.getTxId().toString()).put("tx_pos", 0)
                             .put("value", 1000L).put("height", 0));
-                        case "blockchain.transaction.get" -> transactions.stream()
+                        case "blockchain.transaction.get" -> transactionHexOverride != null ? transactionHexOverride : transactions.stream()
                             .filter(transaction -> transaction.getTxId().toString().equals(params[0]))
                             .map(transaction -> ByteUtils.formatHex(transaction.bitcoinSerialize()))
                             .findFirst().orElseThrow();

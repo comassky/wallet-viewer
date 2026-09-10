@@ -3,6 +3,7 @@ import type { WalletEnvelope, WalletSnapshot, WalletStatus } from '../types/wall
 export type WalletConnection = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 
 export interface WalletStreamState {
+  updatedAt: number | null;
   data: WalletSnapshot | null;
   loading: boolean;
   error: string | null;
@@ -70,6 +71,7 @@ export function parseWalletEnvelope(frame: unknown): WalletEnvelope | null {
   try {
     const value: unknown = JSON.parse(frame);
     if (!record(value) || !integer(value.version) || value.version < 0
+      || (value.updatedAt != null && (!integer(value.updatedAt) || value.updatedAt < 0))
       || typeof value.status !== 'string' || !['loading', 'syncing', 'live', 'offline', 'error'].includes(value.status)
       || (value.message !== null && typeof value.message !== 'string')
       || (value.snapshot !== null && !validSnapshot(value.snapshot))) return null;
@@ -92,7 +94,7 @@ export function createWalletStream(options: WalletStreamOptions = {}) {
   const random = options.random ?? Math.random;
   const createSocket = options.createSocket ?? (url => new WebSocket(url));
   let state: WalletStreamState = {
-    data: null, loading: true, error: null, connection: 'connecting', status: 'loading', message: null,
+    data: null, updatedAt: null, loading: true, error: null, connection: 'connecting', status: 'loading', message: null,
   };
   let socket: WalletSocket | null = null;
   let deadline: unknown = null;
@@ -182,6 +184,7 @@ export function createWalletStream(options: WalletStreamOptions = {}) {
           ? envelope.message || (envelope.status === 'offline' ? 'Wallet backend is offline.' : 'Wallet synchronization failed.')
           : null;
         publish({
+          updatedAt: envelope.snapshot ? envelope.updatedAt ?? null : state.updatedAt,
           data, status: envelope.status, message: envelope.message, error, connection: 'connected',
           loading: !data && (envelope.status === 'loading' || envelope.status === 'syncing'),
         });

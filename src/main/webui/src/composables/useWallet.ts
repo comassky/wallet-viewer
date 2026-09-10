@@ -17,6 +17,7 @@ export function useWallet(options: Omit<WalletStreamOptions, 'onState'> = {}) {
   onScopeDispose(stream.dispose);
   return {
     data: computed(() => state.value!.data),
+    updatedAt: computed(() => state.value!.updatedAt),
     loading: computed(() => state.value!.loading),
     error: computed(() => state.value!.error),
     connection: computed(() => state.value!.connection),

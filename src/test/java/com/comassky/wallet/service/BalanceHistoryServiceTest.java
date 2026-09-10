@@ -4,6 +4,11 @@ import com.comassky.wallet.model.BalancePointDto;
 import com.comassky.wallet.model.PricePointDto;
 import com.comassky.wallet.model.TransactionDto;
 import com.comassky.wallet.model.TransactionType;
+import com.comassky.wallet.model.WalletSnapshot;
+import com.comassky.wallet.model.BalanceDto;
+import com.comassky.wallet.model.ReceiveAddressDto;
+import io.smallrye.mutiny.Uni;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -42,7 +47,7 @@ class BalanceHistoryServiceTest {
     }
 
     @Test
-    void daysBeforePriceHistoryUseTheEarliestQuote() {
+    void daysBeforePriceHistoryHaveUnknownFiatValues() {
         long now = Instant.now().getEpochSecond();
         long oneDayAgo = now - BalanceHistoryService.DAY;
         List<TransactionDto> txs = List.of(
@@ -53,6 +58,34 @@ class BalanceHistoryServiceTest {
         List<BalancePointDto> series = BalanceHistoryService.compute(txs, prices);
 
         assertFalse(series.isEmpty());
-        assertEquals(80_000.0, series.get(0).valueEur(), 0.001);
+        assertNull(series.get(0).valueEur());
+        assertNull(series.get(0).valueUsd());
+        assertNull(series.get(0).priceTime());
+        assertEquals(100_000_000L, series.get(0).balanceSats());
+    }
+
+    @Test
+    void priceOutageDoesNotRemoveBitcoinHistory() {
+        BalanceHistoryService service = new BalanceHistoryService();
+        TransactionDto transaction = new TransactionDto("a", 123L, 123L, 0, 0, 0, null, TransactionType.RECEIVED);
+        service.live = new WalletLiveService() {
+            @Override public Uni<WalletSnapshot> snapshot() {
+                return Uni.createFrom().item(new WalletSnapshot(new BalanceDto(0, 123), List.of(),
+                        List.of(transaction), new ReceiveAddressDto(0, "test", "test")));
+            }
+        };
+        service.priceHistory = new PriceHistoryService() {
+            @Override public Uni<List<PricePointDto>> history() {
+                return Uni.createFrom().failure(new IllegalStateException("offline"));
+            }
+        };
+        service.init();
+        try {
+            BalancePointDto point = service.history().await().atMost(Duration.ofSeconds(5)).getFirst();
+            assertEquals(123, point.balanceSats());
+            assertNull(point.valueEur());
+        } finally {
+            service.live.stop();
+        }
     }
 }

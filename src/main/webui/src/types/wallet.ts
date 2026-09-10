@@ -82,6 +82,7 @@ export type WalletStatus = 'loading' | 'syncing' | 'live' | 'offline' | 'error';
 
 /** Complete server cache state, not a patch. Versions are scoped to one connection. */
 export interface WalletEnvelope {
+  updatedAt?: number | null;
   version: number;
   status: WalletStatus;
   message: string | null;
@@ -106,8 +107,10 @@ export interface FeeRates {
 export interface BalancePoint {
   time: number;
   balanceSats: number;
-  valueEur: number;
-  valueUsd: number;
+  valueEur: number | null;
+  valueUsd: number | null;
+  priceTime: number | null;
+  priceStale: boolean;
 }
 
 export interface ElectrumServer {

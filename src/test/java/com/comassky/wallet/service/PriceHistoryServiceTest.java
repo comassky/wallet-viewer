@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -57,6 +59,36 @@ class PriceHistoryServiceTest {
                 () -> PriceHistoryService.toPoints(new MempoolClient.History(null)));
         assertThrows(IllegalArgumentException.class, () -> PriceHistoryService.toPoints(
                 new MempoolClient.History(List.of(new MempoolClient.Price(0d, 0d, 1L)))));
+    }
+
+    @Test
+    void failuresRetrySoonAndPreserveTheLastGoodHistory() {
+        AtomicLong now = new AtomicLong();
+        AtomicBoolean failing = new AtomicBoolean(true);
+        PriceHistoryService service = service(() -> {
+            if (failing.get()) throw new IllegalStateException("offline");
+            return history();
+        });
+        service.nanoTime = now::get;
+        assertThrows(ServiceUnavailableException.class, () -> service.history().await().atMost(Duration.ofSeconds(5)));
+        failing.set(false);
+        assertThrows(ServiceUnavailableException.class, () -> service.history().await().atMost(Duration.ofSeconds(5)));
+        assertEquals(1, requests.get());
+        now.addAndGet(PriceHistoryService.RETRY_DELAY.toNanos());
+        List<PricePointDto> good = service.history().await().atMost(Duration.ofSeconds(5));
+        assertFalse(service.stale());
+        assertEquals(2, requests.get());
+        failing.set(true);
+        now.addAndGet(PriceHistoryService.TTL.toNanos());
+        assertSame(good, service.history().await().atMost(Duration.ofSeconds(5)));
+        assertTrue(service.stale());
+        assertSame(good, service.history().await().atMost(Duration.ofSeconds(5)));
+        assertEquals(3, requests.get());
+        failing.set(false);
+        now.addAndGet(PriceHistoryService.RETRY_DELAY.toNanos());
+        assertEquals(good, service.history().await().atMost(Duration.ofSeconds(5)));
+        assertFalse(service.stale());
+        assertEquals(4, requests.get());
     }
 
     private static MempoolClient.History history() {

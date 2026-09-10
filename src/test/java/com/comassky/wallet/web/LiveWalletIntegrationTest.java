@@ -60,6 +60,13 @@ class LiveWalletIntegrationTest {
                 JsonNode initial = first.listener.await(state -> isLiveWithTotal(state, 0));
                 JsonNode empty = initial.path("snapshot");
                 assertTrue(initial.path("version").asLong() > 0);
+                assertTrue(initial.path("updatedAt").asLong() > 0);
+                assertTrue(empty.path("discovery").path("complete").asBoolean());
+                HttpResponse<String> stateResponse = client.send(HttpRequest.newBuilder(
+                        URI.create(walletUri.toString() + "/state")).timeout(TIMEOUT).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+                assertEquals(200, stateResponse.statusCode());
+                assertEquals(initial, JSON.readTree(stateResponse.body()));
                 assertEquals(0, empty.path("balance").path("confirmed").asLong());
                 assertEquals(0, empty.path("balance").path("unconfirmed").asLong());
                 assertEquals(0, empty.path("utxos").size());

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { createChart, AreaSeries, LineSeries, ColorType, CrosshairMode, LineStyle, type IChartApi, type ISeriesApi, type AreaData, type LineData, type BusinessDay } from 'lightweight-charts';
+import { createChart, AreaSeries, LineSeries, ColorType, CrosshairMode, LineStyle, type IChartApi, type ISeriesApi, type AreaData, type BusinessDay } from 'lightweight-charts';
 import { currencyLabel, type BitcoinUnit, type FiatCurrency } from '../currency';
 import { useBalanceHistory } from '../composables/useBalanceHistory';
 import { usePrivacy } from '../composables/usePrivacy';
 import type { BalancePoint } from '../types/wallet';
 import { readStorage, writeStorage } from '../utils/storage.ts';
 import UiIcon from './UiIcon.vue';
+import { formatDate } from '../utils/format';
 
 const props = defineProps<{
   currency: BitcoinUnit;
@@ -14,7 +15,7 @@ const props = defineProps<{
   amount: (sats: number, signed?: boolean) => string;
 }>();
 
-const { history, error } = useBalanceHistory();
+const { history, loading, error, refresh } = useBalanceHistory();
 const { hidden, conceal } = usePrivacy();
 const container = ref<HTMLDivElement | null>(null);
 let chart: IChartApi | null = null;
@@ -62,7 +63,7 @@ const currentFiatLabel = computed(() => {
   const point = last.value;
   if (!point) return '';
   const value = props.fiatCurrency === 'EUR' ? point.valueEur : point.valueUsd;
-  return `${Math.round(value).toLocaleString('en-US')} ${props.fiatCurrency}`;
+  return value === null ? 'Fiat unavailable' : `${Math.round(value).toLocaleString('en-US')} ${props.fiatCurrency}`;
 });
 
 function btcFormat() {
@@ -104,7 +105,7 @@ function businessDay(seconds: number): BusinessDay {
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
 }
 
-interface ChartPoint { time: BusinessDay; balanceSats: number; valueEur: number; valueUsd: number; }
+interface ChartPoint { time: BusinessDay; balanceSats: number; valueEur: number | null; valueUsd: number | null; }
 // Bucket once; each series updates independently so a unit toggle never redraws the other curve.
 const points = computed<ChartPoint[]>(() => hidden.value ? [] : bucketed().map(p => ({
   time: businessDay(p.time), balanceSats: p.balanceSats, valueEur: p.valueEur, valueUsd: p.valueUsd,
@@ -119,7 +120,10 @@ function renderBalance(): void {
 
 function renderFiat(): void {
   if (!valueSeries) return;
-  valueSeries.setData(points.value.map(p => ({ time: p.time, value: props.fiatCurrency === 'EUR' ? p.valueEur : p.valueUsd } as LineData)));
+  valueSeries.setData(points.value.map(point => {
+    const value = props.fiatCurrency === 'EUR' ? point.valueEur : point.valueUsd;
+    return value === null ? { time: point.time } : { time: point.time, value };
+  }));
 }
 
 onMounted(() => {
@@ -185,7 +189,14 @@ onBeforeUnmount(() => { resizeObserver?.disconnect(); resizeObserver = null; cha
         </button>
       </div>
     </div>
-    <p v-show="!enoughData" class="py-16 text-center text-sm" :class="error ? 'text-amber-300' : 'text-slate-400'">{{ error ? 'Balance history unavailable.' : 'Not enough history to plot a curve yet.' }}</p>
+    <div v-if="error" role="status" class="mb-4 flex flex-wrap items-center gap-3 text-sm text-amber-300">
+      <span>{{ history.length ? 'History update unavailable. Showing the last received data.' : 'Balance history unavailable.' }}</span>
+      <button type="button" :disabled="loading" class="button-secondary inline-flex items-center gap-2 rounded-lg px-3" @click="refresh"><UiIcon name="refresh" />Retry</button>
+    </div>
+    <p v-else-if="last?.priceStale" role="status" class="mb-3 text-xs text-amber-300">Price history update unavailable. Using the last known quotes.</p>
+    <p v-if="last?.priceTime != null" class="mb-3 text-xs text-slate-400">Latest historical quote: {{ formatDate(last.priceTime) }} · mempool.space</p>
+    <p v-if="history.some(point => point.valueEur === null || point.valueUsd === null)" role="status" class="mb-3 text-xs text-amber-300">Fiat values are unavailable for part or all of this period. Bitcoin balances remain visible.</p>
+    <p v-if="!enoughData && !error && !hidden" role="status" class="py-16 text-center text-sm text-slate-400">{{ loading ? 'Loading balance history...' : 'Not enough history to plot a curve yet.' }}</p>
     <p v-if="hidden" role="status" class="flex h-72 items-center justify-center text-sm text-slate-400">Amounts hidden</p>
     <div v-show="enoughData && !hidden" ref="container" class="sensitive h-72 w-full" aria-hidden="true"></div>
   </div>

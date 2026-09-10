@@ -2,57 +2,50 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { AxiosError } from 'axios';
-import { httpClient, requestJson } from '../src/services/http.ts';
+import { requestJson } from '../src/services/http.ts';
 import { walletApi } from '../src/services/walletApi.ts';
 
-function adapter(t, handler) {
-  const original = httpClient.defaults.adapter;
-  httpClient.defaults.adapter = handler;
-  t.after(() => { httpClient.defaults.adapter = original; });
-}
-
-function response(config, data) {
-  return { data, status: 200, statusText: 'OK', headers: {}, config };
-}
-
-test('wallet service uses Axios with endpoint, JSON header, default timeout and supplied signal', async t => {
+test('wallet service uses fetch with endpoint, JSON header, default timeout and cancellation cleanup', async t => {
   const snapshot = { balance: { total: 42 } };
   const controller = new AbortController();
-  adapter(t, async config => {
-    assert.equal(config.url, '/api/wallet');
-    assert.equal(config.method, 'get');
-    assert.equal(config.headers.get('Accept'), 'application/json');
-    assert.equal(config.timeout, 120_000);
-    assert.equal(config.signal, controller.signal);
-    assert.equal(config.responseType, 'json');
-    return response(config, JSON.stringify(snapshot));
+  const timer = t.mock.method(globalThis, 'setTimeout');
+  const clear = t.mock.method(globalThis, 'clearTimeout');
+  const remove = t.mock.method(controller.signal, 'removeEventListener');
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.equal(url, '/api/wallet');
+    assert.equal(options.headers.Accept, 'application/json');
+    assert.equal(options.signal.aborted, false);
+    return new Response(JSON.stringify(snapshot));
   });
   assert.deepEqual(await walletApi.snapshot({ signal: controller.signal }), snapshot);
+  assert.ok(timer.mock.calls.some(call => call.arguments[1] === 120_000));
+  assert.ok(clear.mock.calls.some(call => call.arguments[0] === timer.mock.calls[0].result));
+  assert.ok(remove.mock.calls.some(call => call.arguments[0] === 'abort'));
   assert.equal(walletApi.qrAtUrl(7), '/api/wallet/receive/7/qr');
 });
 
 test('server metadata timeout override does not alter other endpoint defaults', async t => {
   const requests = [];
-  adapter(t, async config => { requests.push([config.url, config.timeout]); return response(config, '{}'); });
+  const timer = t.mock.method(globalThis, 'setTimeout');
+  t.mock.method(globalThis, 'fetch', async url => { requests.push(url); return new Response('{}'); });
   await walletApi.server({ timeoutMs: 5000 });
   await walletApi.prices();
   await walletApi.transactionDetails('id/with spaces');
   assert.deepEqual(requests, [
-    ['/api/wallet/server', 5000], ['/api/wallet/prices', 120_000],
-    ['/api/wallet/transactions/id%2Fwith%20spaces', 120_000],
+    '/api/wallet/server', '/api/wallet/prices', '/api/wallet/transactions/id%2Fwith%20spaces',
   ]);
+  assert.deepEqual(timer.mock.calls.map(call => call.arguments[1]), [5000, 120_000, 120_000]);
 });
 
 test('network failures remain readable and are not retried automatically', async t => {
   let calls = 0;
-  adapter(t, async config => { calls++; throw new AxiosError('offline', 'ERR_NETWORK', config); });
+  t.mock.method(globalThis, 'fetch', async () => { calls++; throw new TypeError('offline'); });
   await assert.rejects(requestJson('/test'), /Network unreachable: offline/);
   assert.equal(calls, 1);
 });
 
 test('an already cancelled caller sends no request and preserves its abort reason', async t => {
-  adapter(t, () => { assert.fail('Cancelled request must not reach the adapter'); });
+  t.mock.method(globalThis, 'fetch', () => { assert.fail('Cancelled request must not reach fetch'); });
   const controller = new AbortController();
   const reason = new Error('No longer selected');
   controller.abort(reason);
@@ -60,25 +53,21 @@ test('an already cancelled caller sends no request and preserves its abort reaso
 });
 
 test('invalid timeout overrides cannot disable the deadline', async t => {
-  adapter(t, () => { assert.fail('Invalid timeout must not send a request'); });
+  t.mock.method(globalThis, 'fetch', () => { assert.fail('Invalid timeout must not send a request'); });
   for (const timeoutMs of [0, -1, Infinity, NaN]) {
     await assert.rejects(requestJson('/test', { timeoutMs }), RangeError);
   }
 });
 
-// Exercise a real Axios transport against loopback: no external API or personal wallet.
 async function localServer(t, handler) {
   const server = createServer(handler);
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
-  const original = httpClient.defaults.proxy;
-  httpClient.defaults.proxy = false;
-  t.after(() => { httpClient.defaults.proxy = original; });
   return `http://127.0.0.1:${server.address().port}`;
 }
 
-test('real Axios transport decodes JSON and reports text, JSON and empty HTTP failures', async t => {
+test('real fetch transport decodes JSON and reports text, JSON and empty HTTP failures', async t => {
   const url = await localServer(t, (req, res) => {
     if (req.url === '/text') { res.writeHead(503); res.end('Unavailable'); }
     else if (req.url === '/json') { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end('{"message":"Bad input"}'); }
@@ -96,7 +85,7 @@ test('malformed successful JSON is rejected rather than published as wallet data
   await assert.rejects(requestJson(url), /server returned invalid JSON/);
 });
 
-test('caller cancellation aborts an in-flight Axios request and removes its listener', async t => {
+test('caller cancellation aborts an in-flight fetch request and removes its listener', async t => {
   let received;
   const ready = new Promise(resolve => { received = resolve; });
   const url = await localServer(t, () => received());
@@ -110,7 +99,33 @@ test('caller cancellation aborts an in-flight Axios request and removes its list
   assert.ok(remove.mock.calls.some(call => call.arguments[0] === 'abort'));
 });
 
-test('Axios enforces an overridden timeout with the existing user-facing message', async t => {
+test('fetch enforces an overridden timeout with the existing user-facing message', async t => {
   const url = await localServer(t, () => {});
   await assert.rejects(requestJson(url, { timeoutMs: 50 }), /The server took too long to respond/);
+});
+
+test('deadline includes reading a slow response body', async t => {
+  const url = await localServer(t, (_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.flushHeaders();
+    res.write('{');
+  });
+  await assert.rejects(requestJson(url, { timeoutMs: 100 }), /The server took too long to respond/);
+});
+
+test('cancellation while reading the response body preserves the caller reason', async t => {
+  let received;
+  const ready = new Promise(resolve => { received = resolve; });
+  const url = await localServer(t, (_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.flushHeaders();
+    res.write('{');
+    received();
+  });
+  const controller = new AbortController();
+  const reason = new Error('Selection changed');
+  const rejected = assert.rejects(requestJson(url, { signal: controller.signal }), error => error === reason);
+  await ready;
+  controller.abort(reason);
+  await rejected;
 });

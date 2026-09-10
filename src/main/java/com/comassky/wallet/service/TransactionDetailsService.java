@@ -4,6 +4,7 @@ import com.comassky.wallet.derivation.HdWallet;
 import com.comassky.wallet.electrum.ElectrumClient;
 import com.comassky.wallet.electrum.ElectrumMethod;
 import com.comassky.wallet.model.TransactionDetailsDto;
+import com.comassky.wallet.util.TransactionDecoder;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.smallrye.mutiny.Uni;
@@ -20,7 +21,6 @@ import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptException;
 
-import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -91,19 +91,7 @@ public class TransactionDetailsService {
     private Uni<Transaction> fetch(String txid, NetworkParameters params) {
         // RPC creation must also be lazy, so the join's concurrency bound applies to actual requests.
         return Uni.createFrom().deferred(() -> electrum.call(ElectrumMethod.TRANSACTION_GET, txid))
-                .map(response -> {
-                    String hex = response.getString("result");
-                    if (hex == null || hex.isEmpty() || (hex.length() & 1) != 0
-                            || !hex.matches("[0-9a-fA-F]+")) {
-                        throw new IllegalStateException("Invalid transaction response");
-                    }
-                    byte[] raw = ByteUtils.parseHex(hex);
-                    Transaction transaction = Transaction.read(ByteBuffer.wrap(raw));
-                    if (transaction.messageSize() != raw.length || !transaction.getTxId().toString().equals(txid)) {
-                        throw new IllegalStateException("Invalid transaction response");
-                    }
-                    return transaction;
-                });
+                .map(response -> TransactionDecoder.decode(txid, response.getString("result")));
     }
 
     private static TransactionDetailsDto render(Transaction transaction, Map<String, Transaction> previous,

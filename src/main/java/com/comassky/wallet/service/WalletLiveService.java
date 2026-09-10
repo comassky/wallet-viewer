@@ -20,6 +20,7 @@ import jakarta.ws.rs.ServiceUnavailableException;
 import org.jboss.logging.Logger;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -178,7 +179,8 @@ public class WalletLiveService {
         if (stopped) return;
         WalletState previous = current();
         WalletState next = new WalletState(++version, status, message,
-                snapshot != null ? snapshot : previous.snapshot());
+            snapshot != null ? snapshot : previous.snapshot(),
+            snapshot != null ? Long.valueOf(Instant.now().getEpochSecond()) : previous.updatedAt());
         cache.put(KEY, next);
         Set.copyOf(listeners).forEach(listener -> {
             try { listener.accept(next); }

@@ -11,6 +11,7 @@ import com.comassky.wallet.model.TransactionDto;
 import com.comassky.wallet.model.TransactionType;
 import com.comassky.wallet.model.UtxoDto;
 import com.comassky.wallet.model.WalletSnapshot;
+import com.comassky.wallet.util.TransactionDecoder;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.smallrye.mutiny.Uni;
@@ -58,6 +59,8 @@ public class WalletService {
     int gapLimit;
     @ConfigProperty(name = "wallet.max-addresses", defaultValue = "200")
     int maxAddresses;
+    @ConfigProperty(name = "wallet.rpc-concurrency", defaultValue = "8")
+    int rpcConcurrency = 8;
 
     // Process-local watermarks, committed only after an entire scan succeeds.
     private volatile Coverage coverage = new Coverage(-1, -1, 0);
@@ -98,7 +101,7 @@ public class WalletService {
 
     @PostConstruct
     void validateConfiguration() {
-        if (gapLimit <= 0 || maxAddresses <= 0) {
+        if (gapLimit <= 0 || maxAddresses <= 0 || rpcConcurrency <= 0) {
             throw new IllegalArgumentException("Wallet scan limits must be positive");
         }
     }
@@ -225,11 +228,11 @@ public class WalletService {
             AddressInfo ai = wallet.address(chain, start + i);
             // Reissue on every scan: the transport is not a persistent subscription registry.
             // Only the public script hash is sent, never the address, derivation path or key.
-            batch.add(subscribeAddress(ai)
+            batch.add(Uni.createFrom().deferred(() -> subscribeAddress(ai))
                     .flatMap(ignored -> electrum.call(ElectrumMethod.SCRIPTHASH_GET_HISTORY, ai.scripthash))
                     .map(r -> new ScannedAddress(ai, r.getJsonArray("result"))));
         }
-        return Uni.join().all(batch).andFailFast().flatMap(list -> {
+        return join(batch).flatMap(list -> {
             acc.addAll(list);
             int trailing = 0;
             for (int i = acc.size() - 1; i >= 0 && !acc.get(i).used(); i--) {
@@ -254,7 +257,7 @@ public class WalletService {
                     return new BalanceDto(o.getLong("confirmed", 0L), o.getLong("unconfirmed", 0L));
                 }))
                 .toList();
-        return Uni.join().all(unis).andFailFast().map(list -> new BalanceDto(
+        return join(unis).map(list -> new BalanceDto(
                 list.stream().mapToLong(BalanceDto::confirmed).sum(),
                 list.stream().mapToLong(BalanceDto::unconfirmed).sum()));
     }
@@ -277,7 +280,7 @@ public class WalletService {
                                 })
                                 .toList()))
                 .toList();
-        return Uni.join().all(unis).andFailFast().map(lists -> lists.stream()
+        return join(unis).map(lists -> lists.stream()
                 .flatMap(List::stream)
                 .sorted(Comparator.comparingLong(UtxoDto::value).reversed())
                 .toList());
@@ -329,10 +332,10 @@ public class WalletService {
 
         Uni<List<Long>> headersUni = heightMisses.isEmpty()
                 ? Uni.createFrom().item(List.of())
-                : Uni.join().all(headerUnis).andFailFast();
+                : join(headerUnis);
         Uni<List<String>> rawTxUni = txMisses.isEmpty()
                 ? Uni.createFrom().item(List.of())
-                : Uni.join().all(txUnis).andFailFast();
+                : join(txUnis);
 
         return Uni.combine().all().unis(headersUni, rawTxUni).asTuple().map(t -> {
             List<Long> headerTimes = t.getItem1();
@@ -348,13 +351,13 @@ public class WalletService {
             });
             IntStream.range(0, txMisses.size()).forEach(i -> {
                 String id = txMisses.get(i);
-                rawTxCache.put(id, rawTxs.get(i));
                 rawById.put(id, rawTxs.get(i));
             });
 
             Map<String, Transaction> parsed = ids.stream().collect(Collectors.toMap(
-                    id -> id, id -> Transaction.read(ByteBuffer.wrap(ByteUtils.parseHex(rawById.get(id)))),
+                    id -> id, id -> TransactionDecoder.decode(id, rawById.get(id)),
                     (a, b) -> a, LinkedHashMap::new));
+                txMisses.forEach(id -> rawTxCache.put(id, rawById.get(id)));
 
             // One hash per output: our outputs give both received totals and the outpoints we can spend.
             List<OwnedOutput> owned = parsed.entrySet().stream()
@@ -429,6 +432,10 @@ public class WalletService {
                 .filter(Objects::nonNull)
                 .mapToLong(Long::longValue)
                 .sum();
+    }
+
+    private <T> Uni<List<T>> join(List<Uni<T>> requests) {
+        return Uni.join().all(requests).usingConcurrencyOf(rpcConcurrency).andFailFast();
     }
 
     /** Decodes the 80-byte block header and returns its timestamp in Unix seconds. */

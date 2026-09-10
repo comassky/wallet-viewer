@@ -73,6 +73,7 @@ class WalletLiveServiceTest {
     void startupReplaysLoadingThenPublishesCommittedLiveSnapshot() throws Exception {
         WalletState loading = next("loading", null);
         assertEquals(0, loading.version());
+        assertNull(loading.updatedAt());
         assertNotNull(loading.message());
         assertEquals(0, scanner.calls.get());
         assertFalse(electrum.started);
@@ -85,6 +86,7 @@ class WalletLiveServiceTest {
         WalletSnapshot snapshot = snapshot(100);
         scan.complete(snapshot);
         WalletState state = next("live", snapshot);
+        assertNotNull(state.updatedAt());
         assertNull(state.message());
         idle();
         assertSame(state, live.current());
@@ -118,6 +120,22 @@ class WalletLiveServiceTest {
         idle();
         assertEquals(1, scanner.calls.get());
         assertTrue(scanner.pending.isEmpty());
+    }
+
+    @Test
+    void restStatePreservesSnapshotTimestampAcrossOutages() throws Exception {
+        WalletResource resource = new WalletResource();
+        setField(WalletResource.class, resource, "live", live);
+        assertNull(resource.state().updatedAt());
+        WalletSnapshot snapshot = startWithSnapshot();
+        Long updatedAt = resource.state().updatedAt();
+        assertNotNull(updatedAt);
+        electrum.connection(false);
+        next("offline", snapshot);
+        assertEquals(updatedAt, resource.state().updatedAt());
+        assertSame(snapshot, resource.state().snapshot());
+        assertEquals("offline", resource.state().status().toString().toLowerCase());
+        assertEquals(1, scanner.calls.get());
     }
 
     @Test

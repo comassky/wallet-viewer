@@ -103,7 +103,7 @@ test('initial cache state and subsequent complete snapshots replace state withou
   const first = snapshot();
   sockets[0].frame(envelope(1, first));
   assert.deepEqual(stream.getState(), {
-    data: first, loading: false, error: null, connection: 'connected', status: 'live', message: null,
+    data: first, updatedAt: null, loading: false, error: null, connection: 'connected', status: 'live', message: null,
   });
   const next = snapshot(99);
   next.transactions = [];
@@ -401,4 +401,24 @@ test('discovery coverage is preserved and malformed coverage is rejected', () =>
   for (const invalid of [{ complete: 'true' }, { receiveScanned: 201 }, { addressLimit: 0 }, { gapLimit: -1 }]) {
     assert.equal(parseWalletEnvelope(JSON.stringify(envelope(2, { ...state, discovery: { ...state.discovery, ...invalid } }))), null);
   }
+});
+
+test('freshness stays attached to the last snapshot through disconnect and restart', () => {
+  const { stream, sockets } = setup();
+  stream.start();
+  sockets[0].open();
+  sockets[0].frame({ ...envelope(1), updatedAt: 1000 });
+  assert.equal(stream.getState().updatedAt, 1000);
+  sockets[0].frame(envelope(2, null, 'syncing'));
+  assert.equal(stream.getState().updatedAt, 1000);
+  sockets[0].end();
+  assert.equal(stream.getState().updatedAt, 1000);
+  stream.refresh();
+  sockets[1].open();
+  sockets[1].frame(envelope(0, null, 'loading'));
+  assert.equal(stream.getState().updatedAt, 1000);
+  sockets[1].frame({ ...envelope(1), updatedAt: 2000 });
+  assert.equal(stream.getState().updatedAt, 2000);
+  assert.equal(parseWalletEnvelope(JSON.stringify({ ...envelope(2), updatedAt: 'invalid' })), null);
+  stream.dispose();
 });

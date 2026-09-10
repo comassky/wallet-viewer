@@ -32,8 +32,9 @@ public class BalanceHistoryService {
     void init() {
         // Deferred so each cache window re-reads the current snapshot and price history.
         cached = Uni.createFrom().deferred(() ->
-                Uni.combine().all().unis(live.snapshot(), priceHistory.history()).asTuple()
-                        .map(tuple -> compute(tuple.getItem1().transactions(), tuple.getItem2())))
+                Uni.combine().all().unis(live.snapshot(), priceHistory.history()
+                        .onFailure().recoverWithItem(List.of())).asTuple()
+                    .map(tuple -> compute(tuple.getItem1().transactions(), tuple.getItem2(), priceHistory.stale())))
                 .memoize().forFixedDuration(Duration.ofSeconds(60));
     }
 
@@ -42,6 +43,10 @@ public class BalanceHistoryService {
     }
 
     static List<BalancePointDto> compute(List<TransactionDto> transactions, List<PricePointDto> prices) {
+        return compute(transactions, prices, false);
+    }
+
+    static List<BalancePointDto> compute(List<TransactionDto> transactions, List<PricePointDto> prices, boolean priceStale) {
         if (transactions.isEmpty()) {
             return List.of();
         }
@@ -66,14 +71,14 @@ public class BalanceHistoryService {
             if (updated != null) carried = updated;
             final PricePointDto price = priceAt(prices, day + DAY - 1);
             final double btc = carried / 100_000_000.0;
-            final double eur = price == null ? 0 : btc * price.eur();
-            final double usd = price == null ? 0 : btc * price.usd();
-            out.add(new BalancePointDto(day, carried, eur, usd));
+            final Double eur = price == null ? null : btc * price.eur();
+            final Double usd = price == null ? null : btc * price.usd();
+            out.add(new BalancePointDto(day, carried, eur, usd, price == null ? null : price.time(), priceStale));
         }
         return out;
     }
 
-    /** Last price at or before the given time; the earliest point for days before the history starts. */
+    /** Last price at or before the given time; unknown before the first available quote. */
     private static PricePointDto priceAt(List<PricePointDto> prices, long time) {
         if (prices.isEmpty()) {
             return null;
@@ -88,6 +93,6 @@ public class BalanceHistoryService {
                 hi = mid - 1;
             }
         }
-        return ans >= 0 ? prices.get(ans) : prices.get(0);
+        return ans >= 0 ? prices.get(ans) : null;
     }
 }
