@@ -21,9 +21,21 @@
 
 > 🔒 **Local by default, not authenticated.** Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
 
-<p align="center"><img src="docs/screen.png" alt="Bitcoin Wallet Viewer dashboard showing mock data" width="820"></p>
+<div align="center">
 
-> 🧪 **Screenshot from [demo mode](#demo-mode) — the wallet, balance, addresses and transactions are entirely synthetic. This wallet does not exist and holds no real funds.**
+## 🧪 DEMO SCREENSHOTS ONLY
+
+### The wallet, balance, addresses and transactions below are **_entirely synthetic_.**
+### This wallet does **NOT** exist and holds **NO REAL FUNDS**.
+### Nothing shown here corresponds to any real Bitcoin wallet, address or transaction.
+
+_Screenshots from [demo mode](#demo-mode)._
+
+</div>
+
+<p align="center"><img src="docs/dashboard.png" alt="Bitcoin Wallet Viewer dashboard showing mock data" width="820"></p>
+
+<p align="center"><img src="docs/transaction.png" alt="Bitcoin Wallet Viewer transaction details popup showing mock data" width="820"></p>
 
 ## Features
 
