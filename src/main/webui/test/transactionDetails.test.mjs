@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { effectScope } from 'vue';
+import { effectScope, isProxy } from 'vue';
 import { walletApi } from '../src/services/walletApi.ts';
 import { useTransactionDetails } from '../src/composables/useTransactionDetails.ts';
 
@@ -61,4 +61,12 @@ test('mismatched transaction data is never displayed', async t => {
   await state.load('expected');
   assert.equal(state.details.value, null);
   assert.match(state.error.value, /does not match/);
+});
+
+test('detail snapshots keep their identity without deep reactive proxies', async t => {
+  const snapshot = { txid: 'a', inputs: [{ value: 42 }], outputs: [] };
+  const { state } = fixture(t, async () => snapshot);
+  await state.load('a');
+  assert.equal(state.details.value, snapshot);
+  assert.equal(isProxy(state.details.value.inputs), false);
 });

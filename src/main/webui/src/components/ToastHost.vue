@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { useTemplateRef, watch } from 'vue';
 import { useToasts } from '../composables/useToast';
 import UiIcon from './UiIcon.vue';
 
 const { toasts } = useToasts();
-const host = ref<HTMLElement | null>(null);
+const host = useTemplateRef<HTMLElement>('host');
 
 // Enter the top layer only while toasts are visible, so they render above an already-open
 // modal <dialog> (and its blurred backdrop). Re-showing places it last in the top-layer stack.

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, useTemplateRef, watch } from 'vue';
 import { useWallet } from './composables/useWallet';
 import { useCurrency } from './composables/useCurrency';
 import type { ReceiveAddress } from './types/wallet';
@@ -20,7 +20,7 @@ import { formatDate } from './utils/format';
 const { data, updatedAt, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, fiatCurrency, rates, ratesLoading, ratesError, amount } = useCurrency();
 useIncomingNotifications(data);
-const qrDialog = ref<InstanceType<typeof ReceiveQrDialog> | null>(null);
+const qrDialog = useTemplateRef<InstanceType<typeof ReceiveQrDialog>>('qrDialog');
 const appVersion = __APP_VERSION__;
 const BalanceChart = defineAsyncComponent(() => import('./components/BalanceChart.vue'));
 const tabs = [
@@ -28,7 +28,7 @@ const tabs = [
   { id: 'utxos', label: 'UTXO', icon: 'coins' },
   { id: 'chart', label: 'Chart', icon: 'chart' },
 ] as const;
-const tabButtons = ref<HTMLButtonElement[]>([]);
+const tabButtons = useTemplateRef<HTMLButtonElement[]>('tabButtons');
 const showCharts = useMediaQuery('(min-width: 768px)');
 const visibleTabs = computed(() => tabs.filter(tab => showCharts.value || tab.id !== 'chart'));
 const { activeTab, onKeydown } = useRovingTabs(() => visibleTabs.value.map(tab => tab.id), 'activity', tabButtons);
@@ -91,7 +91,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
           <UtxosSection :utxos="data.utxos" :currency="currency" :amount="amount" />
         </div>
         <div v-if="showCharts" id="wallet-panel-chart" v-show="activeTab === 'chart'" role="tabpanel" aria-labelledby="wallet-tab-chart" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
-          <BalanceChart v-if="activeTab === 'chart'" :currency="currency" :fiat-currency="fiatCurrency" :amount="amount" />
+          <BalanceChart v-if="activeTab === 'chart'" :currency="currency" :fiat-currency="fiatCurrency" :amount="amount" :transactions="data.transactions" />
         </div>
       </div>
     </template>

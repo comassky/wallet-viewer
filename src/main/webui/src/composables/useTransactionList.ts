@@ -16,7 +16,7 @@ function matches(tx: Transaction, filter: TransactionFilter): boolean {
 }
 
 /** Filter and sort the cache locally; live updates never reset the user's browsing choices. */
-export function useTransactionList(transactions: Ref<Transaction[]>, columns: SortColumn<Transaction>[]) {
+export function useTransactionList(transactions: Ref<readonly Transaction[]>, columns: readonly SortColumn<Transaction>[]) {
   const query = ref('');
   const filter = ref<TransactionFilter>('all');
   const limit = ref(transactionPageSize);
@@ -24,7 +24,14 @@ export function useTransactionList(transactions: Ref<Transaction[]>, columns: So
   const searched = computed(() => transactions.value.filter(tx =>
     tx.txid.toLowerCase().includes(normalizedQuery.value)
     || (tx.addresses ?? []).some(address => address.toLowerCase().includes(normalizedQuery.value))));
-  const counts = computed(() => Object.fromEntries(transactionFilters.map(item => [item.id, searched.value.filter(tx => matches(tx, item.id)).length])) as Record<TransactionFilter, number>);
+  const counts = computed(() => {
+    const totals = { all: searched.value.length, received: 0, sent: 0, pending: 0 } satisfies Record<TransactionFilter, number>;
+    searched.value.forEach(transaction => {
+      if (transaction.type === 'received' || transaction.type === 'sent') totals[transaction.type]++;
+      if (transaction.confirmations === 0) totals.pending++;
+    });
+    return totals;
+  });
   const filtered = computed(() => searched.value.filter(tx => matches(tx, filter.value)));
   const sort = useTableSort(filtered, columns);
   const visible = computed(() => sort.sorted.value.slice(0, limit.value));

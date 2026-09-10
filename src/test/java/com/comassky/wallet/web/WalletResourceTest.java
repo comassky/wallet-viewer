@@ -4,7 +4,10 @@ import com.comassky.wallet.electrum.ElectrumClient;
 import com.comassky.wallet.model.ElectrumServerDto;
 import com.comassky.wallet.model.TransactionDetailsDto;
 import com.comassky.wallet.service.TransactionDetailsService;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.json.JsonObject;
 import org.junit.jupiter.api.Test;
 
 import static com.comassky.wallet.support.TestFields.setField;
@@ -16,7 +19,7 @@ class WalletResourceTest {
     void serverEndpointReadsUninitializedTransportWithoutAnyRpc() {
         WalletResource resource = new WalletResource();
         resource.electrum = new ElectrumClient() {
-            @Override public Uni<io.vertx.core.json.JsonObject> call(String method, Object... params) {
+            @Override public Uni<JsonObject> call(String method, Object... params) {
                 throw new AssertionError("Metadata endpoint must never send an RPC");
             }
         };
@@ -29,8 +32,8 @@ class WalletResourceTest {
 
     @Test
     void unknownMetadataIsSerializedAsExplicitNullEvenWhenMapperOmitsNulls() throws Exception {
-        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        mapper.setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         var tree = mapper.readTree(mapper.writeValueAsString(
                 new ElectrumServerDto("host", 50002, true, false, null, null)));
         assertEquals(6, tree.size());

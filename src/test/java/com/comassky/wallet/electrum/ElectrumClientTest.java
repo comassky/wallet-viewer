@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.BooleanSupplier;
+import java.util.logging.Level;
 
 import static com.comassky.wallet.support.TestFields.setField;
 import static org.junit.jupiter.api.Assertions.*;
@@ -542,7 +543,7 @@ class ElectrumClientTest {
             assertTrue(messages.stream().noneMatch(m -> m.contains(secret)));
             assertTrue(logs.entries().stream().allMatch(entry -> entry.thrown() == null));
             assertTrue(logs.entries().stream().filter(entry -> entry.message().startsWith("Electrum RPC:"))
-                .allMatch(entry -> entry.level() < java.util.logging.Level.INFO.intValue()));
+                .allMatch(entry -> entry.level() < Level.INFO.intValue()));
         }
         }
 

@@ -63,4 +63,11 @@ test('roving tabs use the currently available views and focus the matching butto
   press('Home', 1);
   assert.equal(activeTab.value, 'activity');
   assert.equal(press('Tab', 0), false);
+  const emptyTabs = useRovingTabs([], 'activity', buttons);
+  let prevented = false;
+  emptyTabs.onKeydown({ key: 'ArrowRight', preventDefault() { prevented = true; } }, 0);
+  assert.equal(emptyTabs.activeTab.value, 'activity');
+  assert.equal(prevented, false);
+  assert.equal(press('ArrowRight', Number.NaN), false);
+  assert.equal(activeTab.value, 'activity');
 });

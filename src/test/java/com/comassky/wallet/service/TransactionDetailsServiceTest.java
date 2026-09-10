@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -241,7 +242,7 @@ class TransactionDetailsServiceTest {
         for (Transaction previous : parents) {
             electrum.pending.get(previous.getTxId().toString()).complete(new JsonObject().put("result", raw(previous)));
         }
-        assertEquals(Long.valueOf(100), result.get(5, java.util.concurrent.TimeUnit.SECONDS).fee());
+        assertEquals(Long.valueOf(100), result.get(5, TimeUnit.SECONDS).fee());
     }
 
     @Test

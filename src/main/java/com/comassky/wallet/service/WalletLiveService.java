@@ -19,8 +19,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.ServiceUnavailableException;
 import org.jboss.logging.Logger;
 
+import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -55,6 +55,7 @@ public class WalletLiveService {
     @Inject WalletService scanner;
     @Inject ElectrumClient electrum;
     @Inject DemoService demo;
+    @Inject Clock clock = Clock.systemUTC();
 
     public WalletLiveService() {
         cache.put(KEY, new WalletState(0, WalletStatus.LOADING, "Loading wallet from Electrum\u2026", null));
@@ -180,7 +181,7 @@ public class WalletLiveService {
         WalletState previous = current();
         WalletState next = new WalletState(++version, status, message,
             snapshot != null ? snapshot : previous.snapshot(),
-            snapshot != null ? Long.valueOf(Instant.now().getEpochSecond()) : previous.updatedAt());
+            snapshot != null ? Long.valueOf(clock.instant().getEpochSecond()) : previous.updatedAt());
         cache.put(KEY, next);
         Set.copyOf(listeners).forEach(listener -> {
             try { listener.accept(next); }

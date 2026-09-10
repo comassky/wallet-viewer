@@ -99,13 +99,21 @@ flowchart LR
 | Backend | Quarkus **3.39.3**, SmallRye OpenAPI, Quinoa **2.9.0**, bitcoinj **0.17.1** (QR codes via a vendored, dependency-free encoder) — [pom.xml](pom.xml) |
 | Reactive transport / cache | Vert.x (TCP client for Electrum), MicroProfile REST Client (mempool.space), Mutiny and Caffeine — versions managed by the Quarkus BOM |
 | Node.js | **24.21.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
-| Frontend (locked) | Vue **3.5.42**, Vite **8.3.0**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite), @types/node **22.20.2** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
+| Frontend (locked) | Vue **3.5.42**, Vite **8.3.0**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite), @types/node **24.13.4** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
 | UI libraries | Material Design Icons (@mdi/js) **7.4.47**, @formkit/auto-animate **0.10.0**, lightweight-charts **5.2.1** |
 | Runtime image | **Native (GraalVM)** on Distroless Debian **13**, `nonroot` — [Dockerfile.native](Dockerfile.native); JVM variant on Distroless Java **25** — [Dockerfile](Dockerfile) |
 
 Versions reflect declarations and the npm lockfile. For local development, use JDK 25 and `mvn quarkus:dev`; Quinoa manages Node automatically.
 
+Frontend TypeScript enables `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, and `erasableSyntaxOnly`. Run `npm run build` from `src/main/webui` to execute tests, type checking, and the production build. Vite targets `esnext`: use an up-to-date browser with native `toSorted()` and `Map.groupBy()` support. No legacy-browser fallback or polyfill is included.
+
+API responses are validated at runtime before reaching Vue, with shared snapshot and transaction validators for REST and WebSocket. API snapshots use `shallowRef` and are replaced as a whole. Template references use Vue 3.5 `useTemplateRef`; obsolete dialog watchers are invalidated before opening. HTTP cancellation uses native `AbortSignal.any()` with a deadline that covers reading the response body and is cleared when the request finishes.
+
 ## Native vs JVM
+
+Backend RPC responses are decoded explicitly into validated Electrum records before use; malformed or missing values fail the scan instead of becoming zero balances. Wallet and Electrum settings use validated SmallRye `@ConfigMapping` interfaces. Local derivation data is immutable (`AddressInfo` record), hex conversion uses Java `HexFormat`, and business timestamps use an injectable UTC `Clock`; elapsed-time deadlines remain monotonic.
+
+Live updates use Quarkus WebSockets Next with isolated per-connection state, one pending snapshot at most, a 10-second send deadline, and a 30-second ping / 90-second pong timeout. The HTTP upgrade rejects missing, ambiguous or foreign origins with 403. WebSocket traffic logging and Dev UI message retention are disabled.
 
 Every published Docker image (`dev`, `latest`, `X.Y.Z`) is compiled to a **GraalVM native** executable: CI builds the runner with `-Dnative` and ships it on a distroless base ([Dockerfile.native](Dockerfile.native)). A classic JVM image stays available via [Dockerfile](Dockerfile).
 
@@ -121,11 +129,13 @@ Every published Docker image (`dev`, `latest`, `X.Y.Z`) is compiled to a **Graal
 Figures are indicative for this application on `linux/amd64` (native startup measured at ~18 ms, ~55 MB RSS). Native fits a small, always-on self-hosted dashboard well: near-instant restarts and a low, stable footprint, at the cost of longer build times. Build the native runner locally with:
 
 ```sh
-mvn package -Dnative -Dquarkus.native.container-build=true
+mvn verify -Dnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
 docker build -f Dockerfile.native -t wallet-viewer:native .
 ```
 
 See **[Docker & deployment](docs/DOCKER.md#native-image-graalvm)** for the full native workflow.
+
+`mvn verify` also runs the live-wallet integration scenario against the packaged application (native when `-Dnative` is enabled), using a loopback-only Electrum fixture: REST/WebSocket consistency, credit notifications, cache replay, reconnection and origin rejection. It does not query a real wallet.
 
 ## Docker
 
@@ -142,13 +152,9 @@ See **[Docker & deployment](docs/DOCKER.md)** for GHCR images, the **native (Gra
 
 ## Demo mode
 
-Set **`WALLET_DEMO=true`** (in your `.env`) for a no-setup demo with synthetic data — ideal for screenshots and UI previews without exposing a real xpub, address or transaction:
+Set **`WALLET_DEMO=true`** for a synthetic wallet with varied transactions and evolving confirmations, without an Electrum connection. Remove real wallet overrides before sharing screenshots.
 
-```sh
-docker compose up -d --build   # with WALLET_DEMO=true in .env
-```
-
-In demo mode the app never connects to Electrum. It serves a self-consistent synthetic wallet (balance, UTXOs, transactions and a derived receive address) from a bundled public test key, and the mock **emits a random transaction every 15 seconds** so the live view keeps updating. `WALLET_XPUB` and the Electrum settings are ignored — no real funds or identity are involved.
+See **[Demo mode guide](docs/DEMO.md)** for setup, simulation behaviour, privacy precautions and tests.
 
 ## Configuration
 
@@ -156,7 +162,7 @@ Supply wallet settings **at runtime**, never as build arguments or in source. De
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `WALLET_DEMO` | `false` | Serve a synthetic demo wallet with no Electrum or xpub; the mock emits a random transaction every 15s. See [Demo mode](#demo-mode) |
+| `WALLET_DEMO` | `false` | Synthetic wallet without Electrum; events every 15s and simulated blocks every 60s. See [Demo mode](docs/DEMO.md) |
 | `WALLET_XPUB` | Required unless demo | Account-level extended public key, not a master key or single address |
 | `WALLET_SCRIPT_TYPE` | `auto` | `auto`, `p2pkh`, `p2sh-p2wpkh`, `p2wpkh`, `p2tr`; explicitly select `p2tr` for BIP86 |
 | `WALLET_NETWORK` | `mainnet` | `mainnet` or `testnet`; use a compatible Electrum server on the same network |

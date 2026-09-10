@@ -5,14 +5,26 @@ import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.ServiceUnavailableException;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class PriceServiceTest {
+    @Test
+    void freshnessBoundariesUseTheSuppliedClock() {
+        long now = 1_700_000_000L;
+        Clock clock = Clock.fixed(Instant.ofEpochSecond(now), ZoneOffset.UTC);
+        assertDoesNotThrow(() -> PriceService.toRates(new MempoolClient.Price(60_000d, 70_000d, now - 900), clock));
+        assertDoesNotThrow(() -> PriceService.toRates(new MempoolClient.Price(60_000d, 70_000d, now + 300), clock));
+        assertThrows(IllegalArgumentException.class, () -> PriceService.toRates(new MempoolClient.Price(60_000d, 70_000d, now - 901), clock));
+        assertThrows(IllegalArgumentException.class, () -> PriceService.toRates(new MempoolClient.Price(60_000d, 70_000d, now + 301), clock));
+    }
+
     private final AtomicInteger requests = new AtomicInteger();
 
     private PriceService service(Supplier<MempoolClient.Price> provider) {

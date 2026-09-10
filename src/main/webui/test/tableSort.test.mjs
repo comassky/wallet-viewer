@@ -9,6 +9,14 @@ const columns = [
   { key: 'outpoint', label: 'Outpoint', value: row => row.txid, secondary: row => row.vout },
 ];
 
+test('native table sorting is stable and never mutates frozen input', () => {
+  const values = Object.freeze([{ id: 'first', amount: 2 }, { id: 'second', amount: 2 }, { id: 'third', amount: 1 }]);
+  const state = useTableSort(ref(values), columns);
+  state.toggleSort('amount');
+  assert.deepEqual(state.sorted.value.map(value => value.id), ['third', 'first', 'second']);
+  assert.deepEqual(values.map(value => value.id), ['first', 'second', 'third']);
+});
+
 test('table starts in original order, toggles numeric sort and never mutates the snapshot', () => {
   const rows = ref([{ amount: 100 }, { amount: -20 }, { amount: 3 }]);
   const state = useTableSort(rows, columns);

@@ -1,4 +1,4 @@
-import { onMounted, onScopeDispose, ref, type Ref } from 'vue';
+import { onMounted, onScopeDispose, ref, shallowRef, type Ref } from 'vue';
 import type { RequestOptions } from '../services/http.ts';
 
 export interface PolledResource<T> {
@@ -14,7 +14,7 @@ export function usePolledResource<T>(
   initial: T,
   intervalMs = 60_000,
 ): PolledResource<T> {
-  const data = ref(initial) as Ref<T>;
+  const data = shallowRef<T>(initial);
   const loading = ref(false);
   const error = ref(false);
   const controller = new AbortController();

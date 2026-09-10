@@ -17,6 +17,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(appVersion),
   },
   build: {
+    target: 'esnext',
     outDir: 'dist',
     emptyOutDir: true,
   },

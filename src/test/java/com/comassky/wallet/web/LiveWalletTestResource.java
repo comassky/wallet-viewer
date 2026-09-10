@@ -79,7 +79,7 @@ public class LiveWalletTestResource implements QuarkusTestResourceLifecycleManag
                     Map.entry("quarkus.http.host", "localhost"),
                     Map.entry("quarkus.http.root-path", "/"),
                     Map.entry("quarkus.http.test-port", "0"),
-                    Map.entry("quarkus.quinoa.enabled", "false"),
+                    Map.entry("quarkus.quinoa", "false"),
                     Map.entry("quarkus.devservices.enabled", "false"));
         } catch (Exception failure) {
             try { stop(); } catch (RuntimeException cleanup) { failure.addSuppressed(cleanup); }

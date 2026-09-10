@@ -4,7 +4,7 @@ import { onBeforeUnmount, type Ref } from 'vue';
  * Shared native <dialog> chrome: modal open with scroll lock, backdrop-click close
  * and safe teardown. Components keep their own open triggers and content.
  */
-export function useModalDialog(dialog: Ref<HTMLDialogElement | null>, onClose?: () => void) {
+export function useModalDialog(dialog: Readonly<Ref<HTMLDialogElement | null>>, onClose?: () => void) {
   let savedOverflow: { value: string; priority: string } | null = null;
   let disposed = false;
 

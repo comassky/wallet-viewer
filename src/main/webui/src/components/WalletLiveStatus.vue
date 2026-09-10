@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
+import { computed, onMounted, onScopeDispose, ref, useTemplateRef, watch } from 'vue';
 import type { WalletConnection } from '../services/walletStream';
 import type { WalletStatus } from '../types/wallet';
 import { useElectrumServer } from '../composables/useElectrumServer';
@@ -13,8 +13,8 @@ const props = defineProps<{
 defineEmits<{ retry: [] }>();
 
 const live = computed(() => props.connection === 'connected' && props.status === 'live');
-const root = ref<HTMLElement | null>(null);
-const trigger = ref<HTMLButtonElement | null>(null);
+const root = useTemplateRef<HTMLElement>('root');
+const trigger = useTemplateRef<HTMLButtonElement>('trigger');
 const opened = ref(false);
 const panelLeft = ref(0);
 const { server, loading, error, load, reset } = useElectrumServer();

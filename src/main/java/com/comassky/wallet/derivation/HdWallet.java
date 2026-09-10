@@ -9,7 +9,7 @@ import org.bitcoinj.base.Base58;
 import org.bitcoinj.base.LegacyAddress;
 import org.bitcoinj.base.SegwitAddress;
 import org.bitcoinj.base.Sha256Hash;
-import org.bitcoinj.base.internal.ByteUtils;
+import java.util.HexFormat;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.crypto.ChildNumber;
 import org.bitcoinj.crypto.DeterministicKey;
@@ -21,7 +21,9 @@ import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bouncycastle.math.ec.ECPoint;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.bouncycastle.util.Arrays;
+import com.comassky.wallet.config.WalletConfig;
+import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
 import java.math.BigInteger;
@@ -53,13 +55,17 @@ public class HdWallet {
     // xpub mainnet version bytes (0x0488B21E)
     private static final byte[] XPUB_VERSION = {0x04, (byte) 0x88, (byte) 0xB2, 0x1E};
 
-    @ConfigProperty(name = "wallet.xpub")
     String extPub;
-    @ConfigProperty(name = "wallet.network", defaultValue = "mainnet")
     String network;
     // auto | p2pkh | p2sh-p2wpkh | p2wpkh | p2tr. Needed for Taproot since BIP86 keys are plain xpubs.
-    @ConfigProperty(name = "wallet.script-type", defaultValue = "auto")
     String scriptTypeCfg;
+
+    @Inject
+    void configure(WalletConfig config) {
+        extPub = config.xpub();
+        network = config.network();
+        scriptTypeCfg = config.scriptType();
+    }
 
     private volatile boolean initialized = false;
     private NetworkParameters params;
@@ -158,8 +164,8 @@ public class HdWallet {
         };
 
         final byte[] program = ScriptBuilder.createOutputScript(addr).getProgram();
-        final String scripthash = ByteUtils.formatHex(ByteUtils.reverseBytes(Sha256Hash.hash(program)));
-        return new AddressInfo(chain, index, addr.toString(), scripthash, ByteUtils.formatHex(program),
+        final String scripthash = HexFormat.of().formatHex(Arrays.reverse(Sha256Hash.hash(program)));
+        return new AddressInfo(chain, index, addr.toString(), scripthash, HexFormat.of().formatHex(program),
                 basePath + "/" + chain + "/" + index);
     }
 

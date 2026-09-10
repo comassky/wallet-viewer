@@ -1,5 +1,6 @@
 package com.comassky.wallet.electrum;
 
+import com.comassky.wallet.config.ElectrumConfig;
 import com.comassky.wallet.model.ElectrumServerDto;
 import io.smallrye.mutiny.TimeoutException;
 import io.smallrye.mutiny.Uni;
@@ -16,7 +17,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import java.time.Duration;
@@ -38,14 +38,18 @@ public class ElectrumClient {
 
     private static final Logger LOG = Logger.getLogger(ElectrumClient.class);
 
-    @ConfigProperty(name = "electrum.host", defaultValue = "127.0.0.1")
     String host = "127.0.0.1";
-    @ConfigProperty(name = "electrum.port", defaultValue = "50001")
     int port = 50001;
-    @ConfigProperty(name = "electrum.ssl", defaultValue = "false")
     boolean ssl;
-    @ConfigProperty(name = "electrum.request-timeout", defaultValue = "30s")
     Duration requestTimeout = Duration.ofSeconds(30);
+
+    @Inject
+    void configure(ElectrumConfig config) {
+        host = config.host();
+        port = config.port();
+        ssl = config.ssl();
+        requestTimeout = config.requestTimeout();
+    }
 
     @Inject
     Vertx vertx;

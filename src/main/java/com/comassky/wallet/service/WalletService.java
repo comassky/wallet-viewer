@@ -1,8 +1,10 @@
 package com.comassky.wallet.service;
 
+import com.comassky.wallet.config.WalletConfig;
 import com.comassky.wallet.derivation.HdWallet;
 import com.comassky.wallet.electrum.ElectrumClient;
 import com.comassky.wallet.electrum.ElectrumMethod;
+import com.comassky.wallet.electrum.ElectrumResult;
 import com.comassky.wallet.model.AddressCheckDto;
 import com.comassky.wallet.model.AddressInfo;
 import com.comassky.wallet.model.BalanceDto;
@@ -15,21 +17,19 @@ import com.comassky.wallet.util.TransactionDecoder;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.smallrye.mutiny.Uni;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
-import org.bitcoinj.base.internal.ByteUtils;
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Transaction;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -55,12 +55,16 @@ public class WalletService {
     @Inject
     HdWallet wallet;
 
-    @ConfigProperty(name = "wallet.gap-limit", defaultValue = "20")
     int gapLimit;
-    @ConfigProperty(name = "wallet.max-addresses", defaultValue = "200")
     int maxAddresses;
-    @ConfigProperty(name = "wallet.rpc-concurrency", defaultValue = "8")
     int rpcConcurrency = 8;
+
+    @Inject
+    void configure(WalletConfig config) {
+        gapLimit = config.gapLimit();
+        maxAddresses = config.maxAddresses();
+        rpcConcurrency = config.rpcConcurrency();
+    }
 
     // Process-local watermarks, committed only after an entire scan succeeds.
     private volatile Coverage coverage = new Coverage(-1, -1, 0);
@@ -93,9 +97,9 @@ public class WalletService {
     }
 
     /** History is private to one scan, never attached to cached derivation data. */
-    private record ScannedAddress(AddressInfo address, JsonArray history) {
+    private record ScannedAddress(AddressInfo address, List<ElectrumResult.HistoryEntry> history) {
         boolean used() {
-            return history != null && !history.isEmpty();
+            return !history.isEmpty();
         }
     }
 
@@ -127,8 +131,8 @@ public class WalletService {
         for (int chain = 0; chain <= 1; chain++) {
             for (int index = 0; index < maxAddresses; index++) {
                 AddressInfo info = wallet.address(chain, index);
-                if (info.address.equals(target)) {
-                    return new AddressCheckDto(info.address, true, chain, index, info.path, maxAddresses);
+                if (info.address().equals(target)) {
+                    return new AddressCheckDto(info.address(), true, chain, index, info.path(), maxAddresses);
                 }
             }
         }
@@ -142,14 +146,14 @@ public class WalletService {
 
     private Uni<JsonObject> subscribeAddress(AddressInfo address) {
         // Publish before even constructing the RPC: a notification may precede its reply.
-        knownAddresses.put(address.scripthash, address.address);
-        return electrum.call(ElectrumMethod.SCRIPTHASH_SUBSCRIBE, address.scripthash);
+        knownAddresses.put(address.scripthash(), address.address());
+        return electrum.call(ElectrumMethod.SCRIPTHASH_SUBSCRIBE, address.scripthash()).invoke(ElectrumResult::subscription);
     }
 
     private Uni<WalletSnapshot> build() {
         Coverage previous = coverage;
         Uni<Integer> tipUni = electrum.call(ElectrumMethod.HEADERS_SUBSCRIBE)
-                .map(r -> r.getJsonObject("result").getInteger("height"));
+                .map(ElectrumResult::tip).map(ElectrumResult.Tip::height);
         Uni<List<ScannedAddress>> recvUni = scanChain(0, previous.receiveIndex());
         Uni<List<ScannedAddress>> changeUni = scanChain(1, previous.changeIndex());
 
@@ -163,27 +167,25 @@ public class WalletService {
                     all.addAll(change);
 
                     Set<String> ourScripts = all.stream()
-                            .map(a -> a.address().scriptHex)
+                            .map(a -> a.address().scriptHex())
                             .collect(Collectors.toSet());
                     Map<String, String> addressByScript = all.stream()
-                            .collect(Collectors.toMap(a -> a.address().scriptHex, a -> a.address().address, (x, y) -> x));
+                            .collect(Collectors.toMap(a -> a.address().scriptHex(), a -> a.address().address(), (x, y) -> x));
                     List<AddressInfo> used = new ArrayList<>();
                     Map<String, Integer> txHeights = new LinkedHashMap<>();
                     all.stream().filter(ScannedAddress::used).forEach(a -> {
                         used.add(a.address());
-                        a.history().stream()
-                                .map(JsonObject.class::cast)
-                                .forEach(entry -> txHeights.put(entry.getString("tx_hash"), entry.getInteger("height")));
+                        a.history().forEach(entry -> txHeights.put(entry.txid(), entry.height()));
                     });
 
                     // Do not reuse holes or regress an exposed receive index after history shrinks.
                     int nextIndex = receive.stream()
                             .filter(ScannedAddress::used)
-                            .mapToInt(a -> a.address().index + 1)
+                            .mapToInt(a -> a.address().index() + 1)
                             .reduce(previous.nextReceiveIndex(), Math::max);
                     AddressInfo recv = nextIndex < receive.size()
                             ? receive.get(nextIndex).address() : wallet.address(0, nextIndex);
-                    ReceiveAddressDto recvDto = new ReceiveAddressDto(recv.index, recv.address, recv.path);
+                    ReceiveAddressDto recvDto = new ReceiveAddressDto(recv.index(), recv.address(), recv.path());
                     // maxAddresses caps history scans per chain, not the watch count. When the
                     // cap is fully used, watch exactly one extra receive address (without history).
                     Uni<Void> receiveWatch = nextIndex < receive.size()
@@ -199,7 +201,7 @@ public class WalletService {
 
                     return receiveWatch.flatMap(ignored -> Uni.combine().all().unis(balanceUni, utxoUni, txUni).asTuple()
                             .map(r -> new WalletSnapshot(r.getItem1(), r.getItem2(), r.getItem3(), recvDto, discovery)))
-                            .invoke(snapshot -> rememberCoverage(receive.size() - 1, change.size() - 1, recv.index));
+                            .invoke(snapshot -> rememberCoverage(receive.size() - 1, change.size() - 1, recv.index()));
                 });
     }
 
@@ -229,8 +231,8 @@ public class WalletService {
             // Reissue on every scan: the transport is not a persistent subscription registry.
             // Only the public script hash is sent, never the address, derivation path or key.
             batch.add(Uni.createFrom().deferred(() -> subscribeAddress(ai))
-                    .flatMap(ignored -> electrum.call(ElectrumMethod.SCRIPTHASH_GET_HISTORY, ai.scripthash))
-                    .map(r -> new ScannedAddress(ai, r.getJsonArray("result"))));
+                    .flatMap(ignored -> electrum.call(ElectrumMethod.SCRIPTHASH_GET_HISTORY, ai.scripthash()))
+                    .map(ElectrumResult::history).map(history -> new ScannedAddress(ai, history)));
         }
         return join(batch).flatMap(list -> {
             acc.addAll(list);
@@ -252,10 +254,8 @@ public class WalletService {
             return Uni.createFrom().item(new BalanceDto(0, 0));
         }
         List<Uni<BalanceDto>> unis = used.stream()
-                .map(a -> electrum.call(ElectrumMethod.SCRIPTHASH_GET_BALANCE, a.scripthash).map(r -> {
-                    JsonObject o = r.getJsonObject("result");
-                    return new BalanceDto(o.getLong("confirmed", 0L), o.getLong("unconfirmed", 0L));
-                }))
+                .map(a -> electrum.call(ElectrumMethod.SCRIPTHASH_GET_BALANCE, a.scripthash())
+                        .map(ElectrumResult::balance).map(balance -> new BalanceDto(balance.confirmed(), balance.unconfirmed())))
                 .toList();
         return join(unis).map(list -> new BalanceDto(
                 list.stream().mapToLong(BalanceDto::confirmed).sum(),
@@ -269,14 +269,12 @@ public class WalletService {
             return Uni.createFrom().item(List.of());
         }
         List<Uni<List<UtxoDto>>> unis = used.stream()
-                .map(a -> electrum.call(ElectrumMethod.SCRIPTHASH_LISTUNSPENT, a.scripthash)
-                        .map(r -> r.getJsonArray("result").stream()
-                                .map(JsonObject.class::cast)
+                .map(a -> electrum.call(ElectrumMethod.SCRIPTHASH_LISTUNSPENT, a.scripthash())
+                        .map(ElectrumResult::unspent).map(result -> result.stream()
                                 .map(u -> {
-                                    int h = u.getInteger("height", 0);
+                                int h = u.height();
                                     int conf = h > 0 ? tip - h + 1 : 0;
-                                    return new UtxoDto(u.getString("tx_hash"), u.getInteger("tx_pos"),
-                                            u.getLong("value"), h, conf, a.address);
+                                return new UtxoDto(u.txid(), u.index(), u.value(), h, conf, a.address());
                                 })
                                 .toList()))
                 .toList();
@@ -311,7 +309,7 @@ public class WalletService {
             }
         });
         List<Uni<Long>> headerUnis = heightMisses.stream()
-                .map(h -> electrum.call(ElectrumMethod.BLOCK_HEADER, h).map(r -> headerTime(r.getString("result"))))
+                .map(h -> electrum.call(ElectrumMethod.BLOCK_HEADER, h).map(ElectrumResult::text).map(WalletService::headerTime))
                 .toList();
 
         // The txid commits a transaction's bytes, so cached raw copies stay valid every scan.
@@ -327,7 +325,7 @@ public class WalletService {
             }
         });
         List<Uni<String>> txUnis = txMisses.stream()
-                .map(id -> electrum.call(ElectrumMethod.TRANSACTION_GET, id).map(r -> r.getString("result")))
+                .map(id -> electrum.call(ElectrumMethod.TRANSACTION_GET, id).map(ElectrumResult::text))
                 .toList();
 
         Uni<List<Long>> headersUni = heightMisses.isEmpty()
@@ -362,9 +360,9 @@ public class WalletService {
             // One hash per output: our outputs give both received totals and the outpoints we can spend.
             List<OwnedOutput> owned = parsed.entrySet().stream()
                     .flatMap(e -> e.getValue().getOutputs().stream()
-                            .filter(o -> ourScripts.contains(ByteUtils.formatHex(o.getScriptBytes())))
+                            .filter(o -> ourScripts.contains(HexFormat.of().formatHex(o.getScriptBytes())))
                             .map(o -> new OwnedOutput(e.getKey(), o.getIndex(), o.getValue().value,
-                                    addressByScript.get(ByteUtils.formatHex(o.getScriptBytes())))))
+                                    addressByScript.get(HexFormat.of().formatHex(o.getScriptBytes())))))
                     .toList();
             Map<String, Long> receivedByTx = owned.stream()
                     .collect(Collectors.groupingBy(OwnedOutput::txid, Collectors.summingLong(OwnedOutput::value)));
@@ -440,7 +438,8 @@ public class WalletService {
 
     /** Decodes the 80-byte block header and returns its timestamp in Unix seconds. */
     private static long headerTime(String headerHex) {
-        return Block.read(ByteBuffer.wrap(ByteUtils.parseHex(headerHex))).getTimeSeconds();
+        if (headerHex.length() != 160) throw new IllegalArgumentException("Invalid Electrum block header");
+        return Block.read(ByteBuffer.wrap(HexFormat.of().parseHex(headerHex))).getTimeSeconds();
     }
 }
 

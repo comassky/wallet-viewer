@@ -8,8 +8,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.ServiceUnavailableException;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 
 /** Public mempool fee estimates only: no wallet key, address or transaction is sent to the provider. */
 @ApplicationScoped
@@ -20,6 +20,7 @@ public class FeeService {
     @Inject
     @RestClient
     MempoolClient client;
+    @Inject Clock clock = Clock.systemUTC();
 
     private Uni<FeeRatesDto> cached;
 
@@ -28,7 +29,7 @@ public class FeeService {
         // Cache outcomes (including failures) so a rate-limited or down provider is not hammered.
         cached = client.feesRecommended()
                 .ifNoItem().after(REQUEST_TIMEOUT).fail()
-                .map(FeeService::toFees)
+                .map(raw -> toFees(raw, clock))
                 .onFailure().transform(failure -> new ServiceUnavailableException("Fee estimates temporarily unavailable"))
                 .memoize().forFixedDuration(TTL);
     }
@@ -38,6 +39,10 @@ public class FeeService {
     }
 
     static FeeRatesDto toFees(MempoolClient.Fees raw) {
+        return toFees(raw, Clock.systemUTC());
+    }
+
+    static FeeRatesDto toFees(MempoolClient.Fees raw, Clock clock) {
         if (raw == null) {
             throw new IllegalArgumentException("Invalid fee estimate: empty");
         }
@@ -46,7 +51,7 @@ public class FeeService {
         final long hour = positive(raw.hourFee(), "hourFee");
         final long economy = positive(raw.economyFee(), "economyFee");
         final long minimum = positive(raw.minimumFee(), "minimumFee");
-        return new FeeRatesDto(fastest, halfHour, hour, economy, minimum, Instant.now().getEpochSecond());
+        return new FeeRatesDto(fastest, halfHour, hour, economy, minimum, clock.instant().getEpochSecond());
     }
 
     private static long positive(Long value, String key) {

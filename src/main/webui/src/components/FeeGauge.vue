@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onScopeDispose, ref } from 'vue';
+import { onMounted, onScopeDispose, ref, useTemplateRef } from 'vue';
 import { useFees } from '../composables/useFees';
 import { formatDate } from '../utils/format';
 import UiIcon from './UiIcon.vue';
 
 const { fees, loading, error } = useFees();
-const root = ref<HTMLElement | null>(null);
-const trigger = ref<HTMLButtonElement | null>(null);
+const root = useTemplateRef<HTMLElement>('root');
+const trigger = useTemplateRef<HTMLButtonElement>('trigger');
 const opened = ref(false);
 const panelLeft = ref(0);
 

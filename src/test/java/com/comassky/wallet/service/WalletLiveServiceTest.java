@@ -354,10 +354,10 @@ class WalletLiveServiceTest {
         String unknownHash = "f".repeat(64);
 
         try (TestLogCapture logs = new TestLogCapture(WalletLiveService.class)) {
-            electrum.notifyWallet(new JsonArray().add(receive.scripthash).add(payload));
-            electrum.notifyWallet(new JsonArray().add(change.scripthash).add(null));
-            assertEquals(List.of("Electrum address notification: address=" + receive.address,
-                    "Electrum address notification: address=" + change.address), logs.messages());
+            electrum.notifyWallet(new JsonArray().add(receive.scripthash()).add(payload));
+            electrum.notifyWallet(new JsonArray().add(change.scripthash()).add(null));
+            assertEquals(List.of("Electrum address notification: address=" + receive.address(),
+                    "Electrum address notification: address=" + change.address()), logs.messages());
 
             List<JsonObject> malformedOrUnknown = List.of(
                     walletNotification(new JsonArray().add(unknownHash).add(payload)),
@@ -368,13 +368,13 @@ class WalletLiveServiceTest {
                     walletNotification(payload),
                     walletNotification(new JsonObject().put("address", payload)),
                     walletNotification(new JsonArray()),
-                    walletNotification(new JsonArray().add(receive.scripthash)),
-                    walletNotification(new JsonArray().add(receive.scripthash).add(null).add(payload)),
+                    walletNotification(new JsonArray().add(receive.scripthash())),
+                    walletNotification(new JsonArray().add(receive.scripthash()).add(null).add(payload)),
                     walletNotification(new JsonArray().add(null).add(null)),
                     walletNotification(new JsonArray().add(123).add(null)),
                     walletNotification(new JsonArray().add(new JsonObject().put("address", payload)).add(null)),
-                    walletNotification(new JsonArray().add(receive.scripthash).add(new JsonObject())),
-                    walletNotification(new JsonArray().add(receive.scripthash).add(123)));
+                    walletNotification(new JsonArray().add(receive.scripthash()).add(new JsonObject())),
+                    walletNotification(new JsonArray().add(receive.scripthash()).add(123)));
             for (JsonObject notification : malformedOrUnknown) {
                 assertDoesNotThrow(() -> electrum.notifications.forEach(listener -> listener.accept(notification)));
             }
@@ -396,12 +396,12 @@ class WalletLiveServiceTest {
             assertTrue(logs.entries().stream().allMatch(entry -> entry.level() < Level.INFO.intValue()
                     && entry.thrown() == null));
             assertTrue(logs.messages().stream().noneMatch(m -> m.contains(payload) || m.contains(unknownHash)
-                    || m.contains(receive.scripthash) || m.contains(change.scripthash)
+                    || m.contains(receive.scripthash()) || m.contains(change.scripthash())
                     || m.contains("tx-secret") || m.contains("zpub-secret") || m.contains("987654321")
                     || m.contains("\r") || m.contains("\n")));
             // Only the two intentional address logs may contain a wallet address.
             assertTrue(logs.messages().stream().skip(2)
-                    .noneMatch(m -> m.contains(receive.address) || m.contains(change.address)));
+                    .noneMatch(m -> m.contains(receive.address()) || m.contains(change.address())));
         }
         idle();
         assertNull(scheduled(), "Offline notifications must still not schedule scans");

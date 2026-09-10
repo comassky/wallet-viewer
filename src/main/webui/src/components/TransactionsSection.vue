@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRef } from 'vue';
+import { computed, toRef, useTemplateRef } from 'vue';
 import { usePrivacy } from '../composables/usePrivacy';
 import { currencyLabel, formatAmount, type Currency, type FiatCurrency } from '../currency';
 import type { PriceRates, Transaction } from '../types/wallet';
@@ -43,7 +43,7 @@ const columns: SortColumn<Transaction>[] = [
   { key: 'confirmations', label: 'Confirmations', value: tx => tx.confirmations, numeric: true },
 ];
 const { query, filter, counts, filtered, visible, hasMore, showMore, resetFilters, sortKey, descending, toggleSort, ariaSort } = useTransactionList(toRef(props, 'transactions'), columns);
-const searchInput = ref<HTMLInputElement | null>(null);
+const searchInput = useTemplateRef<HTMLInputElement>('searchInput');
 const { conceal } = usePrivacy();
 function clearSearch(): void {
   query.value = '';

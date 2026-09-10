@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { createChart, AreaSeries, LineSeries, ColorType, CrosshairMode, LineStyle, type IChartApi, type ISeriesApi, type AreaData, type BusinessDay } from 'lightweight-charts';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { createChart, createSeriesMarkers, AreaSeries, LineSeries, ColorType, CrosshairMode, LineStyle, type IChartApi, type ISeriesApi, type ISeriesMarkersPluginApi, type MouseEventParams, type Time, type AreaData, type BusinessDay } from 'lightweight-charts';
 import { currencyLabel, type BitcoinUnit, type FiatCurrency } from '../currency';
 import { useBalanceHistory } from '../composables/useBalanceHistory';
 import { usePrivacy } from '../composables/usePrivacy';
-import type { BalancePoint } from '../types/wallet';
+import type { BalancePoint, Transaction } from '../types/wallet';
+import { groupChartTransactions, type ChartTransactionGroup } from '../utils/chartTransactions';
 import { readStorage, writeStorage } from '../utils/storage.ts';
 import UiIcon from './UiIcon.vue';
 import { formatDate } from '../utils/format';
@@ -13,14 +14,18 @@ const props = defineProps<{
   currency: BitcoinUnit;
   fiatCurrency: FiatCurrency;
   amount: (sats: number, signed?: boolean) => string;
+  transactions: readonly Transaction[];
 }>();
 
 const { history, loading, error, refresh } = useBalanceHistory();
 const { hidden, conceal } = usePrivacy();
-const container = ref<HTMLDivElement | null>(null);
+const container = useTemplateRef<HTMLDivElement>('container');
 let chart: IChartApi | null = null;
 let balanceSeries: ISeriesApi<'Area'> | null = null;
 let valueSeries: ISeriesApi<'Line'> | null = null;
+let transactionMarkers: ISeriesMarkersPluginApi<Time> | null = null;
+const tooltip = ref<{ group: ChartTransactionGroup; left: number } | null>(null);
+const transactionLabels = { received: 'Received', sent: 'Sent', self: 'Internal transfer' } as const satisfies Record<Transaction['type'], string>;
 let resizeObserver: ResizeObserver | null = null;
 
 type ChartPeriod = 'daily' | 'weekly' | 'monthly' | 'ytd' | 'all';
@@ -34,7 +39,7 @@ const periods = [
 const PERIOD_KEY = 'wallet-viewer.chart-period';
 function readPeriod(): ChartPeriod {
   const saved = readStorage(PERIOD_KEY);
-  return saved && periods.some(option => option.id === saved) ? saved as ChartPeriod : 'all';
+  return periods.find(option => option.id === saved)?.id ?? 'all';
 }
 const period = ref<ChartPeriod>(readPeriod());
 watch(period, value => writeStorage(PERIOD_KEY, value));
@@ -51,6 +56,7 @@ const showValue = ref(readFlag(VALUE_KEY));
 watch(showBalance, value => {
   writeStorage(BALANCE_KEY, value ? '1' : '0');
   balanceSeries?.applyOptions({ visible: value });
+  if (!value) tooltip.value = null;
 });
 watch(showValue, value => {
   writeStorage(VALUE_KEY, value ? '1' : '0');
@@ -91,13 +97,16 @@ function bucketId(day: number): number {
 }
 
 // Backend series is already daily and gap-filled; keep the last point of each bucket in the window.
+const visibleHistory = computed(() => {
+  const first = history.value[0];
+  if (hidden.value || !first) return [];
+  const start = Math.max(windowStart(first.time), first.time);
+  return history.value.filter(point => point.time >= start);
+});
+
 function bucketed(): BalancePoint[] {
-  const points = history.value;
-  if (points.length === 0) return [];
-  const start = Math.max(windowStart(points[0].time), points[0].time);
-  const lastPerBucket = new Map<number, BalancePoint>();
-  for (const point of points) if (point.time >= start) lastPerBucket.set(bucketId(point.time), point);
-  return [...lastPerBucket.values()].sort((a, b) => a.time - b.time);
+  const lastPerBucket = new Map(visibleHistory.value.map(point => [bucketId(point.time), point]));
+  return [...lastPerBucket.values()].toSorted((left, right) => left.time - right.time);
 }
 
 function businessDay(seconds: number): BusinessDay {
@@ -111,11 +120,35 @@ const points = computed<ChartPoint[]>(() => hidden.value ? [] : bucketed().map(p
   time: businessDay(p.time), balanceSats: p.balanceSats, valueEur: p.valueEur, valueUsd: p.valueUsd,
 })));
 
+const transactionGroups = computed(() => groupChartTransactions(visibleHistory.value, props.transactions, bucketId));
+const groupsByTime = computed(() => new Map(transactionGroups.value.map(group => [JSON.stringify(businessDay(group.time)), group])));
+
+function renderMarkers(): void {
+  tooltip.value = null;
+  transactionMarkers?.setMarkers(transactionGroups.value.map(group => ({
+    time: businessDay(group.time), position: 'inBar', shape: 'circle', color: '#fef3c7',
+    id: `transactions-${group.time}`, size: 0.7,
+  })));
+}
+
+function showTransactionTooltip(event: MouseEventParams): void {
+  tooltip.value = null;
+  if (hidden.value || !showBalance.value || !event.point || !event.time || !balanceSeries || !chart || !container.value) return;
+  const group = groupsByTime.value.get(JSON.stringify(event.time));
+  const data = event.seriesData.get(balanceSeries);
+  if (!group || !data || !('value' in data)) return;
+  const vertical = balanceSeries.priceToCoordinate(data.value);
+  const horizontal = chart.timeScale().timeToCoordinate(event.time);
+  if (vertical === null || horizontal === null || Math.abs(event.point.y - vertical) > 16 || Math.abs(event.point.x - horizontal) > 16) return;
+  tooltip.value = { group, left: Math.max(0, Math.min(event.point.x + 16, container.value.clientWidth - 300)) };
+}
+
 function renderBalance(): void {
   if (!balanceSeries) return;
   const factor = props.currency === 'SATS' ? 1 : 1e-8;
   balanceSeries.applyOptions({ priceFormat: btcFormat() });
-  balanceSeries.setData(points.value.map(p => ({ time: p.time, value: p.balanceSats * factor } as AreaData)));
+  balanceSeries.setData(points.value.map(point => ({ time: point.time, value: point.balanceSats * factor } satisfies AreaData)));
+  renderMarkers();
 }
 
 function renderFiat(): void {
@@ -150,11 +183,15 @@ onMounted(() => {
   valueSeries = chart.addSeries(LineSeries, {
     color: FIAT_COLOR, lineWidth: 2, priceLineVisible: false, priceFormat: fiatFormat, priceScaleId: 'left', visible: showValue.value,
   });
+  transactionMarkers = createSeriesMarkers(balanceSeries, [], { zOrder: 'top' });
+  chart.subscribeCrosshairMove(showTransactionTooltip);
+  chart.subscribeClick(showTransactionTooltip);
   renderBalance();
   renderFiat();
   chart.timeScale().fitContent();
   // The panel mounts inside a hidden tab (width 0); refit the content once the container gains size.
   resizeObserver = new ResizeObserver(() => {
+    tooltip.value = null;
     if ((container.value?.clientWidth ?? 0) > 0) chart?.timeScale().fitContent();
   });
   resizeObserver.observe(container.value);
@@ -162,9 +199,21 @@ onMounted(() => {
 
 // Split watchers: BTC/SAT touches only the balance curve, EUR/USD only the value curve.
 watch([points, () => props.currency], renderBalance);
+watch(transactionGroups, renderMarkers);
 watch([points, () => props.fiatCurrency], renderFiat);
 watch(points, () => chart?.timeScale().fitContent());
-onBeforeUnmount(() => { resizeObserver?.disconnect(); resizeObserver = null; chart?.remove(); chart = null; balanceSeries = null; valueSeries = null; });
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+  chart?.unsubscribeCrosshairMove(showTransactionTooltip);
+  chart?.unsubscribeClick(showTransactionTooltip);
+  transactionMarkers?.detach();
+  transactionMarkers = null;
+  chart?.remove();
+  chart = null;
+  balanceSeries = null;
+  valueSeries = null;
+});
 </script>
 
 <template>
@@ -198,7 +247,23 @@ onBeforeUnmount(() => { resizeObserver?.disconnect(); resizeObserver = null; cha
     <p v-if="history.some(point => point.valueEur === null || point.valueUsd === null)" role="status" class="mb-3 text-xs text-amber-300">Fiat values are unavailable for part or all of this period. Bitcoin balances remain visible.</p>
     <p v-if="!enoughData && !error && !hidden" role="status" class="py-16 text-center text-sm text-slate-400">{{ loading ? 'Loading balance history...' : 'Not enough history to plot a curve yet.' }}</p>
     <p v-if="hidden" role="status" class="flex h-72 items-center justify-center text-sm text-slate-400">Amounts hidden</p>
-    <div v-show="enoughData && !hidden" ref="container" class="sensitive h-72 w-full" aria-hidden="true"></div>
+    <div v-show="enoughData && !hidden" class="relative" @mouseleave="tooltip = null">
+      <div ref="container" class="sensitive h-72 w-full" aria-hidden="true"></div>
+      <div v-if="tooltip && !hidden && showBalance" role="tooltip" class="pointer-events-none absolute top-2 z-10 w-[300px] max-w-full rounded-lg border border-slate-600 bg-slate-950/95 p-3 text-xs text-slate-200 shadow-lg" :style="{ left: `${tooltip.left}px` }">
+        <p class="mb-2 font-semibold">{{ tooltip.group.transactions.length }} {{ tooltip.group.transactions.length === 1 ? 'transaction' : 'transactions' }}</p>
+        <ul class="space-y-2">
+          <li v-for="transaction in tooltip.group.transactions.slice(0, 3)" :key="transaction.txid" class="border-t border-slate-700 pt-2">
+            <div class="flex flex-wrap justify-between gap-x-2 gap-y-1">
+              <span>{{ transactionLabels[transaction.type] }}</span>
+              <span class="font-semibold tabular-nums">{{ amount(transaction.amount, true) }} {{ currencyLabel(currency) }}</span>
+            </div>
+            <p class="mt-1 text-slate-400">{{ transaction.timestamp === null ? 'Date unavailable' : formatDate(transaction.timestamp) }} · {{ transaction.confirmations > 0 ? 'Confirmed' : 'Pending' }}</p>
+            <p class="mt-1 font-mono text-slate-400">{{ transaction.txid.slice(0, 10) }}...{{ transaction.txid.slice(-8) }}</p>
+          </li>
+        </ul>
+        <p v-if="tooltip.group.transactions.length > 3" class="mt-2 text-slate-400">+{{ tooltip.group.transactions.length - 3 }} more transactions</p>
+      </div>
+    </div>
   </div>
 </template>
 

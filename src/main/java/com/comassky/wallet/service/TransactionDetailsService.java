@@ -3,6 +3,7 @@ package com.comassky.wallet.service;
 import com.comassky.wallet.derivation.HdWallet;
 import com.comassky.wallet.electrum.ElectrumClient;
 import com.comassky.wallet.electrum.ElectrumMethod;
+import com.comassky.wallet.electrum.ElectrumResult;
 import com.comassky.wallet.model.TransactionDetailsDto;
 import com.comassky.wallet.util.TransactionDecoder;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -13,7 +14,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
-import org.bitcoinj.base.internal.ByteUtils;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionInput;
@@ -23,6 +23,7 @@ import org.bitcoinj.script.ScriptException;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -91,7 +92,7 @@ public class TransactionDetailsService {
     private Uni<Transaction> fetch(String txid, NetworkParameters params) {
         // RPC creation must also be lazy, so the join's concurrency bound applies to actual requests.
         return Uni.createFrom().deferred(() -> electrum.call(ElectrumMethod.TRANSACTION_GET, txid))
-                .map(response -> TransactionDecoder.decode(txid, response.getString("result")));
+                .map(ElectrumResult::text).map(hex -> TransactionDecoder.decode(txid, hex));
     }
 
     private static TransactionDetailsDto render(Transaction transaction, Map<String, Transaction> previous,
@@ -124,7 +125,7 @@ public class TransactionDetailsService {
                 .mapToObj(i -> {
                     final TransactionOutput output = txOutputs.get(i);
                     return new TransactionDetailsDto.Output(i, address(output, params), value(output),
-                            ByteUtils.formatHex(output.getScriptBytes()));
+                            HexFormat.of().formatHex(output.getScriptBytes()));
                 })
                 .toList();
         final long totalOutput = outputs.stream()

@@ -4,19 +4,19 @@ import com.comassky.wallet.electrum.ElectrumClient;
 import com.comassky.wallet.model.AddressCheckDto;
 import com.comassky.wallet.model.AddressInfo;
 import com.comassky.wallet.model.BalanceDto;
+import com.comassky.wallet.model.BalancePointDto;
 import com.comassky.wallet.model.ElectrumServerDto;
 import com.comassky.wallet.model.FeeRatesDto;
 import com.comassky.wallet.model.PriceRatesDto;
-import com.comassky.wallet.model.BalancePointDto;
 import com.comassky.wallet.model.ReceiveAddressDto;
 import com.comassky.wallet.model.TransactionDetailsDto;
 import com.comassky.wallet.model.TransactionDto;
 import com.comassky.wallet.model.UtxoDto;
 import com.comassky.wallet.model.WalletSnapshot;
 import com.comassky.wallet.model.WalletState;
-import com.comassky.wallet.service.PriceService;
 import com.comassky.wallet.service.BalanceHistoryService;
 import com.comassky.wallet.service.FeeService;
+import com.comassky.wallet.service.PriceService;
 import com.comassky.wallet.service.TransactionDetailsService;
 import com.comassky.wallet.service.WalletLiveService;
 import com.comassky.wallet.service.WalletService;
@@ -198,7 +198,7 @@ public class WalletResource {
     public ReceiveAddressDto receiveAt(
             @Parameter(description = "Receive address index (>= 0)", required = true) @PathParam("index") @Min(0) int index) {
         AddressInfo a = service.derive(0, index);
-        return new ReceiveAddressDto(a.index, a.address, a.path);
+        return new ReceiveAddressDto(a.index(), a.address(), a.path());
     }
 
     @GET

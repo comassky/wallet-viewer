@@ -17,14 +17,14 @@ function compare(a: SortValue, b: SortValue, descending: boolean): number {
   return descending ? -result : result;
 }
 
-export function useTableSort<T>(rows: Ref<T[]>, columns: SortColumn<T>[]) {
+export function useTableSort<T>(rows: Ref<readonly T[]>, columns: readonly SortColumn<T>[]) {
   const sortKey = ref('');
   const descending = ref(false);
   const sorted = computed(() => {
     const column = columns.find(item => item.key === sortKey.value);
     if (!column) return rows.value;
-    return [...rows.value].sort((a, b) => compare(column.value(a), column.value(b), descending.value)
-      || (column.secondary ? compare(column.secondary(a), column.secondary(b), descending.value) : 0));
+    return rows.value.toSorted((left, right) => compare(column.value(left), column.value(right), descending.value)
+      || (column.secondary ? compare(column.secondary(left), column.secondary(right), descending.value) : 0));
   });
   function toggleSort(key: string): void {
     if (key === sortKey.value) descending.value = !descending.value;

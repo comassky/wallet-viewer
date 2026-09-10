@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
+import { nextTick, shallowRef, useTemplateRef } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
 import { useModalDialog } from '../composables/useModalDialog';
 import UiIcon from './UiIcon.vue';
 import CopyValue from './CopyValue.vue';
 
-const dialog = ref<HTMLDialogElement | null>(null);
-const receive = ref<(ReceiveAddress & { url: string }) | null>(null);
+const dialog = useTemplateRef<HTMLDialogElement>('dialog');
+const receive = shallowRef<(ReceiveAddress & { url: string }) | null>(null);
 const { showModal, close, handleClose, closeOnBackdrop, isDisposed } = useModalDialog(dialog);
 let opening = false;
 

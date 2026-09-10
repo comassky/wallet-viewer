@@ -1,4 +1,5 @@
 import type { WalletEnvelope, WalletSnapshot, WalletStatus } from '../types/wallet';
+import { validEnvelope } from './walletValidation.ts';
 
 export type WalletConnection = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 
@@ -34,48 +35,12 @@ export function walletStreamUrl(location: Pick<Location, 'protocol' | 'host'>): 
   return `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/wallet/live`;
 }
 
-function record(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function integer(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value);
-}
-
-function validSnapshot(value: unknown): value is WalletSnapshot {
-  if (!record(value) || !record(value.balance) || !record(value.receiveAddress)) return false;
-  const { balance, receiveAddress, transactions, utxos } = value;
-  const discovery = value.discovery;
-  if (discovery != null && (!record(discovery) || typeof discovery.complete !== 'boolean'
-    || !integer(discovery.addressLimit) || discovery.addressLimit <= 0
-    || !integer(discovery.gapLimit) || discovery.gapLimit <= 0
-    || !integer(discovery.receiveScanned) || discovery.receiveScanned < 0 || discovery.receiveScanned > discovery.addressLimit
-    || !integer(discovery.changeScanned) || discovery.changeScanned < 0 || discovery.changeScanned > discovery.addressLimit)) return false;
-  return integer(balance.confirmed) && integer(balance.unconfirmed) && integer(balance.total)
-    && integer(receiveAddress.index) && receiveAddress.index >= 0
-    && typeof receiveAddress.address === 'string' && typeof receiveAddress.path === 'string'
-    && Array.isArray(transactions) && transactions.every(tx => record(tx)
-      && typeof tx.txid === 'string' && integer(tx.amount) && integer(tx.received) && integer(tx.sent)
-      && integer(tx.height) && integer(tx.confirmations)
-      && (tx.timestamp === null || integer(tx.timestamp))
-      && (tx.type === 'received' || tx.type === 'sent' || tx.type === 'self')
-      && Array.isArray(tx.addresses) && tx.addresses.every(address => typeof address === 'string'))
-    && Array.isArray(utxos) && utxos.every(utxo => record(utxo)
-      && typeof utxo.txid === 'string' && typeof utxo.address === 'string'
-      && integer(utxo.vout) && integer(utxo.value) && integer(utxo.height) && integer(utxo.confirmations));
-}
-
 /** Malformed or non-text frames are ignored without changing the accepted version. */
 export function parseWalletEnvelope(frame: unknown): WalletEnvelope | null {
   if (typeof frame !== 'string') return null;
   try {
     const value: unknown = JSON.parse(frame);
-    if (!record(value) || !integer(value.version) || value.version < 0
-      || (value.updatedAt != null && (!integer(value.updatedAt) || value.updatedAt < 0))
-      || typeof value.status !== 'string' || !['loading', 'syncing', 'live', 'offline', 'error'].includes(value.status)
-      || (value.message !== null && typeof value.message !== 'string')
-      || (value.snapshot !== null && !validSnapshot(value.snapshot))) return null;
-    return value as unknown as WalletEnvelope;
+    return validEnvelope(value) ? value : null;
   } catch {
     return null;
   }

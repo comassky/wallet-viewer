@@ -8,8 +8,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -25,6 +25,7 @@ public class BalanceHistoryService {
 
     @Inject
     PriceHistoryService priceHistory;
+    @Inject Clock clock = Clock.systemUTC();
 
     private Uni<List<BalancePointDto>> cached;
 
@@ -34,7 +35,7 @@ public class BalanceHistoryService {
         cached = Uni.createFrom().deferred(() ->
                 Uni.combine().all().unis(live.snapshot(), priceHistory.history()
                         .onFailure().recoverWithItem(List.of())).asTuple()
-                    .map(tuple -> compute(tuple.getItem1().transactions(), tuple.getItem2(), priceHistory.stale())))
+                    .map(tuple -> compute(tuple.getItem1().transactions(), tuple.getItem2(), priceHistory.stale(), clock)))
                 .memoize().forFixedDuration(Duration.ofSeconds(60));
     }
 
@@ -47,10 +48,14 @@ public class BalanceHistoryService {
     }
 
     static List<BalancePointDto> compute(List<TransactionDto> transactions, List<PricePointDto> prices, boolean priceStale) {
+        return compute(transactions, prices, priceStale, Clock.systemUTC());
+    }
+
+    static List<BalancePointDto> compute(List<TransactionDto> transactions, List<PricePointDto> prices, boolean priceStale, Clock clock) {
         if (transactions.isEmpty()) {
             return List.of();
         }
-        final long nowDay = Instant.now().getEpochSecond() / DAY * DAY;
+        final long nowDay = clock.instant().getEpochSecond() / DAY * DAY;
         final List<TransactionDto> ordered = transactions.stream()
                 .sorted(Comparator.comparingLong((TransactionDto tx) -> tx.timestamp() == null ? Long.MAX_VALUE : tx.timestamp())
                         .thenComparingInt(TransactionDto::height))

@@ -1,12 +1,8 @@
 package com.comassky.wallet.web;
 
-import jakarta.websocket.HandshakeResponse;
-import jakarta.websocket.server.HandshakeRequest;
+import io.vertx.core.MultiMap;
 import org.junit.jupiter.api.Test;
 
-import java.net.URI;
-import java.security.Principal;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +10,6 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class WalletSocketOriginTest {
-    private final WalletSocketOrigin origin = new WalletSocketOrigin();
 
     @Test
     void allowsSameHostForHttpAndHttps() {
@@ -104,23 +99,13 @@ class WalletSocketOriginTest {
     }
 
     private void handshake(Map<String, List<String>> headers) {
-        Map<String, List<String>> responseHeaders = new HashMap<>();
-        HandshakeResponse response = () -> responseHeaders;
-        // The configurator only reads request headers; no endpoint container is required.
-        origin.modifyHandshake(null, new Request(headers), response);
+        MultiMap values = MultiMap.caseInsensitiveMultiMap();
+        headers.forEach(values::add);
+        WalletSocketOrigin.validate(values);
     }
 
     private static Map<String, List<String>> headers(String origin, String host) {
         return Map.of("Origin", List.of(origin), "Host", List.of(host));
     }
 
-    private record Request(Map<String, List<String>> headers) implements HandshakeRequest {
-        @Override public Map<String, List<String>> getHeaders() { return headers; }
-        @Override public Principal getUserPrincipal() { return null; }
-        @Override public URI getRequestURI() { return URI.create("ws://wallet.example/api/wallet/ws"); }
-        @Override public boolean isUserInRole(String role) { return false; }
-        @Override public Object getHttpSession() { return null; }
-        @Override public Map<String, List<String>> getParameterMap() { return Map.of(); }
-        @Override public String getQueryString() { return null; }
-    }
 }

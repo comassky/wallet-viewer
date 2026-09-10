@@ -191,8 +191,7 @@ class LiveWalletIntegrationTest {
                     () -> attempt.get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS), "Origin must be rejected: " + origin);
             WebSocketHandshakeException handshake = assertInstanceOf(WebSocketHandshakeException.class, failure.getCause());
             int status = handshake.getResponse().statusCode();
-            // Configurator SecurityException mapping is container-specific (not necessarily 403).
-            assertTrue(status >= 400 && status < 600, "Expected HTTP handshake rejection, got " + status);
+            assertEquals(403, status);
         } finally {
             attempt.thenAccept(WebSocket::abort); // Also clean up an unexpectedly accepted socket.
             attempt.cancel(true);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
 import { useClipboard } from '../composables/useClipboard';
@@ -15,7 +15,7 @@ function enlarge(event: MouseEvent): void {
   emit('enlarge', { ...props.receive }, event.currentTarget as HTMLButtonElement);
 }
 
-const tabButtons = ref<HTMLButtonElement[]>([]);
+const tabButtons = useTemplateRef<HTMLButtonElement[]>('tabButtons');
 const tabs = [
   { id: 'receive', label: 'Receive', icon: 'qr-code' },
   { id: 'check', label: 'Check address', icon: 'search' },
@@ -31,9 +31,11 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
     case 'End': nextIndex = tabs.length - 1; break;
     default: return;
   }
+  const nextTab = tabs[nextIndex];
+  if (!nextTab) return;
   event.preventDefault();
-  activeTab.value = tabs[nextIndex].id;
-  tabButtons.value[nextIndex]?.focus();
+  activeTab.value = nextTab.id;
+  tabButtons.value?.[nextIndex]?.focus();
 }
 
 </script>

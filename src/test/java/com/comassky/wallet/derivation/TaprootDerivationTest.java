@@ -16,12 +16,12 @@ class TaprootDerivationTest {
         HdWallet wallet = wallet();
 
         assertEquals("bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr",
-                wallet.address(0, 0).address);
+                wallet.address(0, 0).address());
         assertEquals("bc1p4qhjn9zdvkux4e44uhx8tc55attvtyu358kutcqkudyccelu0was9fqzwh",
-                wallet.address(0, 1).address);
+                wallet.address(0, 1).address());
         assertEquals("bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7",
-                wallet.address(1, 0).address);
-        assertEquals("m/86'/0'/0'/0/0", wallet.address(0, 0).path);
+                wallet.address(1, 0).address());
+        assertEquals("m/86'/0'/0'/0/0", wallet.address(0, 0).path());
     }
 
     @Test

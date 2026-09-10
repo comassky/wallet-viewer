@@ -23,8 +23,8 @@ import org.bitcoinj.script.Script;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -256,9 +256,9 @@ class WalletServiceTest {
     void deriveRemainsLocalAndDoesNotStartAScan() {
         StubElectrum electrum = new StubElectrum(index -> false);
         AddressInfo address = service(electrum).derive(1, 7);
-        assertEquals(1, address.chain);
-        assertEquals(7, address.index);
-        assertEquals("address:1:7", address.address);
+        assertEquals(1, address.chain());
+        assertEquals(7, address.index());
+        assertEquals("address:1:7", address.address());
         assertTrue(electrum.calls.isEmpty());
     }
 

@@ -73,6 +73,12 @@ function setPage(side: Side, page: number) {
   pages.value[side] = paginationRange(props.details[side].length, page).page;
 }
 
+function nodeTop(side: Side, index: number): string {
+  const node = graph.value[side][index];
+  if (!node) throw new RangeError(`Missing graph position for ${side} node ${index}`);
+  return `${node.y - graph.value.nodeHeight / 2}px`;
+}
+
 watch(() => props.details.txid, () => {
   pages.value = { inputs: 0, outputs: 0 };
   clearHighlight();
@@ -114,7 +120,7 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
         </header>
         <ul :id="`${idPrefix}-graph-${side.key}-nodes`" class="graph-nodes">
           <li v-for="(node, index) in side.nodes" :key="node.key" class="graph-node" :class="{ 'node-active': active === node.key, 'node-pinned': selected === node.key }"
-            :style="{ '--node-top': `${graph[side.key][index].y - graph.nodeHeight / 2}px` }"
+            :style="{ '--node-top': nodeTop(side.key, index) }"
             @mouseenter="hovered = node.key" @mouseleave="hovered = null" @focusin="focusBranch(node.key)" @focusout="leaveFocus">
             <button type="button" class="branch-button" :aria-pressed="selected === node.key" :aria-label="`Pin ${side.singular.toLowerCase()} #${node.index} branch: ${valueLabel(node.value, node.coinbase)}`" @click="selected = selected === node.key ? null : node.key">
               <span class="shrink-0">#{{ node.index }}</span>
@@ -124,7 +130,7 @@ watch([() => pages.value.inputs, () => pages.value.outputs], () => {
             <p v-else class="ml-auto min-w-0 truncate text-xs text-slate-400">{{ node.fallback }}</p>
           </li>
           <li v-if="side.page.group" :key="`${side.key}-group`" class="graph-node graph-group" :class="{ 'node-active': active === `${side.key}-group` }"
-            :style="{ '--node-top': `${graph[side.key][side.nodes.length].y - graph.nodeHeight / 2}px` }"
+            :style="{ '--node-top': nodeTop(side.key, side.nodes.length) }"
             @mouseenter="hovered = `${side.key}-group`" @mouseleave="hovered = null" @focusin="focusBranch(`${side.key}-group`)" @focusout="leaveFocus">
             <button type="button" class="branch-button" :aria-controls="`${idPrefix}-graph-${side.key}-nodes`" :aria-describedby="`${idPrefix}-graph-${side.key}-count ${idPrefix}-graph-${side.key}-group-sum`"
               :aria-label="`Explore ${side.page.group.count} remaining ${side.key}: page ${side.page.group.nextPage + 1} of ${side.page.pageCount}`" @click="setPage(side.key, side.page.group.nextPage)">

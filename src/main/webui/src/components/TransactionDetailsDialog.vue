@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onWatcherCleanup, ref, useTemplateRef, watch } from 'vue';
 import { currencyLabel, type Currency } from '../currency';
 import type { Transaction, TransactionDetails } from '../types/wallet';
 import { formatDate } from '../utils/format';
@@ -26,13 +26,13 @@ const emit = defineEmits<{ close: []; retry: [] }>();
 
 const idPrefix = 'transaction-dialog';
 const { hidden } = usePrivacy();
-const dialog = ref<HTMLDialogElement | null>(null);
+const dialog = useTemplateRef<HTMLDialogElement>('dialog');
 const { showModal, close, handleClose, closeOnBackdrop, isDisposed } = useModalDialog(dialog, () => emit('close'));
 const tabs = [
   { id: 'graph', label: 'Graph', icon: 'graph' },
   { id: 'io', label: 'Inputs / Outputs', icon: 'list' },
 ] as const;
-const tabButtons = ref<HTMLButtonElement[]>([]);
+const tabButtons = useTemplateRef<HTMLButtonElement[]>('tabButtons');
 const showGraph = useMediaQuery('(min-width: 768px)');
 const visibleTabs = computed(() => tabs.filter(tab => showGraph.value || tab.id !== 'graph'));
 const { activeTab, onKeydown } = useRovingTabs(() => visibleTabs.value.map(tab => tab.id), showGraph.value ? 'graph' : 'io', tabButtons);
@@ -49,13 +49,15 @@ const isCoinbase = computed(() => props.details?.inputs.some(input => input.coin
 
 // The parent owns the selection; opening/closing the native dialog follows it.
 watch(() => props.transaction?.txid, async txid => {
+  let cancelled = false;
+  onWatcherCleanup(() => { cancelled = true; });
   const element = dialog.value;
   if (!element) return;
   if (txid) {
     activeTab.value = showGraph.value ? 'graph' : 'io';
     inputPageIndex.value = outputPageIndex.value = 0;
     await nextTick();
-    if (isDisposed()) return;
+    if (cancelled || isDisposed()) return;
     showModal();
   } else if (element.open) {
     close();

@@ -1,20 +1,28 @@
 package com.comassky.wallet.web;
 
-import io.quarkus.runtime.annotations.RegisterForReflection;
-import jakarta.websocket.HandshakeResponse;
-import jakarta.websocket.server.HandshakeRequest;
-import jakarta.websocket.server.ServerEndpointConfig;
+import io.quarkus.websockets.next.HttpUpgradeCheck;
+import io.smallrye.mutiny.Uni;
+import io.vertx.core.MultiMap;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import java.net.URI;
 
 /** Prevent a foreign website from reading a localhost/private wallet through a browser socket. */
-// Instantiated reflectively by the JSR-356 handshake; must be registered for native image.
-@RegisterForReflection
-public final class WalletSocketOrigin extends ServerEndpointConfig.Configurator {
+@ApplicationScoped
+public class WalletSocketOrigin implements HttpUpgradeCheck {
     @Override
-    public void modifyHandshake(ServerEndpointConfig config, HandshakeRequest request, HandshakeResponse response) {
-        final String origin = header(request, "Origin");
-        final String host = header(request, "Host");
+    public Uni<CheckResult> perform(HttpUpgradeContext context) {
+        try {
+            validate(context.httpRequest().headers());
+            return CheckResult.permitUpgrade();
+        } catch (SecurityException failure) {
+            return CheckResult.rejectUpgrade(403);
+        }
+    }
+
+    static void validate(MultiMap headers) {
+        final String origin = header(headers, "Origin");
+        final String host = header(headers, "Host");
         try {
             final URI uri = URI.create(origin);
             if (!("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))
@@ -29,10 +37,8 @@ public final class WalletSocketOrigin extends ServerEndpointConfig.Configurator 
         }
     }
 
-    private static String header(HandshakeRequest request, String name) {
-        final var values = request.getHeaders().entrySet().stream()
-                .filter(entry -> entry.getKey().equalsIgnoreCase(name))
-            .flatMap(entry -> entry.getValue().stream()).toList();
+    private static String header(MultiMap headers, String name) {
+        final var values = headers.getAll(name);
         if (values.size() != 1) throw new SecurityException("WebSocket origin rejected");
         return values.getFirst();
     }
