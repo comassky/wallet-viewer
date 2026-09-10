@@ -23,9 +23,8 @@ Like many people, I run an Electrum node that I deliberately keep off the public
 
 > [!WARNING]
 > **No built-in authentication.** This application ships no login or access control of its own. Never expose it directly to the internet — always place it behind a secure, authenticated reverse proxy (HTTPS, with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90s). The built-in origin checks are hardening, not access control.
-
-> [!WARNING]
-> 🔒 **Local by default, not authenticated.** Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
+> 
+>🔒  Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
 
 ### Why you'll love it
 
