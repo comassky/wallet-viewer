@@ -39,7 +39,7 @@ Like many people, I run an Electrum node that I deliberately keep **off the publ
 - 🔎 **See everything.** Fees, UTXOs, input/output graphs and derivation paths in a fast, responsive Bitcoin-orange dark UI.
 - 🕵️ **Your node, your privacy.** Point it at your own Electrum server; only script hashes ever leave home, never your xpub.
 
-[Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Docker](#docker) · [Demo](#demo-mode) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations) · [License](#license)
+[Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Native](#native-vs-jvm) · [Docker](#docker) · [Demo](#demo-mode) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations) · [License](#license)
 
 <div align="center">
 
@@ -98,9 +98,31 @@ flowchart LR
 | Node.js | **24.21.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
 | Frontend (locked) | Vue **3.5.42**, Vite **8.3.0**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite), @types/node **22.20.2** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
 | UI libraries | Material Design Icons (@mdi/js) **7.4.47**, Axios **1.20.0**, @formkit/auto-animate **0.10.0**, lightweight-charts **5.2.1** |
-| Runtime image | Distroless Java **25**, Debian **13**, `nonroot` — [Dockerfile](Dockerfile) |
+| Runtime image | **Native (GraalVM)** on Distroless Debian **13**, `nonroot` — [Dockerfile.native](Dockerfile.native); JVM variant on Distroless Java **25** — [Dockerfile](Dockerfile) |
 
 Versions reflect declarations and the npm lockfile. For local development, use JDK 25 and `mvn quarkus:dev`; Quinoa manages Node automatically.
+
+## Native vs JVM
+
+Every published Docker image (`dev`, `latest`, `X.Y.Z`) is compiled to a **GraalVM native** executable: CI builds the runner with `-Dnative` and ships it on a distroless base ([Dockerfile.native](Dockerfile.native)). A classic JVM image stays available via [Dockerfile](Dockerfile).
+
+| Metric | Native (GraalVM) | JVM (HotSpot) |
+| --- | --- | --- |
+| Startup time | **~20 ms** | ~1–2 s |
+| Memory (RSS, idle) | **~50–70 MB** | ~150–250 MB |
+| Container image | Smaller (no JRE) | Larger (bundled JRE) |
+| Peak throughput | Slightly lower | Higher under sustained load (JIT) |
+| Build time | Slow (native compilation, minutes) | Fast |
+| Runtime dependency | None (self-contained binary) | JRE |
+
+Figures are indicative for this application on `linux/amd64` (native startup measured at ~18 ms, ~55 MB RSS). Native fits a small, always-on self-hosted dashboard well: near-instant restarts and a low, stable footprint, at the cost of longer build times. Build the native runner locally with:
+
+```sh
+mvn package -Dnative -Dquarkus.native.container-build=true
+docker build -f Dockerfile.native -t wallet-viewer:native .
+```
+
+See **[Docker & deployment](docs/DOCKER.md#native-image-graalvm)** for the full native workflow.
 
 ## Docker
 
