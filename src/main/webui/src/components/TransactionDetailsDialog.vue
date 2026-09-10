@@ -148,7 +148,7 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
                 </div>
               </div>
               <ol :id="`${idPrefix}-inputs-list`" :start="inputPage.start + 1" class="space-y-1.5">
-                <li v-for="{ item: input, index } in inputPage.entries" :key="`${details.txid}-input-${index}`" :value="index + 1" class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-2.5 py-1.5 transition hover:border-slate-600/60">
+                <li v-for="{ item: input, index } in inputPage.entries" :key="`${details.txid}-input-${index}`" :value="index + 1" class="transaction-io-entry rounded-lg border border-slate-700/40 bg-slate-950/40 px-2.5 py-1.5 transition hover:border-slate-600/60">
                   <div class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                     <span class="rounded-md bg-slate-800/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">#{{ index }}</span>
                     <CopyValue v-if="input.address" :value="input.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-200" />
@@ -179,7 +179,7 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
                 </div>
               </div>
               <ol :id="`${idPrefix}-outputs-list`" :start="outputPage.start + 1" class="space-y-1.5">
-                <li v-for="{ item: output, index } in outputPage.entries" :key="`${details.txid}-output-${output.index}`" :value="index + 1" class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-2.5 py-1.5 transition hover:border-slate-600/60">
+                <li v-for="{ item: output, index } in outputPage.entries" :key="`${details.txid}-output-${output.index}`" :value="index + 1" class="transaction-io-entry rounded-lg border border-slate-700/40 bg-slate-950/40 px-2.5 py-1.5 transition hover:border-slate-600/60">
                   <div class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                     <span class="rounded-md bg-slate-800/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">#{{ output.index }}</span>
                     <CopyValue v-if="output.address" :value="output.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-200" />

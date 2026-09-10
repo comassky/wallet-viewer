@@ -8,7 +8,7 @@ import type { BalancePoint, Transaction } from '../types/wallet';
 import { groupChartTransactions, type ChartTransactionGroup } from '../utils/chartTransactions';
 import { readStorage, writeStorage } from '../utils/storage.ts';
 import UiIcon from './UiIcon.vue';
-import { formatDate } from '../utils/format';
+import { formatDate, transactionClasses, transactionLabels } from '../utils/format';
 
 const props = defineProps<{
   currency: BitcoinUnit;
@@ -25,7 +25,8 @@ let balanceSeries: ISeriesApi<'Area'> | null = null;
 let valueSeries: ISeriesApi<'Line'> | null = null;
 let transactionMarkers: ISeriesMarkersPluginApi<Time> | null = null;
 const tooltip = ref<{ group: ChartTransactionGroup; left: number } | null>(null);
-const transactionLabels = { received: 'Received', sent: 'Sent', self: 'Internal transfer' } as const satisfies Record<Transaction['type'], string>;
+const transactionIcons = { received: 'receive', sent: 'send', self: 'transfer' } as const;
+const transactionAmountClasses = { received: 'text-emerald-300', sent: 'text-rose-300', self: 'text-sky-300' } as const;
 let resizeObserver: ResizeObserver | null = null;
 
 type ChartPeriod = 'daily' | 'weekly' | 'monthly' | 'ytd' | 'all';
@@ -249,19 +250,31 @@ onBeforeUnmount(() => {
     <p v-if="hidden" role="status" class="flex h-72 items-center justify-center text-sm text-slate-400">Amounts hidden</p>
     <div v-show="enoughData && !hidden" class="relative" @mouseleave="tooltip = null">
       <div ref="container" class="sensitive h-72 w-full" aria-hidden="true"></div>
-      <div v-if="tooltip && !hidden && showBalance" role="tooltip" class="pointer-events-none absolute top-2 z-10 w-[300px] max-w-full rounded-lg border border-slate-600 bg-slate-950/95 p-3 text-xs text-slate-200 shadow-lg" :style="{ left: `${tooltip.left}px` }">
-        <p class="mb-2 font-semibold">{{ tooltip.group.transactions.length }} {{ tooltip.group.transactions.length === 1 ? 'transaction' : 'transactions' }}</p>
-        <ul class="space-y-2">
-          <li v-for="transaction in tooltip.group.transactions.slice(0, 3)" :key="transaction.txid" class="border-t border-slate-700 pt-2">
-            <div class="flex flex-wrap justify-between gap-x-2 gap-y-1">
-              <span>{{ transactionLabels[transaction.type] }}</span>
-              <span class="font-semibold tabular-nums">{{ amount(transaction.amount, true) }} {{ currencyLabel(currency) }}</span>
+      <div v-if="tooltip && !hidden && showBalance" role="tooltip" class="pointer-events-none absolute top-2 z-10 w-[300px] max-w-full overflow-hidden rounded-lg border border-slate-600/70 bg-slate-950/95 text-xs text-slate-200 shadow-xl backdrop-blur-sm" :style="{ left: `${tooltip.left}px` }">
+        <p class="border-b border-slate-700/70 bg-slate-800/40 px-3 py-2 font-semibold">{{ tooltip.group.transactions.length }} {{ tooltip.group.transactions.length === 1 ? 'transaction' : 'transactions' }}</p>
+        <ul class="divide-y divide-slate-700/60">
+          <li v-for="transaction in tooltip.group.transactions.slice(0, 3)" :key="transaction.txid" class="px-3 py-2.5">
+            <div class="flex items-center gap-2">
+              <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border" :class="transactionClasses[transaction.type]">
+                <UiIcon :name="transactionIcons[transaction.type]" />
+              </span>
+              <div class="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                <span class="font-medium" :class="transactionAmountClasses[transaction.type]">{{ transactionLabels[transaction.type] }}</span>
+                <span class="break-all font-semibold tabular-nums" :class="transactionAmountClasses[transaction.type]">{{ amount(transaction.amount, true) }} {{ currencyLabel(currency) }}</span>
+              </div>
             </div>
-            <p class="mt-1 text-slate-400">{{ transaction.timestamp === null ? 'Date unavailable' : formatDate(transaction.timestamp) }} · {{ transaction.confirmations > 0 ? 'Confirmed' : 'Pending' }}</p>
-            <p class="mt-1 font-mono text-slate-400">{{ transaction.txid.slice(0, 10) }}...{{ transaction.txid.slice(-8) }}</p>
+            <p class="mt-1.5 text-[11px] text-slate-400">{{ transaction.timestamp === null ? 'Date unavailable' : formatDate(transaction.timestamp) }}</p>
+            <div class="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px]">
+              <span class="font-mono text-slate-500">{{ transaction.txid.slice(0, 10) }}...{{ transaction.txid.slice(-8) }}</span>
+              <span class="inline-flex items-center gap-1" :class="transaction.confirmations > 0 ? 'text-slate-400' : 'text-amber-300'">
+                <UiIcon v-if="transaction.confirmations > 0" name="check" class="h-3 w-3" />
+                <span v-else class="h-1.5 w-1.5 rounded-full bg-amber-300" aria-hidden="true" />
+                {{ transaction.confirmations > 0 ? 'Confirmed' : 'Pending' }}
+              </span>
+            </div>
           </li>
         </ul>
-        <p v-if="tooltip.group.transactions.length > 3" class="mt-2 text-slate-400">+{{ tooltip.group.transactions.length - 3 }} more transactions</p>
+        <p v-if="tooltip.group.transactions.length > 3" class="border-t border-slate-700/70 px-3 py-2 text-[11px] text-slate-400">+{{ tooltip.group.transactions.length - 3 }} more transactions</p>
       </div>
     </div>
   </div>

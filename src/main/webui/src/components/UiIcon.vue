@@ -4,9 +4,10 @@ import {
   mdiChevronLeft, mdiChevronRight, mdiQrcode, mdiMagnify, mdiCheckCircleOutline, mdiAlertOutline,
   mdiGraphOutline, mdiFormatListBulleted, mdiArrowRight, mdiInboxOutline, mdiGithub,
   mdiChartLine, mdiEyeOutline, mdiEyeOffOutline, mdiBellOutline, mdiSpeedometer, mdiRefresh,
+  mdiArrowBottomLeft, mdiArrowTopRight, mdiSwapHorizontal,
 } from '@mdi/js';
 
-type IconName = 'shield' | 'server' | 'activity' | 'coins' | 'copy' | 'check' | 'close' | 'chevron-left' | 'chevron-right' | 'qr-code' | 'search' | 'circle-check' | 'alert' | 'graph' | 'list' | 'arrow-right' | 'inbox' | 'github' | 'chart' | 'eye' | 'eye-off' | 'bell' | 'gauge' | 'refresh';
+type IconName = 'shield' | 'server' | 'activity' | 'coins' | 'copy' | 'check' | 'close' | 'chevron-left' | 'chevron-right' | 'qr-code' | 'search' | 'circle-check' | 'alert' | 'graph' | 'list' | 'arrow-right' | 'inbox' | 'github' | 'chart' | 'eye' | 'eye-off' | 'bell' | 'gauge' | 'refresh' | 'receive' | 'send' | 'transfer';
 defineProps<{ name: IconName }>();
 // Single icon source: Material Design Icons paths, tree-shaken via named imports.
 const paths: Record<IconName, string> = {
@@ -17,6 +18,7 @@ const paths: Record<IconName, string> = {
   graph: mdiGraphOutline, list: mdiFormatListBulleted, 'arrow-right': mdiArrowRight, inbox: mdiInboxOutline,
   github: mdiGithub, chart: mdiChartLine, eye: mdiEyeOutline, 'eye-off': mdiEyeOffOutline, bell: mdiBellOutline,
   gauge: mdiSpeedometer, refresh: mdiRefresh,
+  receive: mdiArrowBottomLeft, send: mdiArrowTopRight, transfer: mdiSwapHorizontal,
 };
 </script>
 

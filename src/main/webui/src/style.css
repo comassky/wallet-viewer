@@ -107,8 +107,9 @@
     overflow-wrap: anywhere;
   }
 
-  .receive-qr-dialog::backdrop {
-    background: rgb(2 6 23 / 85%);
+  .receive-qr-dialog::backdrop,
+  .transaction-dialog::backdrop {
+    background: color-mix(in srgb, var(--color-slate-950) 85%, transparent);
     backdrop-filter: blur(4px);
   }
 
@@ -123,16 +124,21 @@
     overflow-wrap: anywhere;
   }
 
-  .transaction-dialog::backdrop {
-    background: rgb(2 6 23 / 85%);
-    backdrop-filter: blur(4px);
-  }
-
   .graph-page-button {
     @apply inline-flex h-7 min-w-7 items-center justify-center rounded-lg border border-slate-600 px-1.5 text-slate-200;
   }
   .graph-page-button:disabled { @apply cursor-not-allowed opacity-40; }
   .graph-page-button:not(:disabled):hover { @apply border-accent bg-slate-800; }
+
+  @media (pointer: fine) {
+    .transaction-io-entry button {
+      min-height: 28px;
+    }
+
+    .transaction-io-entry summary {
+      min-height: 24px;
+    }
+  }
 }
 
 /* Event animations — skipped entirely when the user prefers reduced motion. */

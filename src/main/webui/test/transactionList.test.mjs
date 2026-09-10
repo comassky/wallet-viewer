@@ -1,7 +1,28 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import * as Vue from 'vue';
+import { compile } from '@vue/compiler-dom';
+import { parse } from '@vue/compiler-sfc';
+import { renderToString } from '@vue/server-renderer';
 import { effectScope, ref } from 'vue';
 import { transactionPageSize, useTransactionList } from '../src/composables/useTransactionList.ts';
+
+test('confirmation status shows a static pending badge at zero and spins only from one to four', async () => {
+  const source = readFileSync(new URL('../src/components/ConfirmationStatus.vue', import.meta.url), 'utf8');
+  const { descriptor } = parse(source);
+  const { code } = compile(descriptor.template.content, { mode: 'function', prefixIdentifiers: true });
+  const component = { props: ['confirmations', 'compact'], render: new Function('Vue', code)(Vue) };
+  for (const compact of [false, true]) {
+    for (const confirmations of [0, 1, 4, 5, 6]) {
+      const html = await renderToString(Vue.createSSRApp(component, { confirmations, compact }));
+      assert.equal(html.includes('Pending'), confirmations === 0);
+      assert.equal(html.includes('animate-spin'), confirmations >= 1 && confirmations < 5);
+      if (confirmations === 0) assert.ok(html.includes('border-amber-400/20'));
+      else assert.match(html, new RegExp(`>\\s*${confirmations}\\s*<`));
+    }
+  }
+});
 
 const columns = [{ key: 'amount', label: 'Amount', value: tx => tx.amount }];
 function fixture(t, transactions) {
