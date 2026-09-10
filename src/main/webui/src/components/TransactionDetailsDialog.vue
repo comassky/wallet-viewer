@@ -7,6 +7,7 @@ import { paginateItems, paginationRange } from '../utils/transactionGraph';
 import { useModalDialog } from '../composables/useModalDialog';
 import { useRovingTabs } from '../composables/useRovingTabs';
 import { useMediaQuery } from '../composables/useMediaQuery';
+import { usePrivacy } from '../composables/usePrivacy';
 import TransactionGraph from './TransactionGraph.vue';
 import TransactionBadge from './TransactionBadge.vue';
 import ConfirmationStatus from './ConfirmationStatus.vue';
@@ -24,6 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: []; retry: [] }>();
 
 const idPrefix = 'transaction-dialog';
+const { hidden } = usePrivacy();
 const dialog = ref<HTMLDialogElement | null>(null);
 const { showModal, close, handleClose, closeOnBackdrop, isDisposed } = useModalDialog(dialog, () => emit('close'));
 const tabs = [
@@ -104,7 +106,7 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
         <dl class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
           <div class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-3 py-2"><dt class="text-xs text-slate-400">Total inputs</dt><dd class="break-all text-base font-semibold tabular-nums">{{ details.totalInput === null ? (isCoinbase ? 'Not applicable (coinbase)' : 'Unknown') : `${amount(details.totalInput)} ${currencyLabel(currency)}` }}</dd></div>
           <div class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-3 py-2"><dt class="text-xs text-slate-400">Total outputs</dt><dd class="break-all text-base font-semibold tabular-nums">{{ amount(details.totalOutput) }} {{ currencyLabel(currency) }}</dd></div>
-          <div class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-3 py-2"><dt class="text-xs text-slate-400">Network fee</dt><dd class="break-all text-base font-semibold tabular-nums text-accent">{{ details.fee === null ? (isCoinbase ? 'Not applicable (coinbase)' : 'Unknown') : `${amount(details.fee)} ${currencyLabel(currency)}` }}<span v-if="details.fee !== null" class="ml-2 text-xs font-normal text-slate-500">{{ details.fee.toLocaleString('en-US') }} sat</span></dd></div>
+          <div class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-3 py-2"><dt class="text-xs text-slate-400">Network fee</dt><dd class="break-all text-base font-semibold tabular-nums text-accent">{{ details.fee === null ? (isCoinbase ? 'Not applicable (coinbase)' : 'Unknown') : `${amount(details.fee)} ${currencyLabel(currency)}` }}<span v-if="details.fee !== null && !hidden" class="ml-2 text-xs font-normal text-slate-500">{{ details.fee.toLocaleString('en-US') }} sat</span></dd></div>
         </dl>
 
         <div role="tablist" aria-label="Transaction detail views" class="mb-4 flex gap-2 border-b border-slate-800">

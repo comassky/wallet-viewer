@@ -393,3 +393,12 @@ test('disposing before mount/start never creates a socket or a timer', () => {
   assert.equal(stream.getState().loading, false);
   assert.equal(stream.getState().connection, 'disconnected');
 });
+
+test('discovery coverage is preserved and malformed coverage is rejected', () => {
+  const state = snapshot();
+  state.discovery = { complete: false, receiveScanned: 200, changeScanned: 20, addressLimit: 200, gapLimit: 20 };
+  assert.deepEqual(parseWalletEnvelope(JSON.stringify(envelope(1, state))).snapshot.discovery, state.discovery);
+  for (const invalid of [{ complete: 'true' }, { receiveScanned: 201 }, { addressLimit: 0 }, { gapLimit: -1 }]) {
+    assert.equal(parseWalletEnvelope(JSON.stringify(envelope(2, { ...state, discovery: { ...state.discovery, ...invalid } }))), null);
+  }
+});

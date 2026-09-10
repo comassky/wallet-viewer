@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { currencies, currencyLabel, currencyStorageKey, readCurrency, saveCurrency } from '../src/currency.ts';
+import { usePrivacy } from '../src/composables/usePrivacy.ts';
+import { computed } from 'vue';
+
+test('privacy replaces values reactively and persists without requiring a DOM', t => {
+  const saved = new Map();
+  storage(t, { getItem: key => saved.get(key), setItem: (key, value) => saved.set(key, value) });
+  const { hidden, conceal, toggle } = usePrivacy();
+  const displayed = computed(() => conceal('123.456 BTC'));
+  assert.equal(hidden.value, false);
+  assert.equal(displayed.value, '123.456 BTC');
+  toggle();
+  assert.equal(displayed.value, 'Hidden');
+  assert.equal(saved.get('wallet-viewer.privacy'), '1');
+  toggle();
+  assert.equal(displayed.value, '123.456 BTC');
+});
 
 function storage(t, value) {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');

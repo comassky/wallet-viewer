@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { createChart, AreaSeries, LineSeries, ColorType, CrosshairMode, LineStyle, type IChartApi, type ISeriesApi, type AreaData, type LineData, type BusinessDay } from 'lightweight-charts';
 import { currencyLabel, type BitcoinUnit, type FiatCurrency } from '../currency';
 import { useBalanceHistory } from '../composables/useBalanceHistory';
+import { usePrivacy } from '../composables/usePrivacy';
 import type { BalancePoint } from '../types/wallet';
 import { readStorage, writeStorage } from '../utils/storage.ts';
 import UiIcon from './UiIcon.vue';
@@ -14,6 +15,7 @@ const props = defineProps<{
 }>();
 
 const { history, error } = useBalanceHistory();
+const { hidden, conceal } = usePrivacy();
 const container = ref<HTMLDivElement | null>(null);
 let chart: IChartApi | null = null;
 let balanceSeries: ISeriesApi<'Area'> | null = null;
@@ -104,7 +106,7 @@ function businessDay(seconds: number): BusinessDay {
 
 interface ChartPoint { time: BusinessDay; balanceSats: number; valueEur: number; valueUsd: number; }
 // Bucket once; each series updates independently so a unit toggle never redraws the other curve.
-const points = computed<ChartPoint[]>(() => bucketed().map(p => ({
+const points = computed<ChartPoint[]>(() => hidden.value ? [] : bucketed().map(p => ({
   time: businessDay(p.time), balanceSats: p.balanceSats, valueEur: p.valueEur, valueUsd: p.valueUsd,
 })));
 
@@ -167,7 +169,7 @@ onBeforeUnmount(() => { resizeObserver?.disconnect(); resizeObserver = null; cha
       <h2 class="section-title flex items-center gap-2"><UiIcon name="chart" class="text-accent" />Balance over time</h2>
       <p v-if="last" class="text-sm text-slate-300">
         <span class="sensitive font-semibold tabular-nums">{{ amount(last.balanceSats) }} {{ currencyLabel(currency) }}</span>
-        <span class="sensitive tabular-nums" :style="{ color: FIAT_COLOR }"> · {{ currentFiatLabel }}</span>
+        <span class="sensitive tabular-nums" :style="{ color: FIAT_COLOR }"> · {{ conceal(currentFiatLabel) }}</span>
       </p>
     </div>
     <div v-show="enoughData" class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -184,7 +186,8 @@ onBeforeUnmount(() => { resizeObserver?.disconnect(); resizeObserver = null; cha
       </div>
     </div>
     <p v-show="!enoughData" class="py-16 text-center text-sm" :class="error ? 'text-amber-300' : 'text-slate-400'">{{ error ? 'Balance history unavailable.' : 'Not enough history to plot a curve yet.' }}</p>
-    <div v-show="enoughData" ref="container" class="sensitive h-72 w-full"></div>
+    <p v-if="hidden" role="status" class="flex h-72 items-center justify-center text-sm text-slate-400">Amounts hidden</p>
+    <div v-show="enoughData && !hidden" ref="container" class="sensitive h-72 w-full" aria-hidden="true"></div>
   </div>
 </template>
 

@@ -78,12 +78,6 @@
     appearance: none;
   }
 
-  .privacy-blur .sensitive {
-    filter: blur(0.45rem);
-    user-select: none;
-    pointer-events: none;
-  }
-
   .technical-details > summary {
     list-style: none;
   }

@@ -190,9 +190,12 @@ public class WalletService {
                     Uni<BalanceDto> balanceUni = sumBalances(used);
                     Uni<List<UtxoDto>> utxoUni = fetchUtxos(used, tip);
                     Uni<List<TransactionDto>> txUni = fetchTransactions(txHeights, ourScripts, addressByScript, tip);
+                        WalletSnapshot.Discovery discovery = new WalletSnapshot.Discovery(
+                            hasUnusedGap(receive) && hasUnusedGap(change) && nextIndex < receive.size(),
+                            receive.size(), change.size(), maxAddresses, gapLimit);
 
                     return receiveWatch.flatMap(ignored -> Uni.combine().all().unis(balanceUni, utxoUni, txUni).asTuple()
-                            .map(r -> new WalletSnapshot(r.getItem1(), r.getItem2(), r.getItem3(), recvDto)))
+                            .map(r -> new WalletSnapshot(r.getItem1(), r.getItem2(), r.getItem3(), recvDto, discovery)))
                             .invoke(snapshot -> rememberCoverage(receive.size() - 1, change.size() - 1, recv.index));
                 });
     }
@@ -202,6 +205,11 @@ public class WalletService {
         coverage = new Coverage(Math.max(previous.receiveIndex(), Math.max(receiveIndex, nextReceiveIndex)),
                 Math.max(previous.changeIndex(), changeIndex),
                 Math.max(previous.nextReceiveIndex(), nextReceiveIndex));
+    }
+
+    private boolean hasUnusedGap(List<ScannedAddress> addresses) {
+        return addresses.size() >= gapLimit && addresses.subList(addresses.size() - gapLimit, addresses.size())
+                .stream().noneMatch(ScannedAddress::used);
     }
 
     // ---- address scanning (gap-limit) -------------------------------------
@@ -386,10 +394,15 @@ public class WalletService {
         final int height = txHeights.getOrDefault(txid, 0);
         final int conf = height > 0 ? tip - height + 1 : 0;
         final Long ts = height > 0 ? timeByHeight.get(height) : null;
-        final TransactionType type = switch (Long.signum(net)) {
+        final boolean allInputsOwned = !tx.getInputs().isEmpty() && tx.getInputs().stream()
+            .allMatch(input -> !input.isCoinBase()
+                && ourOut.containsKey(input.getOutpoint().getHash() + ":" + input.getOutpoint().getIndex()));
+        final boolean allOutputsOwned = !tx.getOutputs().isEmpty() && tx.getOutputs().stream()
+            .allMatch(output -> ourOut.containsKey(txid + ":" + output.getIndex()));
+        final TransactionType type = allInputsOwned && allOutputsOwned ? TransactionType.SELF : switch (Long.signum(net)) {
             case 1 -> TransactionType.RECEIVED;
             case -1 -> TransactionType.SENT;
-            default -> TransactionType.SELF;
+            default -> allOutputsOwned ? TransactionType.RECEIVED : TransactionType.SENT;
         };
         return new TransactionDto(txid, net, received, sent, height, conf, ts, type,
                 involvedAddresses(tx, txid, receivedAddressesByTx, addressByOutpoint));

@@ -44,6 +44,12 @@ function integer(value: unknown): value is number {
 function validSnapshot(value: unknown): value is WalletSnapshot {
   if (!record(value) || !record(value.balance) || !record(value.receiveAddress)) return false;
   const { balance, receiveAddress, transactions, utxos } = value;
+  const discovery = value.discovery;
+  if (discovery != null && (!record(discovery) || typeof discovery.complete !== 'boolean'
+    || !integer(discovery.addressLimit) || discovery.addressLimit <= 0
+    || !integer(discovery.gapLimit) || discovery.gapLimit <= 0
+    || !integer(discovery.receiveScanned) || discovery.receiveScanned < 0 || discovery.receiveScanned > discovery.addressLimit
+    || !integer(discovery.changeScanned) || discovery.changeScanned < 0 || discovery.changeScanned > discovery.addressLimit)) return false;
   return integer(balance.confirmed) && integer(balance.unconfirmed) && integer(balance.total)
     && integer(receiveAddress.index) && receiveAddress.index >= 0
     && typeof receiveAddress.address === 'string' && typeof receiveAddress.path === 'string'

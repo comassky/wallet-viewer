@@ -51,6 +51,10 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
     </Transition>
 
     <template v-if="data">
+      <p v-if="data.discovery && !data.discovery.complete" role="alert" class="mb-5 rounded-lg border border-amber-400/30 bg-amber-400/5 px-4 py-3 text-sm text-amber-300">
+        Incomplete address discovery: {{ data.discovery.receiveScanned }} receive and {{ data.discovery.changeScanned }} change addresses scanned (limit {{ data.discovery.addressLimit }} per chain).
+        The balance may exclude funds. Increase WALLET_MAX_ADDRESSES before relying on this balance or receiving more Bitcoin.
+      </p>
       <div class="grid grid-cols-1 gap-3 sm:gap-5 lg:grid-cols-2">
         <BalanceCard v-model:currency="currency" v-model:fiat-currency="fiatCurrency" :balance="data.balance" :rates="rates" :rates-loading="ratesLoading" :rates-error="ratesError" :amount="amount" />
         <ReceiveAddressCard :receive="data.receiveAddress" @enlarge="enlargeReceive" />

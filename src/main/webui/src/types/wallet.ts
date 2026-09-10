@@ -71,6 +71,7 @@ export interface TransactionDetails {
 }
 
 export interface WalletSnapshot {
+  discovery?: { complete: boolean; receiveScanned: number; changeScanned: number; addressLimit: number; gapLimit: number } | null;
   balance: Balance;
   utxos: Utxo[];
   transactions: Transaction[];

@@ -7,13 +7,14 @@ export function useIncomingNotifications(data: Ref<WalletSnapshot | null>): void
   // null until the first snapshot seeds the baseline, so existing history never toasts.
   let known: Set<string> | null = null;
   watch(data, snapshot => {
-    const txs = snapshot?.transactions ?? [];
+    if (!snapshot) return;
+    const txs = snapshot.transactions;
     if (known === null) { known = new Set(txs.map(tx => tx.txid)); return; }
     for (const tx of txs) {
       if (known.has(tx.txid)) continue;
       known.add(tx.txid);
       const label = tx.type === 'received' ? 'Incoming payment' : tx.type === 'sent' ? 'Outgoing payment' : 'New transaction';
-      showToast(`${label} · ${Math.abs(tx.amount).toLocaleString('en-US')} sat`, 4000);
+      showToast(label, 4000);
     }
   });
 }

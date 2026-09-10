@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { usePrivacy } from '../composables/usePrivacy';
 import { currencyLabel, formatAmount, type BitcoinUnit, type FiatCurrency } from '../currency';
 import type { Balance, PriceRates } from '../types/wallet';
 import { formatDate } from '../utils/format';
@@ -17,6 +18,7 @@ const props = defineProps<{
 }>();
 defineEmits<{ 'update:currency': [value: BitcoinUnit]; 'update:fiatCurrency': [value: FiatCurrency] }>();
 const bitcoinUnits = ['BTC', 'SATS'] as const;
+const { conceal } = usePrivacy();
 const fiatCurrencies = ['EUR', 'USD'] as const;
 
 // Pop the total whenever the balance changes (a new transaction moved funds).
@@ -54,7 +56,7 @@ function priceTitle(unit: FiatCurrency): string | undefined {
       <span class="text-lg font-medium text-accent">{{ currencyLabel(currency) }}</span>
     </div>
     <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-      <p class="text-lg tabular-nums text-slate-300"><span v-if="rates">≈ </span><span class="sensitive">{{ formatAmount(balance.total, fiatCurrency, rates) }}</span> <span class="text-sm">{{ fiatCurrency }}</span></p>
+      <p class="text-lg tabular-nums text-slate-300"><span v-if="rates">≈ </span><span class="sensitive">{{ conceal(formatAmount(balance.total, fiatCurrency, rates)) }}</span> <span class="text-sm">{{ fiatCurrency }}</span></p>
       <div role="group" aria-label="Fiat estimate currency" class="inline-flex rounded-lg border border-slate-700/60 bg-slate-950/40 p-0.5">
         <AppTooltip v-for="unit in fiatCurrencies" :key="unit" :text="priceTitle(unit)">
           <button type="button" :aria-pressed="fiatCurrency === unit" class="rounded-md px-2.5 text-xs font-semibold transition" :class="fiatCurrency === unit ? 'bg-slate-700 text-slate-100' : 'text-slate-400 hover:text-slate-200'" @click="$emit('update:fiatCurrency', unit)">{{ unit }}</button>

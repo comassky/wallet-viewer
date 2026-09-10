@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue';
+import { usePrivacy } from '../composables/usePrivacy';
 import { currencyLabel, formatAmount, type Currency, type FiatCurrency } from '../currency';
 import type { PriceRates, Transaction } from '../types/wallet';
 import { shortId, formatDate, transactionLabels } from '../utils/format';
@@ -43,6 +44,7 @@ const columns: SortColumn<Transaction>[] = [
 ];
 const { query, filter, counts, filtered, visible, hasMore, showMore, resetFilters, sortKey, descending, toggleSort, ariaSort } = useTransactionList(toRef(props, 'transactions'), columns);
 const searchInput = ref<HTMLInputElement | null>(null);
+const { conceal } = usePrivacy();
 function clearSearch(): void {
   query.value = '';
   searchInput.value?.focus();
@@ -88,7 +90,7 @@ function clearSearch(): void {
           <TransactionBadge :type="tx.type" />
           <span class="sensitive text-right text-sm font-semibold tabular-nums">
             <span :class="tx.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ amount(tx.amount, true) }} {{ currencyLabel(currency) }}</span>
-            <span class="mt-1 block text-xs font-normal text-slate-400">{{ rates ? '≈ ' : '' }}{{ formatAmount(tx.amount, fiatCurrency, rates, true) }} {{ fiatCurrency }}</span>
+            <span class="mt-1 block text-xs font-normal text-slate-400">{{ rates ? '≈ ' : '' }}{{ conceal(formatAmount(tx.amount, fiatCurrency, rates, true)) }} {{ fiatCurrency }}</span>
           </span>
         </span>
         <span class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
@@ -128,7 +130,7 @@ function clearSearch(): void {
             <td class="px-3 py-2.5 text-slate-300">{{ formatDate(tx.timestamp) }}</td>
             <td class="sensitive px-3 py-2.5 text-right tabular-nums">
               <span :class="tx.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ amount(tx.amount, true) }}</span>
-              <span class="mt-1 block text-xs text-slate-400">{{ rates ? '≈ ' : '' }}{{ formatAmount(tx.amount, fiatCurrency, rates, true) }} {{ fiatCurrency }}</span>
+              <span class="mt-1 block text-xs text-slate-400">{{ rates ? '≈ ' : '' }}{{ conceal(formatAmount(tx.amount, fiatCurrency, rates, true)) }} {{ fiatCurrency }}</span>
             </td>
             <td class="px-3 py-2.5 text-right"><ConfirmationStatus :confirmations="tx.confirmations" compact /></td>
             <td class="px-3 py-2.5 text-right"><button type="button" data-tx-details aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="inline-flex items-center justify-center rounded-lg px-2 py-1 text-accent hover:bg-accent/10" @click.stop="openDetails(tx.txid, $event)"><UiIcon name="chevron-right" /></button></td>

@@ -6,6 +6,7 @@ import com.comassky.wallet.model.AddressCheckDto;
 import com.comassky.wallet.model.AddressInfo;
 import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.TransactionDto;
+import com.comassky.wallet.model.TransactionType;
 import com.comassky.wallet.model.UtxoDto;
 import com.comassky.wallet.model.WalletSnapshot;
 import io.smallrye.mutiny.Uni;
@@ -88,6 +89,7 @@ class WalletServiceTest {
         assertTrue(electrum.scanned.isEmpty());
 
         WalletSnapshot result = await(scan);
+        assertEquals(new WalletSnapshot.Discovery(false, 5, 5, 5, 2), result.discovery());
         assertEquals(5, result.receiveAddress().index());
         assertEquals(10, electrum.scanned.size()); // Five addresses per chain, not six.
         assertFalse(electrum.scanned.contains("0:5"));
@@ -109,6 +111,7 @@ class WalletServiceTest {
         StubElectrum electrum = new StubElectrum(index -> false);
         WalletService service = service(electrum);
         WalletSnapshot first = await(service.scan());
+        assertEquals(new WalletSnapshot.Discovery(true, 2, 2, 5, 2), first.discovery());
         assertEquals(4, electrum.scanned.size());
         assertEquals(4, electrum.subscribed.size());
         assertEquals(0, first.receiveAddress().index());
@@ -240,7 +243,7 @@ class WalletServiceTest {
         WalletSnapshot result = await(service(new StubElectrum(index -> true)).scan());
         List<UtxoDto> utxos = new ArrayList<>(result.utxos());
         List<TransactionDto> transactions = new ArrayList<>(result.transactions());
-        WalletSnapshot copy = new WalletSnapshot(result.balance(), utxos, transactions, result.receiveAddress());
+        WalletSnapshot copy = new WalletSnapshot(result.balance(), utxos, transactions, result.receiveAddress(), result.discovery());
         utxos.clear();
         transactions.clear();
         assertEquals(result, copy);
@@ -326,6 +329,71 @@ class WalletServiceTest {
         assertEquals(2, electrum.subscribed.size());
     }
 
+    @Test
+    void aCapWithoutTheFullGapOrAnUnscannedReceiveAddressRemainsIncomplete() {
+        StubElectrum electrum = new StubElectrum(index -> true);
+        WalletService service = service(electrum);
+        assertFalse(await(service.scan()).discovery().complete());
+        electrum.used = index -> false;
+        assertFalse(await(service.scan()).discovery().complete());
+
+        WalletService shortScan = service(new StubElectrum(index -> false));
+        shortScan.maxAddresses = 1;
+        assertFalse(await(shortScan.scan()).discovery().complete());
+    }
+
+    @Test
+    void internalTransferIncludesReceiveAndChangeInputsAndOutputsDespiteFees() {
+        TransactionDto transaction = walletTransaction(800, 1100, 0, false);
+        assertEquals(TransactionType.SELF, transaction.type());
+        assertEquals(-100, transaction.amount());
+    }
+
+    @Test
+    void internalTransferWithoutFeesIsSelf() {
+        assertEquals(TransactionType.SELF, walletTransaction(2000, 0, 0, false).type());
+    }
+
+    @Test
+    void externalPaymentWithChangeIsSent() {
+        assertEquals(TransactionType.SENT, walletTransaction(0, 900, 1000, false).type());
+    }
+
+    @Test
+    void externalInputPreventsSelfClassificationEvenWithZeroNet() {
+        assertEquals(TransactionType.RECEIVED, walletTransaction(2000, 0, 0, true).type());
+    }
+
+    @Test
+    void externalOutputPreventsSelfClassificationEvenWithZeroNet() {
+        assertEquals(TransactionType.SENT, walletTransaction(2000, 0, 500, true).type());
+    }
+
+    private static TransactionDto walletTransaction(long receiveValue, long changeValue,
+                                                     long externalValue, boolean externalInput) {
+        StubElectrum electrum = new StubElectrum(index -> index == 0);
+        electrum.transaction.addOutput(Coin.valueOf(1000), new Script(new byte[]{0x52}));
+        Transaction spending = new Transaction(MainNetParams.get());
+        spending.addInput(electrum.transaction.getOutput(0));
+        spending.addInput(electrum.transaction.getOutput(1));
+        if (externalInput) {
+            spending.addInput(Sha256Hash.ZERO_HASH, 1, new Script(new byte[]{0x51}));
+        }
+        if (receiveValue > 0) {
+            spending.addOutput(Coin.valueOf(receiveValue), new Script(new byte[]{0x51}));
+        }
+        if (changeValue > 0) {
+            spending.addOutput(Coin.valueOf(changeValue), new Script(new byte[]{0x52}));
+        }
+        if (externalValue > 0) {
+            spending.addOutput(Coin.valueOf(externalValue), new Script(new byte[]{0x53}));
+        }
+        electrum.transactions.add(spending);
+        return await(service(electrum).scan()).transactions().stream()
+                .filter(transaction -> transaction.txid().equals(spending.getTxId().toString()))
+                .findFirst().orElseThrow();
+    }
+
     private static WalletSnapshot await(Uni<WalletSnapshot> scan) {
         return scan.await().atMost(Duration.ofSeconds(5));
     }
@@ -350,7 +418,8 @@ class WalletServiceTest {
             public AddressInfo address(int chain, int index) {
                 String id = chain + ":" + index;
                 return addresses.computeIfAbsent(id,
-                        ignored -> new AddressInfo(chain, index, "address:" + id, id, "51", "m/" + chain + "/" + index));
+                        ignored -> new AddressInfo(chain, index, "address:" + id, id,
+                            chain == 0 ? "51" : "52", "m/" + chain + "/" + index));
             }
 
             @Override
@@ -374,12 +443,14 @@ class WalletServiceTest {
         private final List<String> subscribed = new ArrayList<>();
         private final List<String> scanned = new ArrayList<>();
         private final Transaction transaction;
+        private final List<Transaction> transactions = new ArrayList<>();
 
         StubElectrum(IntPredicate used) {
             this.used = used;
             transaction = new Transaction(MainNetParams.get());
             transaction.addInput(Sha256Hash.ZERO_HASH, 0, new Script(new byte[]{0x51}));
             transaction.addOutput(Coin.valueOf(1000), new Script(new byte[]{0x51}));
+            transactions.add(transaction);
         }
 
         void resetCalls() {
@@ -415,15 +486,20 @@ class WalletServiceTest {
                         assertTrue(subscribed.contains(id), "History must wait for subscribe response: " + id);
                         scanned.add(id);
                         int index = Integer.parseInt(id.split(":")[1]);
-                        yield used.test(index) ? new JsonArray().add(new JsonObject()
-                                .put("tx_hash", transaction.getTxId().toString()).put("height", 0)) : new JsonArray();
+                        yield used.test(index) ? new JsonArray(transactions.stream()
+                            .map(transaction -> new JsonObject()
+                                .put("tx_hash", transaction.getTxId().toString()).put("height", 0))
+                            .toList()) : new JsonArray();
                     }
                         case "blockchain.scripthash.get_balance" -> new JsonObject()
                             .put("confirmed", 1000L).put("unconfirmed", unconfirmed);
                     case "blockchain.scripthash.listunspent" -> new JsonArray().add(new JsonObject()
                             .put("tx_hash", transaction.getTxId().toString()).put("tx_pos", 0)
                             .put("value", 1000L).put("height", 0));
-                    case "blockchain.transaction.get" -> ByteUtils.formatHex(transaction.bitcoinSerialize());
+                        case "blockchain.transaction.get" -> transactions.stream()
+                            .filter(transaction -> transaction.getTxId().toString().equals(params[0]))
+                            .map(transaction -> ByteUtils.formatHex(transaction.bitcoinSerialize()))
+                            .findFirst().orElseThrow();
                     default -> throw new AssertionError("Unexpected RPC: " + method);
                 };
                 return new JsonObject().put("result", result);
