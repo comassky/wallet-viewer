@@ -2,61 +2,55 @@ package com.comassky.wallet.service;
 
 import com.comassky.wallet.model.PricePointDto;
 import io.smallrye.mutiny.Uni;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import jakarta.ws.rs.ServiceUnavailableException;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 
-import java.net.URI;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 /** Public historical BTC prices only: no wallet key, address or transaction is sent to the provider. */
 @ApplicationScoped
 public class PriceHistoryService {
-    @ConfigProperty(name = "wallet.price-history-url", defaultValue = "https://mempool.space/api/v1/historical-price")
-    URI historyUrl;
+    static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
+    static final Duration TTL = Duration.ofMinutes(30);
 
     @Inject
-    MempoolFetch fetch;
+    @RestClient
+    MempoolClient client;
 
     private Uni<List<PricePointDto>> cached;
 
     @PostConstruct
     void init() {
         // Historical prices move slowly, so cache for a while and share in-flight calls.
-        cached = fetch.cached(historyUrl.toString(), Duration.ofSeconds(15), Duration.ofMinutes(30),
-                PriceHistoryService::parse, "Price history temporarily unavailable");
+        cached = client.historicalPrice()
+                .ifNoItem().after(REQUEST_TIMEOUT).fail()
+                .map(PriceHistoryService::toPoints)
+                .onFailure().transform(failure -> new ServiceUnavailableException("Price history temporarily unavailable"))
+                .memoize().atLeast(TTL);
     }
 
     public Uni<List<PricePointDto>> history() {
         return cached;
     }
 
-    static List<PricePointDto> parse(String body) {
-        JsonArray prices = new JsonObject(body).getJsonArray("prices");
+    static List<PricePointDto> toPoints(MempoolClient.History raw) {
+        final List<MempoolClient.Price> prices = raw == null ? null : raw.prices();
         if (prices == null || prices.isEmpty()) {
             throw new IllegalArgumentException("Empty price history");
         }
-        List<PricePointDto> points = new ArrayList<>(prices.size());
-        for (int i = 0; i < prices.size(); i++) {
-            JsonObject point = prices.getJsonObject(i);
-            Long time = point.getLong("time");
-            Double eur = point.getDouble("EUR");
-            Double usd = point.getDouble("USD");
-            if (time == null || eur == null || usd == null || eur <= 0 || usd <= 0) {
-                continue;
-            }
-            points.add(new PricePointDto(time, eur, usd));
-        }
+        final List<PricePointDto> points = prices.stream()
+                .filter(p -> p.time() != null && p.eur() != null && p.usd() != null && p.eur() > 0 && p.usd() > 0)
+                .map(p -> new PricePointDto(p.time(), p.eur(), p.usd()))
+                .sorted(Comparator.comparingLong(PricePointDto::time))
+                .toList();
         if (points.isEmpty()) {
             throw new IllegalArgumentException("No valid price points");
         }
-        points.sort(Comparator.comparingLong(PricePointDto::time));
         return points;
     }
 }

@@ -75,7 +75,7 @@ public class LiveWalletTestResource implements QuarkusTestResourceLifecycleManag
                     Map.entry("electrum.ssl", "false"),
                     Map.entry("electrum.request-timeout", "5s"),
                     // Prices are not exercised; even an accidental call must stay on loopback.
-                    Map.entry("wallet.prices-url", "http://127.0.0.1:1/unused-prices"),
+                    Map.entry("quarkus.rest-client.mempool.url", "http://127.0.0.1:1"),
                     Map.entry("quarkus.http.host", "localhost"),
                     Map.entry("quarkus.http.root-path", "/"),
                     Map.entry("quarkus.http.test-port", "0"),

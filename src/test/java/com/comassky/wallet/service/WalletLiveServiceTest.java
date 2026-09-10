@@ -6,6 +6,7 @@ import com.comassky.wallet.model.AddressInfo;
 import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.ReceiveAddressDto;
 import com.comassky.wallet.model.TransactionDto;
+import com.comassky.wallet.model.TransactionType;
 import com.comassky.wallet.model.UtxoDto;
 import com.comassky.wallet.model.WalletSnapshot;
 import com.comassky.wallet.model.WalletState;
@@ -394,7 +395,7 @@ class WalletLiveServiceTest {
         WalletSnapshot previous = startWithSnapshot();
         TransactionDto historical = previous.transactions().getFirst();
         WalletSnapshot confirmed = new WalletSnapshot(previous.balance(), previous.utxos(),
-                List.of(new TransactionDto(historical.txid(), 100, 100, 0, 11, 2, 123L, "received")),
+                List.of(new TransactionDto(historical.txid(), 100, 100, 0, 11, 2, 123L, TransactionType.RECEIVED)),
                 previous.receiveAddress());
         try (TestLogCapture logs = new TestLogCapture(WalletLiveService.class)) {
             electrum.notifyWallet(); // No params: must still rescan as before.
@@ -496,7 +497,7 @@ class WalletLiveServiceTest {
         Observation observation = take(events);
         WalletState state = observation.state();
         assertSame(state, observation.cached(), "Cache must be committed before listener delivery");
-        assertEquals(status, state.status());
+        assertEquals(status, state.status().wire());
         assertSame(snapshot, state.snapshot());
         assertEquals(++lastVersion, state.version(), "Published versions must increase monotonically");
         return state;
@@ -527,7 +528,7 @@ class WalletLiveServiceTest {
     private static WalletSnapshot snapshot(long value) {
         return new WalletSnapshot(new BalanceDto(value, 0, value),
                 List.of(new UtxoDto("tx-" + value, 0, value, 10, 1, "test-address")),
-                List.of(new TransactionDto("tx-" + value, value, value, 0, 10, 1, null, "received")),
+                List.of(new TransactionDto("tx-" + value, value, value, 0, 10, 1, null, TransactionType.RECEIVED)),
                 new ReceiveAddressDto(0, "test-address", "test-path"));
     }
 

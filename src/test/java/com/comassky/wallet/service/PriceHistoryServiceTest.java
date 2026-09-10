@@ -1,64 +1,33 @@
 package com.comassky.wallet.service;
 
 import com.comassky.wallet.model.PricePointDto;
-import com.sun.net.httpserver.HttpServer;
 import io.smallrye.mutiny.Uni;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.mutiny.core.Vertx;
 import jakarta.ws.rs.ServiceUnavailableException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class PriceHistoryServiceTest {
-    private HttpServer server;
-    private Vertx vertx;
-    private MempoolFetch fetch;
-    private PriceHistoryService service;
     private final AtomicInteger requests = new AtomicInteger();
-    private volatile int status = 200;
-    private volatile String body;
 
-    @BeforeEach
-    void start() throws Exception {
-        body = history();
-        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/history", exchange -> {
+    private PriceHistoryService service(Supplier<MempoolClient.History> provider) {
+        PriceHistoryService service = new PriceHistoryService();
+        service.client = new StubClient(() -> {
             requests.incrementAndGet();
-            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(status, bytes.length);
-            try (var output = exchange.getResponseBody()) {
-                output.write(bytes);
-            }
+            return provider.get();
         });
-        server.start();
-        vertx = Vertx.vertx();
-        fetch = new MempoolFetch(vertx);
-        service = new PriceHistoryService();
-        service.fetch = fetch;
-        service.historyUrl = URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/history");
         service.init();
-    }
-
-    @AfterEach
-    void stop() {
-        if (server != null) server.stop(0);
-        if (vertx != null) vertx.closeAndAwait();
+        return service;
     }
 
     @Test
     void loadsSortsAscendingAndSharesCache() {
+        PriceHistoryService service = service(PriceHistoryServiceTest::history);
         var result = Uni.combine().all().unis(service.history(), service.history()).asTuple()
                 .await().atMost(Duration.ofSeconds(5));
         List<PricePointDto> points = result.getItem1();
@@ -73,7 +42,9 @@ class PriceHistoryServiceTest {
 
     @Test
     void providerFailureReturns503() {
-        status = 500;
+        PriceHistoryService service = service(() -> {
+            throw new RuntimeException("provider down");
+        });
         assertThrows(ServiceUnavailableException.class,
                 () -> service.history().await().atMost(Duration.ofSeconds(5)));
     }
@@ -81,18 +52,35 @@ class PriceHistoryServiceTest {
     @Test
     void rejectsEmptyOrInvalidHistory() {
         assertThrows(IllegalArgumentException.class,
-                () -> PriceHistoryService.parse(new JsonObject().put("prices", new JsonArray()).encode()));
+                () -> PriceHistoryService.toPoints(new MempoolClient.History(List.of())));
         assertThrows(IllegalArgumentException.class,
-                () -> PriceHistoryService.parse(new JsonObject().encode()));
-        assertThrows(IllegalArgumentException.class, () -> PriceHistoryService.parse(
-                new JsonObject().put("prices", new JsonArray().add(new JsonObject().put("time", 1).put("EUR", 0).put("USD", 0))).encode()));
+                () -> PriceHistoryService.toPoints(new MempoolClient.History(null)));
+        assertThrows(IllegalArgumentException.class, () -> PriceHistoryService.toPoints(
+                new MempoolClient.History(List.of(new MempoolClient.Price(0d, 0d, 1L)))));
     }
 
-    private static String history() {
+    private static MempoolClient.History history() {
         // Unsorted on purpose: the service must sort ascending by time.
-        JsonArray prices = new JsonArray()
-                .add(new JsonObject().put("time", 2_000).put("EUR", 61_000).put("USD", 71_000))
-                .add(new JsonObject().put("time", 1_000).put("EUR", 60_000).put("USD", 70_000));
-        return new JsonObject().put("prices", prices).encode();
+        return new MempoolClient.History(List.of(
+                new MempoolClient.Price(61_000d, 71_000d, 2_000L),
+                new MempoolClient.Price(60_000d, 70_000d, 1_000L)));
+    }
+
+    /** Cold stub: the supplier runs once per subscription, so memoize sharing is observable. */
+    private record StubClient(Supplier<MempoolClient.History> provider) implements MempoolClient {
+        @Override
+        public Uni<Price> prices() {
+            return Uni.createFrom().nullItem();
+        }
+
+        @Override
+        public Uni<Fees> feesRecommended() {
+            return Uni.createFrom().nullItem();
+        }
+
+        @Override
+        public Uni<History> historicalPrice() {
+            return Uni.createFrom().item(provider);
+        }
     }
 }

@@ -12,7 +12,7 @@ import java.util.Set;
  * application.properties (250) but below environment variables (300), so an explicit WALLET_XPUB /
  * WALLET_SCRIPT_TYPE still wins.
  */
-public class DemoConfigSource implements ConfigSource {
+public final class DemoConfigSource implements ConfigSource {
     // Public BIP86 test-vector account key (bech32m Taproot addresses).
     private static final String DEMO_XPUB =
             "xpub6BgBgsespWvERF3LHQu6CnqdvfEvtMcQjYrcRzx53QJjSxarj2afYWcLteoGVky7D3UKDP9QyrLprQ3VCECoY49yfdDEHGCtMMj92pReUsQ";

@@ -45,29 +45,29 @@ public class BalanceHistoryService {
         if (transactions.isEmpty()) {
             return List.of();
         }
-        long nowDay = Instant.now().getEpochSecond() / DAY * DAY;
-        List<TransactionDto> ordered = transactions.stream()
+        final long nowDay = Instant.now().getEpochSecond() / DAY * DAY;
+        final List<TransactionDto> ordered = transactions.stream()
                 .sorted(Comparator.comparingLong((TransactionDto tx) -> tx.timestamp() == null ? Long.MAX_VALUE : tx.timestamp())
                         .thenComparingInt(TransactionDto::height))
                 .toList();
         // End-of-day cumulative balance; pending transactions (no timestamp) fold into today.
-        TreeMap<Long, Long> balanceByDay = new TreeMap<>();
+        final TreeMap<Long, Long> balanceByDay = new TreeMap<>();
         long running = 0;
         for (TransactionDto tx : ordered) {
             running += tx.amount();
-            long time = tx.timestamp() == null ? nowDay : tx.timestamp();
+            final long time = tx.timestamp() == null ? nowDay : tx.timestamp();
             balanceByDay.put(time / DAY * DAY, running);
         }
-        long firstDay = balanceByDay.firstKey();
-        List<BalancePointDto> out = new ArrayList<>();
+        final long firstDay = balanceByDay.firstKey();
+        final List<BalancePointDto> out = new ArrayList<>();
         long carried = 0;
         for (long day = firstDay; day <= nowDay; day += DAY) {
-            Long updated = balanceByDay.get(day);
+            final Long updated = balanceByDay.get(day);
             if (updated != null) carried = updated;
-            PricePointDto price = priceAt(prices, day + DAY - 1);
-            double btc = carried / 100_000_000.0;
-            double eur = price == null ? 0 : btc * price.eur();
-            double usd = price == null ? 0 : btc * price.usd();
+            final PricePointDto price = priceAt(prices, day + DAY - 1);
+            final double btc = carried / 100_000_000.0;
+            final double eur = price == null ? 0 : btc * price.eur();
+            final double usd = price == null ? 0 : btc * price.usd();
             out.add(new BalancePointDto(day, carried, eur, usd));
         }
         return out;
@@ -80,7 +80,7 @@ public class BalanceHistoryService {
         }
         int lo = 0, hi = prices.size() - 1, ans = -1;
         while (lo <= hi) {
-            int mid = (lo + hi) >>> 1;
+            final int mid = (lo + hi) >>> 1;
             if (prices.get(mid).time() <= time) {
                 ans = mid;
                 lo = mid + 1;

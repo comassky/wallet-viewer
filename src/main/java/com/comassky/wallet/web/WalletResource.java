@@ -22,7 +22,9 @@ import com.comassky.wallet.service.WalletService;
 import com.comassky.wallet.util.QrGenerator;
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.BadRequestException;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -118,14 +120,13 @@ public class WalletResource {
 
     @GET
     @Path("/verify")
-    public AddressCheckDto verify(@QueryParam("address") String address) {
+    public AddressCheckDto verify(@QueryParam("address") @NotBlank @Size(max = 128) String address) {
         return service.verifyAddress(address);
     }
 
     @GET
     @Path("/receive/{index}")
-    public ReceiveAddressDto receiveAt(@PathParam("index") int index) {
-        validateIndex(index);
+    public ReceiveAddressDto receiveAt(@PathParam("index") @Min(0) int index) {
         AddressInfo a = service.derive(0, index);
         return new ReceiveAddressDto(a.index, a.address, a.path);
     }
@@ -140,13 +141,7 @@ public class WalletResource {
     @GET
     @Path("/receive/{index}/qr")
     @Produces("image/png")
-    public byte[] receiveQrAt(@PathParam("index") int index) {
+    public byte[] receiveQrAt(@PathParam("index") @Min(0) int index) {
         return QrGenerator.png(receiveAt(index).address(), 320);
-    }
-
-    private static void validateIndex(int index) {
-        if (index < 0) {
-            throw new BadRequestException("Address index must be non-negative");
-        }
     }
 }

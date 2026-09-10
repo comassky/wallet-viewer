@@ -1,62 +1,32 @@
 package com.comassky.wallet.service;
 
 import com.comassky.wallet.model.FeeRatesDto;
-import com.sun.net.httpserver.HttpServer;
 import io.smallrye.mutiny.Uni;
-import io.vertx.core.json.JsonObject;
-import io.vertx.mutiny.core.Vertx;
 import jakarta.ws.rs.ServiceUnavailableException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class FeeServiceTest {
-    private HttpServer server;
-    private Vertx vertx;
-    private MempoolFetch fetch;
-    private FeeService service;
     private final AtomicInteger requests = new AtomicInteger();
-    private volatile int status = 200;
-    private volatile String body;
 
-    @BeforeEach
-    void start() throws Exception {
-        body = recommended();
-        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/fees", exchange -> {
+    private FeeService service(Supplier<MempoolClient.Fees> provider) {
+        FeeService service = new FeeService();
+        service.client = new StubClient(() -> {
             requests.incrementAndGet();
-            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().add("Content-Type", "application/json");
-            exchange.sendResponseHeaders(status, bytes.length);
-            try (var output = exchange.getResponseBody()) {
-                output.write(bytes);
-            }
+            return provider.get();
         });
-        server.start();
-        vertx = Vertx.vertx();
-        fetch = new MempoolFetch(vertx);
-        service = new FeeService();
-        service.fetch = fetch;
-        service.feesUrl = URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/fees");
         service.init();
-    }
-
-    @AfterEach
-    void stop() {
-        if (server != null) server.stop(0);
-        if (vertx != null) vertx.closeAndAwait();
+        return service;
     }
 
     @Test
     void loadsLazilyAndSharesCachedEstimates() {
+        FeeService service = service(FeeServiceTest::recommended);
         Uni<FeeRatesDto> first = service.fees();
         assertEquals(0, requests.get());
         var result = Uni.combine().all().unis(first, service.fees()).asTuple()
@@ -74,7 +44,9 @@ class FeeServiceTest {
 
     @Test
     void providerFailureReturns503AndIsBrieflyCached() {
-        status = 429;
+        FeeService service = service(() -> {
+            throw new RuntimeException("provider down");
+        });
         ServiceUnavailableException error = assertThrows(ServiceUnavailableException.class,
                 () -> service.fees().await().atMost(Duration.ofSeconds(5)));
         assertEquals(503, error.getResponse().getStatus());
@@ -84,24 +56,41 @@ class FeeServiceTest {
     }
 
     @Test
-    void malformedResponseReturns503() {
-        body = "not-json";
+    void invalidEstimateFailsAsServiceUnavailable() {
+        FeeService service = service(() -> new MempoolClient.Fees(0L, 12L, 8L, 3L, 1L));
         assertThrows(ServiceUnavailableException.class,
                 () -> service.fees().await().atMost(Duration.ofSeconds(5)));
     }
 
     @Test
     void rejectsMissingZeroAndNegativeEstimates() {
-        assertThrows(IllegalArgumentException.class, () -> FeeService.parse("{}"));
         assertThrows(IllegalArgumentException.class,
-                () -> FeeService.parse(new JsonObject(recommended()).put("fastestFee", 0).encode()));
+                () -> FeeService.toFees(new MempoolClient.Fees(null, null, null, null, null)));
         assertThrows(IllegalArgumentException.class,
-                () -> FeeService.parse(new JsonObject(recommended()).put("hourFee", -1).encode()));
+                () -> FeeService.toFees(new MempoolClient.Fees(0L, 12L, 8L, 3L, 1L)));
+        assertThrows(IllegalArgumentException.class,
+                () -> FeeService.toFees(new MempoolClient.Fees(20L, 12L, -1L, 3L, 1L)));
     }
 
-    private static String recommended() {
-        return new JsonObject()
-                .put("fastestFee", 20).put("halfHourFee", 12).put("hourFee", 8)
-                .put("economyFee", 3).put("minimumFee", 1).encode();
+    private static MempoolClient.Fees recommended() {
+        return new MempoolClient.Fees(20L, 12L, 8L, 3L, 1L);
+    }
+
+    /** Cold stub: the supplier runs once per subscription, so memoize sharing is observable. */
+    private record StubClient(Supplier<MempoolClient.Fees> provider) implements MempoolClient {
+        @Override
+        public Uni<Price> prices() {
+            return Uni.createFrom().nullItem();
+        }
+
+        @Override
+        public Uni<Fees> feesRecommended() {
+            return Uni.createFrom().item(provider);
+        }
+
+        @Override
+        public Uni<History> historicalPrice() {
+            return Uni.createFrom().nullItem();
+        }
     }
 }

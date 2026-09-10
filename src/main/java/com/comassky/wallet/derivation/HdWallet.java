@@ -71,13 +71,13 @@ public class HdWallet {
             return;
         }
         params = "testnet".equalsIgnoreCase(network) ? TestNet3Params.get() : MainNetParams.get();
-        String p = extPub.trim();
-        String prefix = p.substring(0, 4).toLowerCase();
-        boolean segwitPrefix = prefix.equals("zpub") || prefix.equals("vpub")
+        final String p = extPub.trim();
+        final String prefix = p.substring(0, 4).toLowerCase();
+        final boolean segwitPrefix = prefix.equals("zpub") || prefix.equals("vpub")
                 || prefix.equals("ypub") || prefix.equals("upub");
-        String xpub = segwitPrefix ? toXpub(p) : p;
+        final String xpub = segwitPrefix ? toXpub(p) : p;
 
-        String override = scriptTypeCfg == null ? "auto" : scriptTypeCfg.trim().toLowerCase();
+        final String override = scriptTypeCfg == null ? "auto" : scriptTypeCfg.trim().toLowerCase();
         scriptType = resolveScriptType(prefix, override);
         basePath = "m/" + scriptType.purpose + "'/0'/0'";
         if ("auto".equals(override)) {
@@ -107,11 +107,11 @@ public class HdWallet {
 
     /** Re-encodes a zpub/ypub as an xpub so bitcoinj can parse it (only the version bytes differ). */
     private static String toXpub(String ext) {
-        byte[] data = Base58.decodeChecked(ext); // version(4) + payload, checksum stripped
-        byte[] out = data.clone();
+        final byte[] data = Base58.decodeChecked(ext); // version(4) + payload, checksum stripped
+        final byte[] out = data.clone();
         System.arraycopy(XPUB_VERSION, 0, out, 0, 4);
-        byte[] check = Sha256Hash.hashTwice(out);
-        byte[] full = new byte[out.length + 4];
+        final byte[] check = Sha256Hash.hashTwice(out);
+        final byte[] full = new byte[out.length + 4];
         System.arraycopy(out, 0, full, 0, out.length);
         System.arraycopy(check, 0, full, out.length, 4);
         return Base58.encode(full);
@@ -131,11 +131,11 @@ public class HdWallet {
             throw new IllegalArgumentException("Expected chain 0 or 1 and a non-negative address index");
         }
         ensureInit();
-        DeterministicKey chainKey = chainKeys.computeIfAbsent(chain,
+        final DeterministicKey chainKey = chainKeys.computeIfAbsent(chain,
                 c -> HDKeyDerivation.deriveChildKey(account, new ChildNumber(c, false)));
-        DeterministicKey key = HDKeyDerivation.deriveChildKey(chainKey, new ChildNumber(index, false));
+        final DeterministicKey key = HDKeyDerivation.deriveChildKey(chainKey, new ChildNumber(index, false));
 
-        Address addr = switch (scriptType) {
+        final Address addr = switch (scriptType) {
             case P2WPKH -> SegwitAddress.fromKey(params, key);
             case P2TR -> taprootAddress(key);
             case P2SH_P2WPKH -> {
@@ -145,27 +145,27 @@ public class HdWallet {
             case P2PKH -> LegacyAddress.fromKey(params, key);
         };
 
-        byte[] program = ScriptBuilder.createOutputScript(addr).getProgram();
-        String scripthash = ByteUtils.formatHex(ByteUtils.reverseBytes(Sha256Hash.hash(program)));
+        final byte[] program = ScriptBuilder.createOutputScript(addr).getProgram();
+        final String scripthash = ByteUtils.formatHex(ByteUtils.reverseBytes(Sha256Hash.hash(program)));
         return new AddressInfo(chain, index, addr.toString(), scripthash, ByteUtils.formatHex(program),
                 basePath + "/" + chain + "/" + index);
     }
 
     /** BIP86 key-path-only Taproot: tweak the derived internal key and encode as bech32m (bc1p...). */
     private Address taprootAddress(DeterministicKey key) {
-        ECPoint point = key.getPubKeyPoint().normalize();
+        final ECPoint point = key.getPubKeyPoint().normalize();
         // The x-only internal key implicitly has an even Y coordinate (BIP340/341).
-        ECPoint internal = point.getAffineYCoord().toBigInteger().testBit(0) ? point.negate().normalize() : point;
-        byte[] internalX = to32(internal.getAffineXCoord().toBigInteger());
-        BigInteger tweak = new BigInteger(1, taggedHash("TapTweak", internalX));
-        ECPoint output = ECKey.ecDomainParameters().getG().multiply(tweak).add(internal).normalize();
-        byte[] outputX = to32(output.getAffineXCoord().toBigInteger());
+        final ECPoint internal = point.getAffineYCoord().toBigInteger().testBit(0) ? point.negate().normalize() : point;
+        final byte[] internalX = to32(internal.getAffineXCoord().toBigInteger());
+        final BigInteger tweak = new BigInteger(1, taggedHash("TapTweak", internalX));
+        final ECPoint output = ECKey.ecDomainParameters().getG().multiply(tweak).add(internal).normalize();
+        final byte[] outputX = to32(output.getAffineXCoord().toBigInteger());
         return SegwitAddress.fromProgram(params, 1, outputX);
     }
 
     private static byte[] taggedHash(String tag, byte[] msg) {
-        byte[] t = Sha256Hash.hash(tag.getBytes(StandardCharsets.UTF_8));
-        byte[] data = new byte[t.length * 2 + msg.length];
+        final byte[] t = Sha256Hash.hash(tag.getBytes(StandardCharsets.UTF_8));
+        final byte[] data = new byte[t.length * 2 + msg.length];
         System.arraycopy(t, 0, data, 0, t.length);
         System.arraycopy(t, 0, data, t.length, t.length);
         System.arraycopy(msg, 0, data, t.length * 2, msg.length);
@@ -173,11 +173,11 @@ public class HdWallet {
     }
 
     private static byte[] to32(BigInteger v) {
-        byte[] b = v.toByteArray();
+        final byte[] b = v.toByteArray();
         if (b.length == 32) {
             return b;
         }
-        byte[] out = new byte[32];
+        final byte[] out = new byte[32];
         if (b.length > 32) {
             System.arraycopy(b, b.length - 32, out, 0, 32);
         } else {

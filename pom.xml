@@ -63,16 +63,22 @@
             <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>
 
+        <!-- Declarative reactive HTTP client (mempool.space) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest-client-jackson</artifactId>
+        </dependency>
+
+        <!-- Declarative bean validation for REST inputs -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-hibernate-validator</artifactId>
+        </dependency>
+
         <!-- Vert.x (reactive TCP client for Electrum) -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-vertx</artifactId>
-        </dependency>
-
-        <!-- Vert.x Mutiny Web Client (reactive HTTP to mempool.space) -->
-        <dependency>
-            <groupId>io.smallrye.reactive</groupId>
-            <artifactId>smallrye-mutiny-vertx-web-client</artifactId>
         </dependency>
 
         <!-- Quinoa: build & serve the Vue.js frontend from Quarkus -->

@@ -6,6 +6,7 @@ import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.ReceiveAddressDto;
 import com.comassky.wallet.model.TransactionDetailsDto;
 import com.comassky.wallet.model.TransactionDto;
+import com.comassky.wallet.model.TransactionType;
 import com.comassky.wallet.model.UtxoDto;
 import com.comassky.wallet.model.WalletSnapshot;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -18,6 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.IntStream;
 
 /**
  * Self-consistent synthetic wallet used only when {@code wallet.demo=true}, so the UI can be
@@ -107,10 +109,10 @@ public class DemoWallet {
         unconfirmed = 115_722L;
 
         txs = new LinkedList<>(List.of(
-                new TransactionDto(TX2, 115_722, 115_722, 0, 0, 0, null, "received"),
-                new TransactionDto(TX3, -405_000, 95_000, 500_000, 939_800, conf3, 1_784_800_000L, "sent"),
-                new TransactionDto(TX1, 8_000_000, 8_000_000, 0, 939_500, conf1, 1_784_500_000L, "received"),
-                new TransactionDto(TX0, 500_000, 500_000, 0, 939_000, conf0, 1_784_000_000L, "received")));
+                new TransactionDto(TX2, 115_722, 115_722, 0, 0, 0, null, TransactionType.RECEIVED),
+                new TransactionDto(TX3, -405_000, 95_000, 500_000, 939_800, conf3, 1_784_800_000L, TransactionType.SENT),
+                new TransactionDto(TX1, 8_000_000, 8_000_000, 0, 939_500, conf1, 1_784_500_000L, TransactionType.RECEIVED),
+                new TransactionDto(TX0, 500_000, 500_000, 0, 939_000, conf0, 1_784_000_000L, TransactionType.RECEIVED)));
 
         details = new LinkedHashMap<>();
         details.put(TX0, new TransactionDetailsDto(TX0, 2, 0, 205,
@@ -151,19 +153,17 @@ public class DemoWallet {
         long fee = 1_000L;
         String txid = randomTxid();
 
-        List<Integer> spendable = new ArrayList<>();
-        for (int i = 0; i < utxos.size(); i++) {
-            if (utxos.get(i).confirmations() > 0) {
-                spendable.add(i);
-            }
-        }
+        List<Integer> spendable = IntStream.range(0, utxos.size())
+                .filter(i -> utxos.get(i).confirmations() > 0)
+                .boxed()
+                .toList();
         boolean send = !spendable.isEmpty() && (utxos.size() >= MAX_UTXOS || random.nextInt(3) == 0);
 
         if (send) {
             UtxoDto u = utxos.remove((int) spendable.get(random.nextInt(spendable.size())));
             confirmed -= u.value();
             long extOut = Math.max(1L, u.value() - fee);
-            txs.addFirst(new TransactionDto(txid, -u.value(), 0, u.value(), height, 1, now, "sent"));
+            txs.addFirst(new TransactionDto(txid, -u.value(), 0, u.value(), height, 1, now, TransactionType.SENT));
             details.put(txid, new TransactionDetailsDto(txid, 2, 0, 200,
                     List.of(new TransactionDetailsDto.Input(u.txid(), u.vout(), u.address(), u.value(), false)),
                     List.of(new TransactionDetailsDto.Output(0, ext(), extOut, EXT_SCRIPT)),
@@ -173,7 +173,7 @@ public class DemoWallet {
             AddressInfo addr = wallet.address(0, nextReceiveIndex++);
             utxos.add(0, new UtxoDto(txid, 0, value, height, 1, addr.address));
             confirmed += value;
-            txs.addFirst(new TransactionDto(txid, value, value, 0, height, 1, now, "received"));
+            txs.addFirst(new TransactionDto(txid, value, value, 0, height, 1, now, TransactionType.RECEIVED));
             details.put(txid, new TransactionDetailsDto(txid, 2, 0, 205,
                     List.of(new TransactionDetailsDto.Input(randomTxid(), 0, ext(), value + fee, false)),
                     List.of(new TransactionDetailsDto.Output(0, addr.address, value, addr.scriptHex)),

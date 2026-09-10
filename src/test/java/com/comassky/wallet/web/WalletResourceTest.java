@@ -5,13 +5,11 @@ import com.comassky.wallet.model.ElectrumServerDto;
 import com.comassky.wallet.model.TransactionDetailsDto;
 import com.comassky.wallet.service.TransactionDetailsService;
 import io.smallrye.mutiny.Uni;
-import jakarta.ws.rs.BadRequestException;
 import org.junit.jupiter.api.Test;
 
 import static com.comassky.wallet.support.TestFields.setField;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class WalletResourceTest {
     @Test
@@ -53,12 +51,4 @@ class WalletResourceTest {
         assertSame(response, resource.transactionDetails("requested-id"));
     }
 
-    @Test
-    void negativeAddressIndicesReturnBadRequestBeforeDerivation() {
-        WalletResource resource = new WalletResource();
-        assertEquals(400, assertThrows(BadRequestException.class,
-                () -> resource.receiveAt(-1)).getResponse().getStatus());
-        assertEquals(400, assertThrows(BadRequestException.class,
-                () -> resource.receiveQrAt(-1)).getResponse().getStatus());
-    }
 }

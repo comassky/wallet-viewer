@@ -205,13 +205,13 @@ public class ElectrumClient {
         if (state) LOG.debug("Electrum connection opened");
         else if (Boolean.TRUE.equals(connected)) LOG.debug("Electrum connection closed");
         connected = state;
-        for (Consumer<Boolean> listener : connectionListeners) {
+        connectionListeners.forEach(listener -> {
             try {
                 listener.accept(state);
             } catch (Exception ignored) {
                 // Listener failures must not affect transport or expose wallet data in logs.
             }
-        }
+        });
     }
 
     private void setup(Connection owner) {
@@ -252,21 +252,21 @@ public class ElectrumClient {
         if (stopped || connection != owner || message.containsKey("result") || message.containsKey("error")) return;
         if (!(message.getValue("params") instanceof JsonArray params)) return;
         Object method = message.getValue("method");
-        boolean valid = "blockchain.scripthash.subscribe".equals(method)
+        boolean valid = ElectrumMethod.SCRIPTHASH_SUBSCRIBE.wire().equals(method)
                 && params.size() == 2 && params.getValue(0) instanceof String
                 && (params.getValue(1) == null || params.getValue(1) instanceof String);
-        valid |= "blockchain.headers.subscribe".equals(method)
+        valid |= ElectrumMethod.HEADERS_SUBSCRIBE.wire().equals(method)
                 && params.size() == 1 && params.getValue(0) instanceof JsonObject;
         if (!valid) return;
-        LOG.debug("blockchain.scripthash.subscribe".equals(method)
+        LOG.debug(ElectrumMethod.SCRIPTHASH_SUBSCRIBE.wire().equals(method)
             ? "Electrum notification: address changed" : "Electrum notification: new block");
-        for (Consumer<JsonObject> listener : notificationListeners) {
+        notificationListeners.forEach(listener -> {
             try {
                 listener.accept(message.copy());
             } catch (Exception ignored) {
                 // Isolate both listener exceptions and mutations from the other listeners.
             }
-        }
+        });
     }
 
     private synchronized void lost(Connection owner, Throwable failure) {
@@ -287,12 +287,12 @@ public class ElectrumClient {
     }
 
     private void failPending(Connection owner, Throwable failure) {
-        for (Map.Entry<Integer, Pending> entry : List.copyOf(pending.entrySet())) {
+        List.copyOf(pending.entrySet()).forEach(entry -> {
             Pending request = entry.getValue();
             if (request.connection() == owner && pending.remove(entry.getKey(), request)) {
                 request.emitter().fail(failure);
             }
-        }
+        });
     }
 
     private void cancelReconnect() {
@@ -327,7 +327,7 @@ public class ElectrumClient {
             synchronized (ElectrumClient.this) {
                 if (heartbeatTimer != id || connection != owner || stopped) return;
                 heartbeatTimer = -1;
-                heartbeatRequest = call("server.ping").subscribe().with(
+                heartbeatRequest = call(ElectrumMethod.SERVER_PING).subscribe().with(
                         ignored -> {
                             synchronized (ElectrumClient.this) {
                                 if (connection == owner) {
@@ -342,7 +342,7 @@ public class ElectrumClient {
 
     private void negotiateVersion(Connection owner) {
         request(owner, Uni.createFrom().item(owner.socket), false,
-                "server.version", "Wallet Viewer", "1.4")
+                ElectrumMethod.SERVER_VERSION.wire(), "Wallet Viewer", "1.4")
                 .invoke(response -> {
                     Object value = response.getValue("result");
                     if (!(value instanceof JsonArray versions) || versions.size() != 2
@@ -363,6 +363,11 @@ public class ElectrumClient {
     }
 
     /** Sends a JSON-RPC request and returns the full response object. */
+    public Uni<JsonObject> call(ElectrumMethod method, Object... params) {
+        return call(method.wire(), params);
+    }
+
+    /** Transport-level entry point; production callers use the {@link ElectrumMethod} overload. */
     public Uni<JsonObject> call(String method, Object... params) {
         // Each subscription needs a fresh id and the current connection (including retries).
         return Uni.createFrom().deferred(() -> {
@@ -416,12 +421,6 @@ public class ElectrumClient {
     /** Never log arbitrary method names supplied by a caller or peer. */
     private static String safeMethod(String method) {
         if (method == null) return "unknown";
-        return switch (method) {
-            case "server.version", "server.ping", "blockchain.headers.subscribe",
-                    "blockchain.scripthash.subscribe", "blockchain.scripthash.get_history",
-                    "blockchain.scripthash.get_balance", "blockchain.scripthash.listunspent",
-                    "blockchain.block.header", "blockchain.transaction.get" -> method;
-            default -> "unknown";
-        };
+        return ElectrumMethod.isKnown(method) ? method : "unknown";
     }
 }

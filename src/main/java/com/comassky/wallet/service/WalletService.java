@@ -2,11 +2,13 @@ package com.comassky.wallet.service;
 
 import com.comassky.wallet.derivation.HdWallet;
 import com.comassky.wallet.electrum.ElectrumClient;
+import com.comassky.wallet.electrum.ElectrumMethod;
 import com.comassky.wallet.model.AddressCheckDto;
 import com.comassky.wallet.model.AddressInfo;
 import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.ReceiveAddressDto;
 import com.comassky.wallet.model.TransactionDto;
+import com.comassky.wallet.model.TransactionType;
 import com.comassky.wallet.model.UtxoDto;
 import com.comassky.wallet.model.WalletSnapshot;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -138,12 +140,12 @@ public class WalletService {
     private Uni<JsonObject> subscribeAddress(AddressInfo address) {
         // Publish before even constructing the RPC: a notification may precede its reply.
         knownAddresses.put(address.scripthash, address.address);
-        return electrum.call("blockchain.scripthash.subscribe", address.scripthash);
+        return electrum.call(ElectrumMethod.SCRIPTHASH_SUBSCRIBE, address.scripthash);
     }
 
     private Uni<WalletSnapshot> build() {
         Coverage previous = coverage;
-        Uni<Integer> tipUni = electrum.call("blockchain.headers.subscribe")
+        Uni<Integer> tipUni = electrum.call(ElectrumMethod.HEADERS_SUBSCRIBE)
                 .map(r -> r.getJsonObject("result").getInteger("height"));
         Uni<List<ScannedAddress>> recvUni = scanChain(0, previous.receiveIndex());
         Uni<List<ScannedAddress>> changeUni = scanChain(1, previous.changeIndex());
@@ -216,7 +218,7 @@ public class WalletService {
             // Reissue on every scan: the transport is not a persistent subscription registry.
             // Only the public script hash is sent, never the address, derivation path or key.
             batch.add(subscribeAddress(ai)
-                    .flatMap(ignored -> electrum.call("blockchain.scripthash.get_history", ai.scripthash))
+                    .flatMap(ignored -> electrum.call(ElectrumMethod.SCRIPTHASH_GET_HISTORY, ai.scripthash))
                     .map(r -> new ScannedAddress(ai, r.getJsonArray("result"))));
         }
         return Uni.join().all(batch).andFailFast().flatMap(list -> {
@@ -239,7 +241,7 @@ public class WalletService {
             return Uni.createFrom().item(new BalanceDto(0, 0));
         }
         List<Uni<BalanceDto>> unis = used.stream()
-                .map(a -> electrum.call("blockchain.scripthash.get_balance", a.scripthash).map(r -> {
+                .map(a -> electrum.call(ElectrumMethod.SCRIPTHASH_GET_BALANCE, a.scripthash).map(r -> {
                     JsonObject o = r.getJsonObject("result");
                     return new BalanceDto(o.getLong("confirmed", 0L), o.getLong("unconfirmed", 0L));
                 }))
@@ -256,7 +258,7 @@ public class WalletService {
             return Uni.createFrom().item(List.of());
         }
         List<Uni<List<UtxoDto>>> unis = used.stream()
-                .map(a -> electrum.call("blockchain.scripthash.listunspent", a.scripthash)
+                .map(a -> electrum.call(ElectrumMethod.SCRIPTHASH_LISTUNSPENT, a.scripthash)
                         .map(r -> r.getJsonArray("result").stream()
                                 .map(JsonObject.class::cast)
                                 .map(u -> {
@@ -298,7 +300,7 @@ public class WalletService {
             }
         });
         List<Uni<Long>> headerUnis = heightMisses.stream()
-                .map(h -> electrum.call("blockchain.block.header", h).map(r -> headerTime(r.getString("result"))))
+                .map(h -> electrum.call(ElectrumMethod.BLOCK_HEADER, h).map(r -> headerTime(r.getString("result"))))
                 .toList();
 
         // The txid commits a transaction's bytes, so cached raw copies stay valid every scan.
@@ -314,7 +316,7 @@ public class WalletService {
             }
         });
         List<Uni<String>> txUnis = txMisses.stream()
-                .map(id -> electrum.call("blockchain.transaction.get", id).map(r -> r.getString("result")))
+                .map(id -> electrum.call(ElectrumMethod.TRANSACTION_GET, id).map(r -> r.getString("result")))
                 .toList();
 
         Uni<List<Long>> headersUni = heightMisses.isEmpty()
@@ -378,16 +380,16 @@ public class WalletService {
                                                 Map<String, Long> ourOut, Map<String, Set<String>> receivedAddressesByTx,
                                                 Map<String, String> addressByOutpoint, Map<String, Integer> txHeights,
                                                 Map<Integer, Long> timeByHeight, int tip) {
-        long received = receivedByTx.getOrDefault(txid, 0L);
-        long sent = spentByUs(tx, ourOut);
-        long net = received - sent;
-        int height = txHeights.getOrDefault(txid, 0);
-        int conf = height > 0 ? tip - height + 1 : 0;
-        Long ts = height > 0 ? timeByHeight.get(height) : null;
-        String type = switch (Long.signum(net)) {
-            case 1 -> "received";
-            case -1 -> "sent";
-            default -> "self";
+        final long received = receivedByTx.getOrDefault(txid, 0L);
+        final long sent = spentByUs(tx, ourOut);
+        final long net = received - sent;
+        final int height = txHeights.getOrDefault(txid, 0);
+        final int conf = height > 0 ? tip - height + 1 : 0;
+        final Long ts = height > 0 ? timeByHeight.get(height) : null;
+        final TransactionType type = switch (Long.signum(net)) {
+            case 1 -> TransactionType.RECEIVED;
+            case -1 -> TransactionType.SENT;
+            default -> TransactionType.SELF;
         };
         return new TransactionDto(txid, net, received, sent, height, conf, ts, type,
                 involvedAddresses(tx, txid, receivedAddressesByTx, addressByOutpoint));
@@ -397,7 +399,7 @@ public class WalletService {
     private static List<String> involvedAddresses(Transaction tx, String txid,
                                                   Map<String, Set<String>> receivedAddressesByTx,
                                                   Map<String, String> addressByOutpoint) {
-        Set<String> addresses = new LinkedHashSet<>(receivedAddressesByTx.getOrDefault(txid, Set.of()));
+        final Set<String> addresses = new LinkedHashSet<>(receivedAddressesByTx.getOrDefault(txid, Set.of()));
         tx.getInputs().stream()
                 .filter(in -> !in.isCoinBase())
                 .map(in -> addressByOutpoint.get(in.getOutpoint().getHash() + ":" + in.getOutpoint().getIndex()))

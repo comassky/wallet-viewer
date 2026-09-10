@@ -14,8 +14,8 @@ public final class QrGenerator {
 
     public static byte[] png(String text, int size) {
         try {
-            BitMatrix matrix = new QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size);
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            final BitMatrix matrix = new QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size);
+            final ByteArrayOutputStream output = new ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(matrix, "PNG", output);
             return output.toByteArray();
         } catch (Exception e) {

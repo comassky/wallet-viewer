@@ -3,6 +3,7 @@ package com.comassky.wallet.service;
 import com.comassky.wallet.model.BalancePointDto;
 import com.comassky.wallet.model.PricePointDto;
 import com.comassky.wallet.model.TransactionDto;
+import com.comassky.wallet.model.TransactionType;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -23,7 +24,7 @@ class BalanceHistoryServiceTest {
         long twoDaysAgo = now - 2 * BalanceHistoryService.DAY;
         // One received transaction of 0.5 BTC two days ago.
         List<TransactionDto> txs = List.of(
-                new TransactionDto("a", 50_000_000L, 50_000_000L, 0, 100, 3, twoDaysAgo, "received"));
+                new TransactionDto("a", 50_000_000L, 50_000_000L, 0, 100, 3, twoDaysAgo, TransactionType.RECEIVED));
         // A single price point predating the transaction: 60k EUR / 70k USD per BTC.
         List<PricePointDto> prices = List.of(new PricePointDto(twoDaysAgo - BalanceHistoryService.DAY, 60_000, 70_000));
 
@@ -45,7 +46,7 @@ class BalanceHistoryServiceTest {
         long now = Instant.now().getEpochSecond();
         long oneDayAgo = now - BalanceHistoryService.DAY;
         List<TransactionDto> txs = List.of(
-                new TransactionDto("a", 100_000_000L, 100_000_000L, 0, 100, 3, oneDayAgo, "received"));
+                new TransactionDto("a", 100_000_000L, 100_000_000L, 0, 100, 3, oneDayAgo, TransactionType.RECEIVED));
         // Price history only starts in the future relative to the transaction day.
         List<PricePointDto> prices = List.of(new PricePointDto(now + BalanceHistoryService.DAY, 80_000, 90_000));
 

@@ -1,9 +1,11 @@
 package com.comassky.wallet.service;
 
 import com.comassky.wallet.electrum.ElectrumClient;
+import com.comassky.wallet.electrum.ElectrumMethod;
 import com.comassky.wallet.model.TransactionDto;
 import com.comassky.wallet.model.WalletSnapshot;
 import com.comassky.wallet.model.WalletState;
+import com.comassky.wallet.model.WalletStatus;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.quarkus.runtime.StartupEvent;
@@ -54,7 +56,7 @@ public class WalletLiveService {
     @Inject DemoService demo;
 
     public WalletLiveService() {
-        cache.put(KEY, new WalletState(0, "loading", "Loading wallet from Electrum…", null));
+        cache.put(KEY, new WalletState(0, WalletStatus.LOADING, "Loading wallet from Electrum\u2026", null));
     }
 
     void start(@Observes StartupEvent event) {
@@ -64,7 +66,7 @@ public class WalletLiveService {
         notifications = electrum.onNotification(notification -> {
             changes.incrementAndGet();
             schedule(200);
-            if (notification != null && "blockchain.scripthash.subscribe".equals(notification.getValue("method"))) {
+            if (notification != null && ElectrumMethod.SCRIPTHASH_SUBSCRIBE.wire().equals(notification.getValue("method"))) {
                 LOG.debugf("Electrum address notification: address=%s", notificationAddress(notification));
             }
         });
@@ -74,7 +76,7 @@ public class WalletLiveService {
                 connectionEpoch.incrementAndGet();
                 changes.incrementAndGet();
                 if (ready) schedule(0);
-                else publish("offline", "Electrum disconnected. Showing the last known wallet state.", null);
+                else publish(WalletStatus.OFFLINE, "Electrum disconnected. Showing the last known wallet state.", null);
             }
         });
         electrum.startMonitoring();
@@ -128,7 +130,7 @@ public class WalletLiveService {
             if (stopped || !connected) return;
             scanStarted = true;
             LOG.debug("Wallet scan started");
-            publish("syncing", "Synchronizing wallet with Electrum…", null);
+            publish(WalletStatus.SYNCING, "Synchronizing wallet with Electrum…", null);
             // Off the Vert.x event loop; only one scan can run at any time.
             WalletSnapshot snapshot = scanner.scan().await().atMost(Duration.ofMinutes(5));
             synchronized (this) {
@@ -144,14 +146,14 @@ public class WalletLiveService {
                     newTransactions = snapshot.transactions().stream().map(TransactionDto::txid)
                             .distinct().filter(id -> !known.contains(id)).count();
                 }
-                publish("live", null, snapshot);
+                publish(WalletStatus.LIVE, null, snapshot);
                 outcome = "success";
             }
         } catch (RuntimeException failure) {
             failed = true;
             outcome = "failure";
             if (!stopped) LOG.warnf("Wallet sync failure: type=%s", failure.getClass().getSimpleName());
-            if (connected && !stopped) publish("error", "Wallet synchronization failed. Retrying automatically.", null);
+            if (connected && !stopped) publish(WalletStatus.ERROR, "Wallet synchronization failed. Retrying automatically.", null);
         } finally {
             if (scanStarted) {
                 long durationMillis = (System.nanoTime() - started) / 1_000_000;
@@ -172,16 +174,16 @@ public class WalletLiveService {
     }
 
     // Package-private so DemoService can push synthetic snapshots into the same cache.
-    synchronized void publish(String status, String message, WalletSnapshot snapshot) {
+    synchronized void publish(WalletStatus status, String message, WalletSnapshot snapshot) {
         if (stopped) return;
         WalletState previous = current();
         WalletState next = new WalletState(++version, status, message,
                 snapshot != null ? snapshot : previous.snapshot());
         cache.put(KEY, next);
-        for (Consumer<WalletState> listener : Set.copyOf(listeners)) {
+        Set.copyOf(listeners).forEach(listener -> {
             try { listener.accept(next); }
             catch (RuntimeException ignored) { listeners.remove(listener); }
-        }
+        });
     }
 
     @PreDestroy

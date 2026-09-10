@@ -5,6 +5,7 @@ import com.comassky.wallet.electrum.ElectrumClient;
 import com.comassky.wallet.model.BalanceDto;
 import com.comassky.wallet.model.TransactionDetailsDto;
 import com.comassky.wallet.model.TransactionDto;
+import com.comassky.wallet.model.TransactionType;
 import com.comassky.wallet.model.WalletSnapshot;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
@@ -300,7 +301,7 @@ class TransactionDetailsServiceTest {
 
     private static WalletSnapshot snapshot(String... ids) {
         List<TransactionDto> transactions = new ArrayList<>();
-        for (String id : ids) transactions.add(new TransactionDto(id, -777, 0, 777, 1, 1, null, "sent"));
+        for (String id : ids) transactions.add(new TransactionDto(id, -777, 0, 777, 1, 1, null, TransactionType.SENT));
         return new WalletSnapshot(new BalanceDto(0, 0), List.of(), transactions, null);
     }
 

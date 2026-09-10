@@ -2,49 +2,54 @@ package com.comassky.wallet.service;
 
 import com.comassky.wallet.model.FeeRatesDto;
 import io.smallrye.mutiny.Uni;
-import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import jakarta.ws.rs.ServiceUnavailableException;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 
-import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 
 /** Public mempool fee estimates only: no wallet key, address or transaction is sent to the provider. */
 @ApplicationScoped
 public class FeeService {
-    @ConfigProperty(name = "wallet.fees-url", defaultValue = "https://mempool.space/api/v1/fees/recommended")
-    URI feesUrl;
+    static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+    static final Duration TTL = Duration.ofSeconds(60);
 
     @Inject
-    MempoolFetch fetch;
+    @RestClient
+    MempoolClient client;
 
     private Uni<FeeRatesDto> cached;
 
     @PostConstruct
     void init() {
-        cached = fetch.cached(feesUrl.toString(), Duration.ofSeconds(10), Duration.ofSeconds(60),
-                FeeService::parse, "Fee estimates temporarily unavailable");
+        // Cache outcomes (including failures) so a rate-limited or down provider is not hammered.
+        cached = client.feesRecommended()
+                .ifNoItem().after(REQUEST_TIMEOUT).fail()
+                .map(FeeService::toFees)
+                .onFailure().transform(failure -> new ServiceUnavailableException("Fee estimates temporarily unavailable"))
+                .memoize().atLeast(TTL);
     }
 
     public Uni<FeeRatesDto> fees() {
         return cached;
     }
 
-    static FeeRatesDto parse(String body) {
-        JsonObject json = new JsonObject(body);
-        long fastest = positive(json, "fastestFee");
-        long halfHour = positive(json, "halfHourFee");
-        long hour = positive(json, "hourFee");
-        long economy = positive(json, "economyFee");
-        long minimum = positive(json, "minimumFee");
+    static FeeRatesDto toFees(MempoolClient.Fees raw) {
+        if (raw == null) {
+            throw new IllegalArgumentException("Invalid fee estimate: empty");
+        }
+        final long fastest = positive(raw.fastestFee(), "fastestFee");
+        final long halfHour = positive(raw.halfHourFee(), "halfHourFee");
+        final long hour = positive(raw.hourFee(), "hourFee");
+        final long economy = positive(raw.economyFee(), "economyFee");
+        final long minimum = positive(raw.minimumFee(), "minimumFee");
         return new FeeRatesDto(fastest, halfHour, hour, economy, minimum, Instant.now().getEpochSecond());
     }
 
-    private static long positive(JsonObject json, String key) {
-        Long value = json.getLong(key);
+    private static long positive(Long value, String key) {
         if (value == null || value <= 0) {
             throw new IllegalArgumentException("Invalid fee estimate: " + key);
         }

@@ -2,6 +2,7 @@ package com.comassky.wallet.service;
 
 import com.comassky.wallet.derivation.HdWallet;
 import com.comassky.wallet.electrum.ElectrumClient;
+import com.comassky.wallet.electrum.ElectrumMethod;
 import com.comassky.wallet.model.TransactionDetailsDto;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /** Only cached wallet members may initiate a details lookup; ancestors need not belong to the wallet. */
 @ApplicationScoped
@@ -80,7 +82,7 @@ public class TransactionDetailsService {
 
     private Uni<Transaction> fetch(String txid, NetworkParameters params) {
         // RPC creation must also be lazy, so the join's concurrency bound applies to actual requests.
-        return Uni.createFrom().deferred(() -> electrum.call("blockchain.transaction.get", txid))
+        return Uni.createFrom().deferred(() -> electrum.call(ElectrumMethod.TRANSACTION_GET, txid))
                 .map(response -> {
                     String hex = response.getString("result");
                     if (hex == null || hex.isEmpty() || (hex.length() & 1) != 0
@@ -99,7 +101,7 @@ public class TransactionDetailsService {
     private static TransactionDetailsDto render(Transaction transaction, Map<String, Transaction> previous,
                                                  NetworkParameters params) {
         boolean coinbase = transaction.isCoinBase();
-        List<TransactionDetailsDto.Input> inputs = new ArrayList<>();
+        final List<TransactionDetailsDto.Input> inputs = new ArrayList<>();
         long totalInput = 0;
         for (TransactionInput input : transaction.getInputs()) {
             if (input.isCoinBase()) {
@@ -107,29 +109,32 @@ public class TransactionDetailsService {
                 inputs.add(new TransactionDetailsDto.Input(null, 0, null, null, true));
                 continue;
             }
-            String txid = input.getOutpoint().getHash().toString();
-            long index = input.getOutpoint().getIndex();
-            Transaction prev = previous.get(txid);
+            final String txid = input.getOutpoint().getHash().toString();
+            final long index = input.getOutpoint().getIndex();
+            final Transaction prev = previous.get(txid);
             if (prev == null || index < 0 || index >= prev.getOutputs().size()) {
                 throw new IllegalStateException("Missing previous output");
             }
-            TransactionOutput output = prev.getOutput((int) index);
-            long value = value(output);
+            final TransactionOutput output = prev.getOutput((int) index);
+            final long value = value(output);
             totalInput = Math.addExact(totalInput, value);
             inputs.add(new TransactionDetailsDto.Input(txid, index, address(output, params), value, false));
         }
         if (inputs.isEmpty() || transaction.getOutputs().isEmpty()) {
             throw new IllegalStateException("Empty transaction");
         }
-        List<TransactionDetailsDto.Output> outputs = new ArrayList<>();
-        long totalOutput = 0;
-        for (TransactionOutput output : transaction.getOutputs()) {
-            long value = value(output);
-            totalOutput = Math.addExact(totalOutput, value);
-            outputs.add(new TransactionDetailsDto.Output(outputs.size(), address(output, params), value,
-                    ByteUtils.formatHex(output.getScriptBytes())));
-        }
-        Long fee = coinbase ? null : Math.subtractExact(totalInput, totalOutput);
+        final List<TransactionOutput> txOutputs = transaction.getOutputs();
+        final List<TransactionDetailsDto.Output> outputs = IntStream.range(0, txOutputs.size())
+                .mapToObj(i -> {
+                    final TransactionOutput output = txOutputs.get(i);
+                    return new TransactionDetailsDto.Output(i, address(output, params), value(output),
+                            ByteUtils.formatHex(output.getScriptBytes()));
+                })
+                .toList();
+        final long totalOutput = outputs.stream()
+                .mapToLong(TransactionDetailsDto.Output::value)
+                .reduce(0L, Math::addExact);
+        final Long fee = coinbase ? null : Math.subtractExact(totalInput, totalOutput);
         if (fee != null && fee < 0) throw new IllegalStateException("Invalid transaction amounts");
         return new TransactionDetailsDto(transaction.getTxId().toString(), transaction.getVersion(),
                 transaction.getLockTime(), transaction.bitcoinSerialize().length, inputs, outputs,
@@ -137,7 +142,7 @@ public class TransactionDetailsService {
     }
 
     private static long value(TransactionOutput output) {
-        long value = output.getValue().value;
+        final long value = output.getValue().value;
         if (value < 0) throw new IllegalStateException("Invalid output amount");
         return value;
     }

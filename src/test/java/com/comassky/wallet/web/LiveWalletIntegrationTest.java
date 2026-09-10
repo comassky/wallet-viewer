@@ -119,6 +119,19 @@ class LiveWalletIntegrationTest {
         return "live".equals(state.path("status").asText()) && balance.isIntegralNumber() && balance.asLong() == total;
     }
 
+    @Test
+    void negativeReceiveIndicesAreRejectedWithBadRequest() throws Exception {
+        try (HttpClient client = HttpClient.newBuilder().connectTimeout(TIMEOUT)
+                .proxy(HttpClient.Builder.NO_PROXY).build()) {
+            for (String path : new String[]{"/receive/-1", "/receive/-1/qr"}) {
+                HttpResponse<String> response = client.send(HttpRequest.newBuilder(
+                                URI.create(walletUri.toString() + path)).timeout(TIMEOUT).GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+                assertEquals(400, response.statusCode(), response.body());
+            }
+        }
+    }
+
     private void assertRestSnapshot(HttpClient client, JsonNode expected) throws Exception {
         HttpResponse<String> response = client.send(HttpRequest.newBuilder(walletUri).timeout(TIMEOUT)
                 .header("Accept", "application/json").GET().build(), HttpResponse.BodyHandlers.ofString());
