@@ -3,6 +3,24 @@ import type { PriceRates } from './types/wallet';
 export const currencies = ['EUR', 'USD', 'SATS', 'BTC'] as const;
 export type Currency = typeof currencies[number];
 export const currencyStorageKey = 'wallet-viewer.currency';
+export const fiatCurrencyStorageKey = 'wallet-viewer.fiat-currency';
+export type BitcoinUnit = 'BTC' | 'SATS';
+export type FiatCurrency = 'EUR' | 'USD';
+
+/** Migrate the previous single-unit preference without losing a chosen fiat currency. */
+export function readDisplayPreferences(): { currency: BitcoinUnit; fiatCurrency: FiatCurrency } {
+  const previous = readCurrency();
+  let saved: string | null = null;
+  try { saved = localStorage.getItem(fiatCurrencyStorageKey); } catch { /* Storage is optional. */ }
+  return {
+    currency: previous === 'SATS' ? 'SATS' : 'BTC',
+    fiatCurrency: saved === 'EUR' || saved === 'USD' ? saved : previous === 'USD' ? 'USD' : 'EUR',
+  };
+}
+
+export function saveFiatCurrency(currency: FiatCurrency): void {
+  try { localStorage.setItem(fiatCurrencyStorageKey, currency); } catch { /* Storage is optional. */ }
+}
 
 export function currencyLabel(currency: Currency): string {
   return currency === 'SATS' ? 'SAT' : currency;
