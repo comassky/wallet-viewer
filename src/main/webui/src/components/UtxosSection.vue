@@ -25,16 +25,16 @@ const { sorted, sortKey, descending, toggleSort, ariaSort } = useTableSort(toRef
   <section>
     <h2 class="sr-only">Unspent outputs</h2>
     <p class="mb-4 text-xs text-slate-500">Unspent outputs available in this wallet</p>
-    <div class="mb-4 flex items-center gap-2 text-xs lg:hidden">
+    <div class="mb-4 flex min-w-0 flex-wrap items-center gap-2 text-xs lg:hidden">
       <label>Sort by
-        <select v-model="sortKey" class="ml-2 min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-2">
+        <select v-model="sortKey" class="ml-2 min-h-11 max-w-48 rounded-lg border border-slate-700 bg-slate-900 px-2 text-base sm:text-sm">
           <option value="">Default order</option>
           <option v-for="column in columns" :key="column.key" :value="column.key">{{ column.label }}</option>
         </select>
       </label>
       <button v-if="sortKey" type="button" class="button-secondary rounded-lg px-3" :aria-label="descending ? 'Sort ascending' : 'Sort descending'" @click="descending = !descending">{{ descending ? '↓' : '↑' }}</button>
     </div>
-    <ul v-if="utxos.length" class="grid min-w-0 gap-3 lg:hidden" aria-label="UTXOs">
+    <ul v-if="utxos.length" class="grid min-w-0 gap-3 md:grid-cols-2 lg:hidden" aria-label="UTXOs">
       <li v-for="u in sorted" :key="`${u.txid}:${u.vout}`" class="wallet-panel min-w-0 p-4">
         <p class="sensitive mb-3 text-sm font-semibold tabular-nums">{{ amount(u.value) }} {{ currencyLabel(currency) }}</p>
         <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">

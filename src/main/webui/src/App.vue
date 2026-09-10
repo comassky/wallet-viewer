@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useWallet } from './composables/useWallet';
 import { useCurrency } from './composables/useCurrency';
 import type { ReceiveAddress } from './types/wallet';
@@ -15,6 +15,7 @@ import ToastHost from './components/ToastHost.vue';
 import WalletSkeleton from './components/WalletSkeleton.vue';
 import { useIncomingNotifications } from './composables/useIncomingNotifications';
 import { useRovingTabs } from './composables/useRovingTabs';
+import { useMediaQuery } from './composables/useMediaQuery';
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, fiatCurrency, rates, ratesLoading, ratesError, amount } = useCurrency();
@@ -27,7 +28,12 @@ const tabs = [
   { id: 'chart', label: 'Chart', icon: 'chart' },
 ] as const;
 const tabButtons = ref<HTMLButtonElement[]>([]);
-const { activeTab, onKeydown } = useRovingTabs(tabs.map(tab => tab.id), 'activity', tabButtons);
+const showCharts = useMediaQuery('(min-width: 768px)');
+const visibleTabs = computed(() => tabs.filter(tab => showCharts.value || tab.id !== 'chart'));
+const { activeTab, onKeydown } = useRovingTabs(() => visibleTabs.value.map(tab => tab.id), 'activity', tabButtons);
+watch(showCharts, visible => {
+  if (!visible && activeTab.value === 'chart') activeTab.value = 'activity';
+});
 
 function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): void {
   void qrDialog.value?.open(address, trigger);
@@ -36,7 +42,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
 </script>
 
 <template>
-  <main lang="en-US" class="wallet-shell w-full px-4 pb-16 pt-6 sm:px-6 lg:px-10 lg:pt-9">
+  <main lang="en-US" class="wallet-shell w-full px-3 pb-8 pt-4 sm:px-6 sm:pb-16 sm:pt-6 lg:px-10 lg:pt-9">
     <DashboardHeader :connection="connection" :status="status" :message="message" @retry="refresh" />
     <Transition name="banner">
       <p v-if="data && (connection !== 'connected' || status !== 'live')" role="status" class="mb-5 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-xs text-amber-300">
@@ -45,14 +51,14 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
     </Transition>
 
     <template v-if="data">
-      <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-3 sm:gap-5 lg:grid-cols-2">
         <BalanceCard v-model:currency="currency" v-model:fiat-currency="fiatCurrency" :balance="data.balance" :rates="rates" :rates-loading="ratesLoading" :rates-error="ratesError" :amount="amount" />
         <ReceiveAddressCard :receive="data.receiveAddress" @enlarge="enlargeReceive" />
       </div>
-      <div class="mt-9">
+      <div class="mt-6 sm:mt-9">
         <div role="tablist" aria-label="Wallet details" class="mb-5 flex gap-2 border-b border-slate-800">
           <button
-            v-for="(tab, index) in tabs"
+            v-for="(tab, index) in visibleTabs"
             :id="`wallet-tab-${tab.id}`"
             :key="tab.id"
             ref="tabButtons"
@@ -61,7 +67,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
             :aria-selected="activeTab === tab.id"
             :aria-controls="`wallet-panel-${tab.id}`"
             :tabindex="activeTab === tab.id ? 0 : -1"
-            class="-mb-px flex items-center gap-2 rounded-t-lg border-b-2 px-4 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:px-5"
+            class="-mb-px flex min-w-0 flex-1 items-center justify-center gap-2 rounded-t-lg border-b-2 px-3 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:flex-none sm:px-5"
             :class="activeTab === tab.id ? 'border-accent bg-accent/5 text-accent' : 'border-transparent text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200'"
             @click="activeTab = tab.id"
             @keydown="onKeydown($event, index)"
@@ -78,7 +84,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
         <div id="wallet-panel-utxos" v-show="activeTab === 'utxos'" role="tabpanel" aria-labelledby="wallet-tab-utxos" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
           <UtxosSection :utxos="data.utxos" :currency="currency" :amount="amount" />
         </div>
-        <div id="wallet-panel-chart" v-show="activeTab === 'chart'" role="tabpanel" aria-labelledby="wallet-tab-chart" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+        <div v-if="showCharts" id="wallet-panel-chart" v-show="activeTab === 'chart'" role="tabpanel" aria-labelledby="wallet-tab-chart" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
           <BalanceChart :currency="currency" :fiat-currency="fiatCurrency" :amount="amount" />
         </div>
       </div>

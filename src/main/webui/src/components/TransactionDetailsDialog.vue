@@ -6,6 +6,7 @@ import { formatDate } from '../utils/format';
 import { paginateItems, paginationRange } from '../utils/transactionGraph';
 import { useModalDialog } from '../composables/useModalDialog';
 import { useRovingTabs } from '../composables/useRovingTabs';
+import { useMediaQuery } from '../composables/useMediaQuery';
 import TransactionGraph from './TransactionGraph.vue';
 import TransactionBadge from './TransactionBadge.vue';
 import ConfirmationStatus from './ConfirmationStatus.vue';
@@ -30,7 +31,12 @@ const tabs = [
   { id: 'io', label: 'Inputs / Outputs', icon: 'list' },
 ] as const;
 const tabButtons = ref<HTMLButtonElement[]>([]);
-const { activeTab, onKeydown } = useRovingTabs(tabs.map(tab => tab.id), 'graph', tabButtons);
+const showGraph = useMediaQuery('(min-width: 768px)');
+const visibleTabs = computed(() => tabs.filter(tab => showGraph.value || tab.id !== 'graph'));
+const { activeTab, onKeydown } = useRovingTabs(() => visibleTabs.value.map(tab => tab.id), showGraph.value ? 'graph' : 'io', tabButtons);
+watch(showGraph, visible => {
+  if (!visible) activeTab.value = 'io';
+});
 
 // Lists deliberately have independent pages from the graph and from one another.
 const inputPageIndex = ref(0);
@@ -44,7 +50,7 @@ watch(() => props.transaction?.txid, async txid => {
   const element = dialog.value;
   if (!element) return;
   if (txid) {
-    activeTab.value = 'graph';
+    activeTab.value = showGraph.value ? 'graph' : 'io';
     inputPageIndex.value = outputPageIndex.value = 0;
     await nextTick();
     if (isDisposed()) return;
@@ -67,11 +73,11 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
     ref="dialog"
     lang="en-US"
     aria-labelledby="transaction-details-title"
-    class="transaction-dialog rounded-2xl border border-slate-700 bg-slate-900 p-4 text-slate-100 shadow-2xl sm:p-6"
+    class="transaction-dialog rounded-2xl border border-slate-700 bg-slate-900 p-4 text-slate-100 shadow-2xl max-md:m-0 max-md:h-dvh max-md:max-h-dvh max-md:w-full max-md:rounded-none max-md:border-0 max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:[&_.graph-page-button]:min-h-11 max-md:[&_.graph-page-button]:min-w-11 sm:p-6"
     @close="handleClose"
     @click="closeOnBackdrop"
   >
-    <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <div class="relative mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 pr-14">
       <h2 id="transaction-details-title" class="text-lg font-semibold">Transaction details</h2>
       <template v-if="transaction">
         <TransactionBadge :type="transaction.type" />
@@ -79,7 +85,7 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
         <span class="text-xs text-slate-400">{{ formatDate(transaction.timestamp) }}</span>
         <CopyValue :value="transaction.txid" label="transaction ID" class="min-w-0 break-all font-mono text-xs leading-relaxed text-slate-400" />
       </template>
-      <button type="button" autofocus @click="close" aria-label="Close" class="button-secondary ml-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+      <button type="button" autofocus @click="close" aria-label="Close" class="button-secondary fixed right-4 top-4 z-20 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg md:absolute md:right-0 md:top-0">
         <UiIcon name="close" class="h-4 w-4" />
       </button>
     </div>
@@ -103,7 +109,7 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
 
         <div role="tablist" aria-label="Transaction detail views" class="mb-4 flex gap-2 border-b border-slate-800">
           <button
-            v-for="(tab, index) in tabs"
+            v-for="(tab, index) in visibleTabs"
             :id="`${idPrefix}-tab-${tab.id}`"
             :key="tab.id"
             ref="tabButtons"
@@ -119,14 +125,14 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
           ><UiIcon :name="tab.icon" />{{ tab.label }}</button>
         </div>
 
-        <div v-show="activeTab === 'graph'" :id="`${idPrefix}-panel-graph`" role="tabpanel" :aria-labelledby="`${idPrefix}-tab-graph`" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
+        <div v-if="showGraph" v-show="activeTab === 'graph'" :id="`${idPrefix}-panel-graph`" role="tabpanel" :aria-labelledby="`${idPrefix}-tab-graph`" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
           <TransactionGraph :id-prefix="`${idPrefix}-graph`" :details="details" :currency="currency" :amount="amount" />
         </div>
 
         <div v-show="activeTab === 'io'" :id="`${idPrefix}-panel-io`" role="tabpanel" :aria-labelledby="`${idPrefix}-tab-io`" tabindex="0" class="space-y-6 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
           <div class="grid min-w-0 gap-6 lg:grid-cols-2">
             <section class="min-w-0" :aria-labelledby="`${idPrefix}-inputs-title`">
-              <div class="mb-3 flex h-9 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div class="mb-3 flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <h4 :id="`${idPrefix}-inputs-title`" class="section-title text-sky-400">Inputs <span class="text-slate-500">({{ details.inputs.length }})</span></h4>
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <p :id="`${idPrefix}-inputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ inputPage.total ? inputPage.start + 1 : 0 }}–{{ inputPage.end }} of {{ inputPage.total }} inputs · Page {{ inputPage.page + 1 }} / {{ inputPage.pageCount }}</p>
@@ -139,11 +145,11 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
               </div>
               <ol :id="`${idPrefix}-inputs-list`" :start="inputPage.start + 1" class="space-y-1.5">
                 <li v-for="{ item: input, index } in inputPage.entries" :key="`${details.txid}-input-${index}`" :value="index + 1" class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-2.5 py-1.5 transition hover:border-slate-600/60">
-                  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5">
+                  <div class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                     <span class="rounded-md bg-slate-800/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">#{{ index }}</span>
                     <CopyValue v-if="input.address" :value="input.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-200" />
                     <span v-else class="min-w-0 text-xs text-slate-300">{{ input.coinbase ? 'Coinbase · newly created bitcoin' : 'Non-address script' }}</span>
-                    <b class="justify-self-end whitespace-nowrap text-right text-sm font-semibold tabular-nums">
+                    <b class="col-start-2 min-w-0 justify-self-end text-right text-sm font-semibold tabular-nums sm:col-start-auto">
                       <template v-if="input.value !== null">{{ amount(input.value) }} {{ currencyLabel(currency) }}</template>
                       <span v-else class="text-slate-500">{{ input.coinbase ? 'N/A' : 'Unknown' }}</span>
                     </b>
@@ -157,7 +163,7 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
               <p v-if="!inputPage.total" class="text-xs text-slate-500">No inputs.</p>
             </section>
             <section class="min-w-0" :aria-labelledby="`${idPrefix}-outputs-title`">
-              <div class="mb-3 flex h-9 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div class="mb-3 flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <h4 :id="`${idPrefix}-outputs-title`" class="section-title text-emerald-400">Outputs <span class="text-slate-500">({{ details.outputs.length }})</span></h4>
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <p :id="`${idPrefix}-outputs-list-count`" role="status" aria-live="polite" aria-atomic="true" class="text-xs text-slate-400">{{ outputPage.total ? outputPage.start + 1 : 0 }}–{{ outputPage.end }} of {{ outputPage.total }} outputs · Page {{ outputPage.page + 1 }} / {{ outputPage.pageCount }}</p>
@@ -170,11 +176,11 @@ watch([() => props.details?.inputs.length, () => props.details?.outputs.length],
               </div>
               <ol :id="`${idPrefix}-outputs-list`" :start="outputPage.start + 1" class="space-y-1.5">
                 <li v-for="{ item: output, index } in outputPage.entries" :key="`${details.txid}-output-${output.index}`" :value="index + 1" class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-2.5 py-1.5 transition hover:border-slate-600/60">
-                  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5">
+                  <div class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
                     <span class="rounded-md bg-slate-800/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">#{{ output.index }}</span>
                     <CopyValue v-if="output.address" :value="output.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-200" />
                     <span v-else class="min-w-0 text-xs text-slate-300">Non-address script</span>
-                    <b class="justify-self-end whitespace-nowrap text-right text-sm font-semibold tabular-nums">{{ amount(output.value) }} {{ currencyLabel(currency) }}</b>
+                    <b class="col-start-2 min-w-0 justify-self-end text-right text-sm font-semibold tabular-nums sm:col-start-auto">{{ amount(output.value) }} {{ currencyLabel(currency) }}</b>
                   </div>
                   <details class="mt-1.5 border-t border-slate-800/60 pt-1.5 text-[11px] text-slate-500">
                     <summary class="cursor-pointer select-none uppercase tracking-wide text-slate-600 transition hover:text-slate-300">Output script</summary>

@@ -35,8 +35,8 @@ function priceTitle(unit: FiatCurrency): string | undefined {
 </script>
 
 <template>
-  <section class="wallet-panel balance-card min-w-0 p-5 sm:p-6">
-    <div class="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+  <section class="wallet-panel balance-card min-w-0 p-4 sm:p-6">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-3 sm:mb-5">
       <h2 class="section-title flex items-center gap-2"><UiIcon name="coins" class="text-accent" />Total balance</h2>
       <div class="inline-flex shrink-0 rounded-xl border border-slate-700/60 bg-slate-950/60 p-0.5" role="group" aria-label="Bitcoin display unit">
           <button
@@ -50,7 +50,7 @@ function priceTitle(unit: FiatCurrency): string | undefined {
       </div>
     </div>
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <span class="sensitive break-all text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl" :class="{ 'value-pop': pop }" @animationend="pop = false">{{ amount(balance.total) }}</span>
+      <span class="sensitive min-w-0 break-words font-semibold tabular-nums sm:text-5xl" :class="[{ 'value-pop': pop }, currency === 'SATS' ? 'text-2xl' : 'text-3xl']" @animationend="pop = false">{{ amount(balance.total) }}</span>
       <span class="text-lg font-medium text-accent">{{ currencyLabel(currency) }}</span>
     </div>
     <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -67,12 +67,12 @@ function priceTitle(unit: FiatCurrency): string | undefined {
       <template v-else>Estimate at the current price · preferences saved locally</template>
     </p>
     <p v-if="rates" class="mt-1 text-xs text-slate-400">Quote: {{ formatDate(rates.timestamp) }} · mempool.space</p>
-    <dl class="mt-6 grid gap-4 border-t border-slate-700/40 pt-5 sm:grid-cols-2">
-      <div>
+    <dl class="mt-4 grid grid-cols-2 gap-3 border-t border-slate-700/40 pt-4 sm:mt-6 sm:gap-4 sm:pt-5">
+      <div class="min-w-0">
         <dt class="mb-1.5 flex items-center gap-2 text-xs text-slate-400"><span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />Confirmed</dt>
         <dd class="sensitive break-all text-sm font-medium tabular-nums">{{ amount(balance.confirmed) }} <span class="text-slate-500">{{ currencyLabel(currency) }}</span></dd>
       </div>
-      <div>
+      <div class="min-w-0">
         <dt class="mb-1.5 flex items-center gap-2 text-xs text-slate-400"><span class="h-1.5 w-1.5 rounded-full bg-amber-400" />Pending</dt>
         <dd class="sensitive break-all text-sm font-medium tabular-nums">{{ amount(balance.unconfirmed) }} <span class="text-slate-500">{{ currencyLabel(currency) }}</span></dd>
       </div>

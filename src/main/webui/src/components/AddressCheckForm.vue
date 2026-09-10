@@ -47,7 +47,7 @@ onScopeDispose(() => { controller?.abort(); controller = null; });
     <p :id="`${inputId}-hint`" class="mb-3 text-xs text-slate-400">Check whether an address belongs to this wallet.</p>
     <label :for="inputId" class="mb-2 block text-sm font-medium text-slate-300">Address to verify</label>
     <div class="flex flex-col gap-3 sm:flex-row">
-      <input :id="inputId" v-model="query" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="bc1…" :aria-describedby="`${inputId}-hint`" class="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 font-mono text-sm text-slate-100 placeholder:text-slate-500" />
+      <input :id="inputId" v-model="query" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="bc1…" :aria-describedby="`${inputId}-hint`" class="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 font-mono text-base text-slate-100 placeholder:text-slate-500 sm:text-sm" />
       <button type="submit" :disabled="checking || !query.trim()" class="button-secondary inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50">
         <span v-if="checking" aria-hidden="true" class="h-4 w-4 animate-spin rounded-full border-2 border-slate-600 border-t-accent motion-reduce:animate-none" />
         <UiIcon v-else name="search" />

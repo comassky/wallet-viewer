@@ -52,14 +52,14 @@ function clearSearch(): void {
 <template>
   <section>
     <div v-if="transactions.length" class="mb-4 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-      <div role="group" aria-label="Filter transactions" class="flex flex-wrap gap-2">
+      <div role="group" aria-label="Filter transactions" class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <button v-for="item in transactionFilters" :key="item.id" type="button" :aria-pressed="filter === item.id" class="inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-sm transition" :class="filter === item.id ? 'border-accent/60 bg-accent/10 text-accent' : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500'" @click="filter = item.id">
           {{ item.label }}<span class="rounded-full bg-slate-800 px-2 py-0.5 text-xs tabular-nums text-slate-300">{{ counts[item.id] }}</span>
         </button>
       </div>
       <div class="w-full xl:max-w-sm">
         <div class="relative">
-          <input ref="searchInput" id="transaction-search" v-model="query" type="search" aria-label="Search by transaction ID or address" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Transaction ID or address" class="search-input min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 pr-10 text-sm placeholder:text-slate-500" />
+          <input ref="searchInput" id="transaction-search" v-model="query" type="search" aria-label="Search by transaction ID or address" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Transaction ID or address" class="search-input min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 pr-10 text-base placeholder:text-slate-500 sm:text-sm" />
           <button v-if="query" type="button" aria-label="Clear search" class="absolute inset-y-0 right-0 flex items-center rounded-r-xl px-3 text-slate-400 transition hover:text-accent" @click="clearSearch"><UiIcon name="close" /></button>
         </div>
       </div>
@@ -67,9 +67,9 @@ function clearSearch(): void {
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="sr-only">Activity</h2>
       <p v-if="transactions.length" role="status" aria-atomic="true" class="sr-only">Showing {{ visible.length }} of {{ filtered.length }} transactions<span v-if="query || filter !== 'all'"> · {{ transactions.length }} total</span></p>
-      <div class="flex items-center gap-2 text-xs lg:hidden">
+      <div class="flex min-w-0 flex-wrap items-center gap-2 text-xs lg:hidden">
         <label>Sort by
-          <select v-model="sortKey" class="ml-2 min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-2">
+          <select v-model="sortKey" class="ml-2 min-h-11 max-w-48 rounded-lg border border-slate-700 bg-slate-900 px-2 text-base sm:text-sm">
             <option value="">Default order</option>
             <option v-for="column in columns" :key="column.key" :value="column.key">{{ column.label }}</option>
           </select>
@@ -78,7 +78,7 @@ function clearSearch(): void {
       </div>
     </div>
     <!-- v-auto-animate fades new rows in and smoothly pushes the rows below down; honors prefers-reduced-motion. -->
-    <ul v-if="filtered.length" v-auto-animate class="grid min-w-0 gap-3 lg:hidden" aria-label="Transactions">
+    <ul v-if="filtered.length" v-auto-animate class="grid min-w-0 gap-3 md:grid-cols-2 lg:hidden" aria-label="Transactions">
       <li v-for="tx in visible" :key="tx.txid" class="wallet-panel min-w-0">
         <div
           class="block w-full cursor-pointer rounded-2xl p-4 text-left transition hover:bg-slate-800/50"

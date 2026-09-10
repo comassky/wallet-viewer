@@ -4,6 +4,7 @@ import { walletApi } from '../services/walletApi';
 import type { ReceiveAddress } from '../types/wallet';
 import { useModalDialog } from '../composables/useModalDialog';
 import UiIcon from './UiIcon.vue';
+import CopyValue from './CopyValue.vue';
 
 const dialog = ref<HTMLDialogElement | null>(null);
 const receive = ref<(ReceiveAddress & { url: string }) | null>(null);
@@ -53,6 +54,10 @@ defineExpose({ open });
     </div>
     <template v-if="receive">
       <img :src="receive.url" alt="Receive address QR code" class="mx-auto aspect-square w-full max-w-96 rounded-xl bg-white p-3" />
+      <div class="mt-4 min-w-0 border-t border-slate-700/50 pt-3">
+        <CopyValue :value="receive.address" label="receive address" class="w-full text-sm" />
+        <p class="mt-2 break-all font-mono text-xs text-slate-400">{{ receive.path }}</p>
+      </div>
     </template>
   </dialog>
 </template>
