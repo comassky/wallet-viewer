@@ -19,12 +19,17 @@
 
 > [!WARNING]
 > **No built-in authentication.** This application ships no login or access control of its own. Never expose it directly to the internet — always place it behind a secure, authenticated reverse proxy (HTTPS, with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90s). The built-in origin checks are hardening, not access control.
-> 
->🔒  Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
+>
+> 🔒 Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
 
 ### Why I built this
 
-Like many people, I run an Electrum node that I deliberately keep off the public internet. I wanted to check my wallet and balance from anywhere — **without a VPN** and **without pasting my public key into third-party websites**. Wallet Viewer does exactly that: point it at your own Electrum server, feed it a watch-only xpub, and get a dashboard you fully host and control.
+Like many people, I run an Electrum node that I deliberately keep **off the public internet**. I just wanted to check my wallet and balance from anywhere — without the usual trade-offs:
+
+- 🚫 **No VPN** to tunnel back home.
+- 🔒 **No public key** pasted into third-party websites.
+
+**Wallet Viewer does exactly that:** point it at your own Electrum server, feed it a watch-only xpub, and get a dashboard you fully host and control.
 
 ### Why you'll love it
 
@@ -36,15 +41,13 @@ Like many people, I run an Electrum node that I deliberately keep off the public
 
 [Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Docker](#docker) · [Demo](#demo-mode) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations) · [License](#license)
 
-
-
 <div align="center">
 
-## 🧪 DEMO SCREENSHOTS ONLY
+### 🧪 DEMO SCREENSHOTS ONLY
 
-### The wallet, balance, addresses and transactions below are **_entirely synthetic_.**
-### This wallet does **NOT** exist and holds **NO REAL FUNDS**.
-### Nothing shown here corresponds to any real Bitcoin wallet, address or transaction.
+**The wallet, balance, addresses and transactions below are _entirely synthetic_.**<br>
+**This wallet does NOT exist and holds NO REAL FUNDS.**<br>
+**Nothing shown here corresponds to any real Bitcoin wallet, address or transaction.**
 
 _Screenshots from [demo mode](#demo-mode)._
 
@@ -54,7 +57,7 @@ _Screenshots from [demo mode](#demo-mode)._
 
 <p align="center"><img src="docs/transaction.png" alt="Bitcoin Wallet Viewer transaction details popup showing mock data" width="820"></p>
 
-
+<p align="center"><img src="docs/balance-history.png" alt="Bitcoin Wallet Viewer balance-over-time chart showing mock data" width="820"></p>
 
 ## Features
 
