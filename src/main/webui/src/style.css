@@ -31,8 +31,7 @@
   }
 
   button {
-    min-width: 44px;
-    min-height: 44px;
+    @apply min-h-11 min-w-11;
   }
 
   :where(button, a, input, select, summary):focus-visible {
@@ -40,7 +39,7 @@
   }
 
   summary {
-    min-height: 44px;
+    @apply min-h-11;
   }
 }
 
@@ -72,6 +71,11 @@
 
   .detail-stat {
     @apply rounded-xl border border-slate-700/40 bg-slate-950/40 p-3;
+  }
+
+  .search-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   .technical-details > summary {
@@ -125,18 +129,10 @@
   }
 
   .graph-page-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 1.75rem;
-    height: 1.75rem;
-    padding: 0 .375rem;
-    border: 1px solid #57534e;
-    border-radius: .5rem;
-    color: #e7e5e4;
+    @apply inline-flex h-7 min-w-7 items-center justify-center rounded-lg border border-slate-600 px-1.5 text-slate-200;
   }
-  .graph-page-button:disabled { opacity: .4; cursor: not-allowed; }
-  .graph-page-button:not(:disabled):hover { background: #242220; border-color: #f7931a; }
+  .graph-page-button:disabled { @apply cursor-not-allowed opacity-40; }
+  .graph-page-button:not(:disabled):hover { @apply border-accent bg-slate-800; }
 }
 
 /* Event animations — skipped entirely when the user prefers reduced motion. */
