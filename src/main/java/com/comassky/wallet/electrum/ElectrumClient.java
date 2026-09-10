@@ -88,11 +88,7 @@ public class ElectrumClient {
         if (requestTimeout.isZero() || requestTimeout.isNegative()) {
             throw new IllegalArgumentException("electrum.request-timeout must be positive");
         }
-        LOG.info("\u26a1 Electrum ----------------------------------------------");
-        LOG.infof("\u26a1   server  \u2192  %s:%d", host, port);
-        LOG.infof("\u26a1   ssl     \u2192  %b", ssl);
-        LOG.infof("\u26a1   timeout \u2192  %s", requestTimeout);
-        LOG.info("\u26a1 -----------------------------------------------------");
+        LOG.infof("\u26a1 Electrum \u2192 %s:%d (ssl=%b, timeout=%ds)", host, port, ssl, requestTimeout.toSeconds());
         NetClientOptions opts = new NetClientOptions()
                 .setConnectTimeout(10_000)
             .setReconnectAttempts(0);

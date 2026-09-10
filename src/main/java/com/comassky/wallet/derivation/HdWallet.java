@@ -85,10 +85,8 @@ public class HdWallet {
         scriptType = resolveScriptType(prefix, override);
         basePath = "m/" + scriptType.purpose + "'/0'/0'";
         final String detection = "auto".equals(override) ? "auto-detected" : "configured";
-        LOG.info("\u20bf Wallet ------------------------------------------------");
-        LOG.infof("\u20bf   key     \u2192  %s", mask(p));
-        LOG.infof("\u20bf   script  \u2192  %s  (BIP%d, %s)  [%s]", scriptType, scriptType.purpose, basePath, detection);
-        LOG.info("\u20bf -----------------------------------------------------");
+        LOG.infof("\u20bf Wallet \u2192 %s (BIP%d, %s) [%s], key %s",
+                scriptType, scriptType.purpose, basePath, detection, mask(p));
         account = DeterministicKey.deserializeB58(null, xpub, params);
         initialized = true;
     }
