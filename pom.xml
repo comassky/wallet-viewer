@@ -16,7 +16,7 @@
 
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
-        <quarkus.platform.version>3.39.2</quarkus.platform.version>
+        <quarkus.platform.version>3.39.3</quarkus.platform.version>
 
         <quinoa.version>2.9.0</quinoa.version>
         <bitcoinj.version>0.17.1</bitcoinj.version>
