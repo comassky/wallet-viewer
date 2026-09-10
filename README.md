@@ -153,6 +153,14 @@ Supply wallet settings **at runtime**, never as build arguments or in source. De
 
 Inside Docker, `localhost` means the container: use a reachable server hostname. Compose forwards only declared variables and does not mount local Java configuration.
 
+## API
+
+The REST API is documented with OpenAPI 3.1.
+
+- **Hosted docs (ReDoc):** https://comassky.github.io/wallet-viewer/ (published on each release).
+- **Swagger UI (running app):** `/q/swagger-ui`
+- **OpenAPI spec (running app):** `/q/openapi` (add `?format=json` for JSON).
+
 ## Logs
 
 Control verbosity with **`LOG_LEVEL`** (classic Quarkus, default `INFO`); it maps to the `com.comassky.wallet` category.
