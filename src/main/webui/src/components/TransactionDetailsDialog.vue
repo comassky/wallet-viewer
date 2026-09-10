@@ -150,9 +150,9 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
                   </nav>
                 </div>
               </div>
-              <ol :id="`${idPrefix}-inputs-list`" :start="inputPage.start + 1" class="space-y-2.5">
-                <li v-for="{ item: input, index } in inputPage.entries" :key="`${details.txid}-input-${index}`" :value="index + 1" class="rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 transition hover:border-slate-600/60">
-                  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
+              <ol :id="`${idPrefix}-inputs-list`" :start="inputPage.start + 1" class="space-y-1.5">
+                <li v-for="{ item: input, index } in inputPage.entries" :key="`${details.txid}-input-${index}`" :value="index + 1" class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-2.5 py-1.5 transition hover:border-slate-600/60">
+                  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5">
                     <span class="rounded-md bg-slate-800/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">#{{ index }}</span>
                     <CopyValue v-if="input.address" :value="input.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-200" />
                     <span v-else class="min-w-0 text-xs text-slate-300">{{ input.coinbase ? 'Coinbase · newly created bitcoin' : 'Non-address script' }}</span>
@@ -161,9 +161,9 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
                       <span v-else class="text-slate-500">{{ input.coinbase ? 'N/A' : 'Unknown' }}</span>
                     </b>
                   </div>
-                  <details v-if="input.txid" class="mt-2 border-t border-slate-800/60 pt-2 text-[11px] text-slate-500">
+                  <details v-if="input.txid" class="mt-1.5 border-t border-slate-800/60 pt-1.5 text-[11px] text-slate-500">
                     <summary class="cursor-pointer select-none uppercase tracking-wide text-slate-600 transition hover:text-slate-300">Previous output</summary>
-                    <p class="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 break-all font-mono text-slate-400"><CopyValue :value="input.txid" label="transaction ID" /><span class="text-slate-500">:{{ input.vout }}</span></p>
+                    <p class="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 break-all font-mono text-slate-400"><CopyValue :value="input.txid" label="transaction ID" /><span class="text-slate-500">:{{ input.vout }}</span></p>
                   </details>
                 </li>
               </ol>
@@ -181,17 +181,17 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
                   </nav>
                 </div>
               </div>
-              <ol :id="`${idPrefix}-outputs-list`" :start="outputPage.start + 1" class="space-y-2.5">
-                <li v-for="{ item: output, index } in outputPage.entries" :key="`${details.txid}-output-${output.index}`" :value="index + 1" class="rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 transition hover:border-slate-600/60">
-                  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3">
+              <ol :id="`${idPrefix}-outputs-list`" :start="outputPage.start + 1" class="space-y-1.5">
+                <li v-for="{ item: output, index } in outputPage.entries" :key="`${details.txid}-output-${output.index}`" :value="index + 1" class="rounded-lg border border-slate-700/40 bg-slate-950/40 px-2.5 py-1.5 transition hover:border-slate-600/60">
+                  <div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5">
                     <span class="rounded-md bg-slate-800/70 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-400">#{{ output.index }}</span>
                     <CopyValue v-if="output.address" :value="output.address" label="address" class="min-w-0 break-all font-mono text-xs text-slate-200" />
                     <span v-else class="min-w-0 text-xs text-slate-300">Non-address script</span>
                     <b class="justify-self-end whitespace-nowrap text-right text-sm font-semibold tabular-nums">{{ amount(output.value) }} {{ currencyLabel(currency) }}</b>
                   </div>
-                  <details class="mt-2 border-t border-slate-800/60 pt-2 text-[11px] text-slate-500">
+                  <details class="mt-1.5 border-t border-slate-800/60 pt-1.5 text-[11px] text-slate-500">
                     <summary class="cursor-pointer select-none uppercase tracking-wide text-slate-600 transition hover:text-slate-300">Output script</summary>
-                    <p class="mt-1.5 select-text break-all font-mono text-slate-400">{{ output.scriptHex || '(empty script)' }}</p>
+                    <p class="mt-1 select-text break-all font-mono text-slate-400">{{ output.scriptHex || '(empty script)' }}</p>
                   </details>
                 </li>
               </ol>
