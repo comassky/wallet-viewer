@@ -103,33 +103,16 @@ Versions reflect declarations and the npm lockfile. For local development, use J
 
 ## Docker
 
-Requires Docker with Compose v2; no local Java, Maven or Node installation needed.
+Requires Docker with Compose v2 — no local Java, Maven or Node needed.
 
-1. Copy [.env.example](.env.example) to a local environment file named **.env** and set `WALLET_XPUB` to your account-level extended public key. Keep it out of Git.
-2. Match the script type and network to the account and Electrum server. **BIP86/Taproot requires `WALLET_SCRIPT_TYPE=p2tr`**: a plain xpub cannot identify Taproot automatically.
-3. From the repository root, build/start, then open <http://localhost:8080>:
+1. Copy [.env.example](.env.example) to **.env** and set `WALLET_XPUB` to your account-level extended public key (keep it out of Git).
+2. Build, start, then open <http://localhost:8080>:
 
 ```sh
 docker compose up -d --build
 ```
 
-Follow logs or stop the service:
-
-```sh
-docker compose logs -f wallet-viewer
-docker compose down
-```
-
-[compose.yaml](compose.yaml) binds to `127.0.0.1:8080`, enables Electrum TLS and runs non-root with a read-only filesystem and dropped capabilities. Change `WALLET_VIEWER_PORT` to use another host port.
-
-**🐳 Use GHCR instead of building:** set `WALLET_VIEWER_IMAGE=ghcr.io/<owner>/<repository>:latest` in your local environment file, using the lowercase repository path, then:
-
-```sh
-docker compose pull
-docker compose up -d --no-build
-```
-
-Prefer a release tag or digest; private GHCR images require authentication. The [Docker workflow](.github/workflows/docker.yml) runs Java/frontend tests, TypeScript checks and a **linux/amd64** build on PRs, and publishes the `dev` image on `main`. Cut a release from **Actions → [Release](.github/workflows/release.yml)** (manual): in a single run it sets the version, tags **`X.Y.Z`**, bumps `main` to the next `-SNAPSHOT`, then calls the reusable [Publish image workflow](.github/workflows/publish-image.yml) to build the image (running the full test suite), push **`X.Y.Z`** and **`latest`** to GHCR and create the GitHub Release. Image tags: **`dev`** (latest `main`), **`latest`** (latest release), **`X.Y.Z`** (specific release).
+See **[Docker & deployment](docs/DOCKER.md)** for GHCR images, script-type/network options, security hardening, custom ports and releases.
 
 ## Demo mode
 
@@ -140,12 +123,6 @@ docker compose up -d --build   # with WALLET_DEMO=true in .env
 ```
 
 In demo mode the app never connects to Electrum. It serves a self-consistent synthetic wallet (balance, UTXOs, transactions and a derived receive address) from a bundled public test key, and the mock **emits a random transaction every 15 seconds** so the live view keeps updating. `WALLET_XPUB` and the Electrum settings are ignored — no real funds or identity are involved.
-
-## Dependency updates
-
-[Renovate](renovate.json) opens separate **Java**, **Frontend** and **Docker** PRs, with major upgrades separated and **no automerge**. Node settings stay synchronized; Docker digests track image rebuilds. TypeScript is held on the **5.x** line (the native 7.x compiler is not yet supported by the Vue/Vite toolchain), and JDK/image-family migrations remain manual.
-
-Authorize the [Renovate app](https://github.com/apps/renovate) for the repository and publish the configuration on the default branch. In the [Mend portal](https://developer.mend.io/github/comassky/wallet-viewer), disable **Silent mode** to enable automatic PR creation. npm uses the public registry; no corporate credentials are needed.
 
 ## Configuration
 
@@ -177,10 +154,7 @@ The REST API is documented with OpenAPI 3.1.
 
 ## Logs
 
-Control verbosity with **`LOG_LEVEL`** (classic Quarkus, default `INFO`); it maps to the `com.comassky.wallet` category.
-
-- **INFO (default):** startup details such as the detected wallet script type, plus warnings and errors. No keys, balances or raw payloads.
-- **DEBUG (`LOG_LEVEL=DEBUG`):** Electrum connection changes, address notifications, wallet scan lifecycle and per-RPC method/duration/outcome.
+Control verbosity with **`LOG_LEVEL`** (default `INFO`; set `DEBUG` for Electrum connection, notification and scan-lifecycle logs). See **[Logging](docs/LOGS.md)** for levels and privacy details.
 
 **⚠️ Logs contain wallet addresses:** keep them private and redact them before sharing.
 
@@ -189,7 +163,7 @@ Control verbosity with **`LOG_LEVEL`** (classic Quarkus, default `INFO`); it map
 - 🔓 **No authentication:** keep access local or use an authenticated HTTPS proxy with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90 seconds. Origin checks are not access control.
 - 🕵️ **Privacy:** public keys expose account history; Electrum can correlate scripts. Use a trusted server and never provide spending secrets.
 - 🎯 **Bounded discovery:** funds beyond the gap/address limits may be missed. An extra receive address beyond the cap is watched without history; raise `WALLET_MAX_ADDRESSES` before relying on its balance.
-- 📊 **Estimates:** missing parent transactions prevent fee calculation; graph edges do not allocate inputs to outputs. Fiat uses current quotes, not historical prices.
+- 📊 **Estimates:** missing parent transactions prevent fee calculation; graph edges do not allocate inputs to outputs. Fiat on balances and transactions uses current quotes; only the balance-history chart values each day at its historical price.
 
 ## License
 
