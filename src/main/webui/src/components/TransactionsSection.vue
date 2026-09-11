@@ -110,6 +110,7 @@ function clearSearch(): void {
     </ul>
     <div v-if="filtered.length" class="wallet-panel hidden lg:block">
       <table class="w-full table-fixed text-sm">
+        <colgroup><col class="w-[16%]" /><col class="w-[34%]" /><col class="w-[16%]" /><col class="w-[20%]" /><col class="w-[14%]" /></colgroup>
         <thead>
           <tr class="text-xs uppercase text-slate-400">
             <th v-for="column in columns" :key="column.key" scope="col" :aria-sort="ariaSort(column.key)" class="px-3 py-1 font-medium" :class="column.key === 'confirmations' ? 'text-center' : column.numeric ? 'text-right' : 'text-left'">
@@ -118,14 +119,13 @@ function clearSearch(): void {
                 <span aria-hidden="true" class="ml-1" :class="sortKey === column.key ? 'text-accent' : 'text-slate-600'">{{ sortKey === column.key ? (descending ? '↓' : '↑') : '↕' }}</span>
               </button>
             </th>
-            <th scope="col" class="w-24 px-3 py-1 text-right font-medium"><span class="sr-only">Details</span></th>
           </tr>
         </thead>
         <tbody v-auto-animate>
           <tr v-for="tx in visible" :key="tx.txid" class="cursor-pointer border-t border-slate-800 transition hover:bg-slate-800/50 focus-within:bg-slate-800/50" @click="openDetails(tx.txid, $event)">
-            <td class="px-3 py-2.5"><TransactionBadge :type="tx.type" /></td>
+            <td class="px-3 py-2.5"><button type="button" data-tx-details aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="inline-flex max-w-full items-center rounded-md text-left" @click.stop="openDetails(tx.txid, $event)"><TransactionBadge :type="tx.type" /></button></td>
             <td class="px-3 py-2.5">
-              <CopyValue :value="tx.txid" :display="shortId(tx.txid)" label="transaction ID" />
+              <CopyValue :value="tx.txid" :display="`${tx.txid.slice(0, 16)}…${tx.txid.slice(-10)}`" label="transaction ID" />
             </td>
             <td class="px-3 py-2.5 text-slate-300">{{ formatDate(tx.timestamp) }}</td>
             <td class="sensitive px-3 py-2.5 text-right tabular-nums">
@@ -133,7 +133,6 @@ function clearSearch(): void {
               <span class="mt-1 block text-xs text-slate-400">{{ rates ? '≈ ' : '' }}{{ conceal(formatAmount(tx.amount, fiatCurrency, rates, true)) }} {{ fiatCurrency }}</span>
             </td>
             <td class="px-3 py-2.5 text-center"><ConfirmationStatus :confirmations="tx.confirmations" compact icon-only /></td>
-            <td class="px-3 py-2.5 text-right"><button type="button" data-tx-details aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="inline-flex items-center justify-center rounded-lg px-2 py-1 text-accent hover:bg-accent/10" @click.stop="openDetails(tx.txid, $event)"><UiIcon name="chevron-right" /></button></td>
           </tr>
         </tbody>
       </table>

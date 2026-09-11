@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { nextTick, shallowRef, useTemplateRef } from 'vue';
-import { walletApi } from '@/services/walletApi';
-import type { ReceiveAddress } from '@/types/wallet';
-import { useModalDialog } from '@/composables/useModalDialog';
-import UiIcon from '@/components/UiIcon.vue';
-import CopyValue from '@/components/CopyValue.vue';
+import { walletApi } from '../services/walletApi';
+import type { ReceiveAddress } from '../types/wallet';
+import { useModalDialog } from '../composables/useModalDialog';
+import UiIcon from './UiIcon.vue';
+import CopyValue from './CopyValue.vue';
+import BitcoinAddress from './BitcoinAddress.vue';
 
 const dialog = useTemplateRef<HTMLDialogElement>('dialog');
 const receive = shallowRef<(ReceiveAddress & { url: string }) | null>(null);
@@ -55,7 +56,7 @@ defineExpose({ open });
     <template v-if="receive">
       <img :src="receive.url" alt="Receive address QR code" class="mx-auto aspect-square w-full max-w-96 rounded-xl bg-white p-3" />
       <div class="mt-4 min-w-0 border-t border-slate-700/50 pt-3">
-        <CopyValue :value="receive.address" label="receive address" class="w-full text-sm" />
+        <CopyValue :value="receive.address" label="receive address" class="w-full text-sm"><BitcoinAddress :address="receive.address" /></CopyValue>
         <p class="mt-2 break-all font-mono text-xs text-slate-400">{{ receive.path }}</p>
       </div>
     </template>

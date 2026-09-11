@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue';
-import { walletApi } from '@/services/walletApi';
-import type { ReceiveAddress } from '@/types/wallet';
-import { useClipboard } from '@/composables/useClipboard';
-import AddressCheckForm from '@/components/AddressCheckForm.vue';
-import UiIcon from '@/components/UiIcon.vue';
+import { walletApi } from '../services/walletApi';
+import type { ReceiveAddress } from '../types/wallet';
+import { useClipboard } from '../composables/useClipboard';
+import AddressCheckForm from './AddressCheckForm.vue';
+import UiIcon from './UiIcon.vue';
+import BitcoinAddress from './BitcoinAddress.vue';
 
 const props = defineProps<{ receive: ReceiveAddress }>();
 const emit = defineEmits<{ enlarge: [address: ReceiveAddress, trigger: HTMLButtonElement] }>();
@@ -89,7 +90,7 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
             @click="copy(receive.address, 'address')"
             class="group my-2 flex w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-800 p-2.5 text-left transition hover:border-accent/60 hover:bg-slate-800/80"
           >
-            <span class="min-w-0 flex-1 select-text break-all font-mono text-sm text-slate-200">{{ receive.address }}</span>
+            <BitcoinAddress :address="receive.address" class="min-w-0 flex-1 select-text text-sm" />
             <span class="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold" :class="copied ? 'text-emerald-400' : 'text-accent'"><UiIcon :name="copied ? 'check' : 'copy'" />{{ copied ? 'Copied' : 'Copy' }}</span>
           </button>
           <p v-if="error" role="status" class="text-xs text-rose-400">{{ error }}</p>
