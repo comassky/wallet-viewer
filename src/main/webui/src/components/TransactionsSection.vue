@@ -110,7 +110,7 @@ function clearSearch(): void {
     </ul>
     <div v-if="filtered.length" class="wallet-panel hidden lg:block">
       <table class="w-full table-fixed text-sm">
-        <colgroup><col class="w-[16%]" /><col class="w-[34%]" /><col class="w-[16%]" /><col class="w-[20%]" /><col class="w-[14%]" /></colgroup>
+        <colgroup><col class="w-[16%]" /><col class="w-[38%]" /><col class="w-[12%]" /><col class="w-[20%]" /><col class="w-[14%]" /></colgroup>
         <thead>
           <tr class="text-xs uppercase text-slate-400">
             <th v-for="column in columns" :key="column.key" scope="col" :aria-sort="ariaSort(column.key)" class="px-3 py-1 font-medium" :class="column.key === 'confirmations' ? 'text-center' : column.numeric ? 'text-right' : 'text-left'">
@@ -125,7 +125,7 @@ function clearSearch(): void {
           <tr v-for="tx in visible" :key="tx.txid" class="cursor-pointer border-t border-slate-800 transition hover:bg-slate-800/50 focus-within:bg-slate-800/50" @click="openDetails(tx.txid, $event)">
             <td class="px-3 py-2.5"><button type="button" data-tx-details aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="inline-flex max-w-full items-center rounded-md text-left" @click.stop="openDetails(tx.txid, $event)"><TransactionBadge :type="tx.type" /></button></td>
             <td class="px-3 py-2.5">
-              <CopyValue :value="tx.txid" :display="`${tx.txid.slice(0, 16)}…${tx.txid.slice(-10)}`" label="transaction ID" />
+              <CopyValue :value="tx.txid" label="transaction ID"><span class="xl:hidden">{{ tx.txid.slice(0, 16) }}…{{ tx.txid.slice(-10) }}</span><span class="hidden xl:inline">{{ tx.txid.slice(0, 24) }}…{{ tx.txid.slice(-16) }}</span></CopyValue>
             </td>
             <td class="px-3 py-2.5 text-slate-300">{{ formatDate(tx.timestamp) }}</td>
             <td class="sensitive px-3 py-2.5 text-right tabular-nums">

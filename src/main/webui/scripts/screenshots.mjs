@@ -122,11 +122,30 @@ try {
   await capture('balance-history');
   const canvasIndex = await page.locator('canvas').evaluateAll(canvases => canvases.reduce((largest, canvas, index) =>
     canvas.width * canvas.height > canvases[largest].width * canvases[largest].height ? index : largest, 0));
-  const chartBounds = await page.locator('canvas').nth(canvasIndex).boundingBox();
+  const chartCanvas = page.locator('canvas').nth(canvasIndex);
+  const chartBounds = await chartCanvas.boundingBox();
   assert.ok(chartBounds);
+  const curvePoints = await chartCanvas.evaluate(canvas => {
+    const context = canvas.getContext('2d');
+    if (!context) return [];
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    const points = [];
+    for (let horizontal = 20; horizontal < canvas.width - 20; horizontal += 8) {
+      for (let vertical = 5; vertical < canvas.height - 5; vertical++) {
+        const offset = (vertical * canvas.width + horizontal) * 4;
+        if (pixels[offset] > 220 && pixels[offset + 1] > 110 && pixels[offset + 1] < 185 && pixels[offset + 2] < 80 && pixels[offset + 3] > 200) {
+          points.push({ horizontal: horizontal / canvas.width, vertical: vertical / canvas.height });
+          break;
+        }
+      }
+    }
+    return points;
+  });
+  assert.ok(curvePoints.length, 'The balance curve must provide hover targets');
   const tooltip = page.getByRole('tooltip').filter({ hasText: /transaction/ });
-  for (let offset = 70; offset < chartBounds.width - 50; offset += 10) {
-    await page.mouse.move(chartBounds.x + offset, chartBounds.y + 120);
+  for (const point of curvePoints) {
+    await page.mouse.move(chartBounds.x + point.horizontal * chartBounds.width, chartBounds.y + point.vertical * chartBounds.height);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     if (await tooltip.isVisible()) break;
   }
   await tooltip.waitFor();
