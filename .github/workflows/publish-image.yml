@@ -1,10 +1,6 @@
-name: Publish image
+name: Release - Publish Tag
 
 on:
-  push:
-    tags: ['*.*.*']
-  # Manual fallback: rebuild/publish an existing tag when a GITHUB_TOKEN push
-  # (e.g. from the Release workflow) did not trigger this one.
   workflow_dispatch:
     inputs:
       tag:
@@ -23,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: publish-image-${{ inputs.tag || github.ref }}
+  group: publish-image-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
@@ -38,7 +34,7 @@ jobs:
         id: version
         shell: bash
         env:
-          RAW: ${{ inputs.tag || github.ref_name }}
+          RAW: ${{ inputs.tag }}
         run: |
           if [[ ! "$RAW" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
             echo "::error::Expected a semver tag X.Y.Z, got '$RAW'"; exit 1
@@ -104,7 +100,18 @@ jobs:
       # Runs the full test suite, builds the Vue frontend (Quinoa) and compiles the GraalVM
       # native runner. Mandrel runs in a container, so no local GraalVM is required.
       - name: Build native runner (tests, frontend, native compile)
-        run: mvn -B --no-transfer-progress package -Dnative -Dquarkus.native.container-build=true -Dquarkus.quinoa.ci=true
+        run: mvn -B --no-transfer-progress verify -Dnative -Dquarkus.native.container-build=true -Dquarkus.quinoa.ci=true
+
+      - name: Upload released OpenAPI schema
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-openapi
+          path: |
+            target/generated/openapi/openapi.yaml
+            target/generated/openapi/openapi.json
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
 
       - name: Build and publish the native image
         uses: docker/build-push-action@v7
