@@ -13,7 +13,7 @@ export function useIncomingNotifications(data: Ref<WalletSnapshot | null>): void
     for (const tx of txs) {
       if (known.has(tx.txid)) continue;
       known.add(tx.txid);
-      const label = tx.type === 'received' ? 'Incoming payment' : tx.type === 'sent' ? 'Outgoing payment' : 'New transaction';
+      const label = tx.type === 'received' ? 'Incoming transaction' : tx.type === 'sent' ? 'Outgoing transaction' : 'New transaction';
       showToast(label, 4000);
     }
   });

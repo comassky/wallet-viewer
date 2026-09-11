@@ -41,7 +41,10 @@ test('notifications never disclose amounts and initial history is silent', async
   assert.equal(toasts.value.length, 0);
   data.value = { transactions: [...data.value.transactions, { txid: 'new', type: 'received', amount: 987654 }] };
   await nextTick();
-  assert.deepEqual(toasts.value.map(toast => toast.message), ['Incoming payment']);
+  assert.deepEqual(toasts.value.map(toast => toast.message), ['Incoming transaction']);
+  data.value = { transactions: [...data.value.transactions, { txid: 'sent', type: 'sent', amount: -123456 }] };
+  await nextTick();
+  assert.deepEqual(toasts.value.map(toast => toast.message), ['Incoming transaction', 'Outgoing transaction']);
   t.mock.timers.tick(4000);
   assert.equal(toasts.value.length, 0);
 });
