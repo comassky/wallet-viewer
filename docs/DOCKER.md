@@ -1,5 +1,4 @@
 # Docker & deployment
-
 Running a published image or building the JVM image with Compose requires Docker with Compose v2; no local Java, Maven or Node installation is needed. Building a native runner locally also requires JDK 25 and Maven.
 
 ## Quick start

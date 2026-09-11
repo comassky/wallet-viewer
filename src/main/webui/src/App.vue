@@ -86,7 +86,7 @@ function enlargeReceive(address: ReceiveAddress, trigger: HTMLButtonElement): vo
           <TransactionsSection :transactions="data.transactions" :currency="currency" :fiat-currency="fiatCurrency" :rates="rates" :amount="amount" />
         </div>
         <div id="wallet-panel-utxos" v-show="activeTab === 'utxos'" role="tabpanel" aria-labelledby="wallet-tab-utxos" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
-          <UtxosSection :utxos="data.utxos" :currency="currency" :amount="amount" />
+          <UtxosSection :utxos="data.utxos" :transactions="data.transactions" :currency="currency" :amount="amount" />
         </div>
         <div v-if="showCharts" id="wallet-panel-chart" v-show="activeTab === 'chart'" role="tabpanel" aria-labelledby="wallet-tab-chart" tabindex="0" class="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent">
           <BalanceChart v-if="activeTab === 'chart'" :currency="currency" :fiat-currency="fiatCurrency" :amount="amount" :transactions="data.transactions" />
