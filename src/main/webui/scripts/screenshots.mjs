@@ -136,6 +136,8 @@ try {
   await page.getByRole('tab', { name: /^UTXO/ }).click();
   const utxoTable = page.getByRole('tabpanel').filter({ has: page.getByRole('heading', { name: 'Unspent outputs', exact: true }) }).getByRole('table');
   await utxoTable.waitFor();
+  await utxoTable.scrollIntoViewIfNeeded();
+  await page.mouse.move(0, 0);
   await capture('utxos', utxoTable);
   await page.getByRole('button', { name: 'Enlarge receive address QR code' }).click();
   await page.getByRole('heading', { name: 'Receive address QR code' }).waitFor();
