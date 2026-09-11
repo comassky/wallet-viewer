@@ -8,7 +8,8 @@
     "build": "npm test && vue-tsc --noEmit && vite build",
     "test": "node --experimental-strip-types --test test/*.test.mjs",
     "typecheck": "vue-tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
     "@formkit/auto-animate": "^0.10.0",
@@ -20,6 +21,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "24.13.4",
     "@vitejs/plugin-vue": "^6.0.8",
+    "playwright": "1.63.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vite": "^8.3.0",

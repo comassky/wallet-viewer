@@ -52,15 +52,48 @@ Like many people, I run an Electrum node that I deliberately keep **off the publ
 **This wallet does NOT exist and holds NO REAL FUNDS.**<br>
 **Nothing shown here corresponds to any real Bitcoin wallet, address or transaction.**
 
-_Screenshots from [demo mode](#demo-mode)._
+_Screenshots from [demo mode](#demo-mode). Network fee estimates, EUR/USD quotes and historical fiat values are mocked for these captures; they are not live market data._
 
 </div>
 
-<p align="center"><img src="docs/dashboard.png" alt="Bitcoin Wallet Viewer dashboard showing mock data" width="820"></p>
+<p align="center"><img src="docs/dashboard.png" alt="Demo dashboard with Bitcoin balance, EUR valuation, network fee estimate and transaction activity" width="820"></p>
 
-<p align="center"><img src="docs/transaction.png" alt="Bitcoin Wallet Viewer transaction details popup showing mock data" width="820"></p>
+<p align="center"><img src="docs/balance-history.png" alt="Demo balance history with Bitcoin balance, portfolio value and mocked historical BTC price in EUR" width="820"></p>
 
-<p align="center"><img src="docs/balance-history.png" alt="Bitcoin Wallet Viewer balance-over-time chart showing mock data" width="820"></p>
+<details>
+<summary>More Desktop Screenshots</summary>
+
+Captured in headless Chrome with a 1920 × 1080 desktop viewport. The UTXO table and network fee panel are cropped to focus on their content.
+
+### Transaction Details
+
+<p align="center"><img src="docs/transaction.png" alt="Synthetic outgoing transaction with its input/output graph and transaction fee" width="820"></p>
+
+### Internal Consolidation
+
+<p align="center"><img src="docs/consolidation.png" alt="Self-transfer combining multiple wallet inputs into one output" width="820"></p>
+
+### Inputs And Outputs
+
+<p align="center"><img src="docs/inputs-outputs.png" alt="Detailed input and output addresses and amounts for a synthetic consolidation" width="820"></p>
+
+### Chart Transaction Summary
+
+<p align="center"><img src="docs/chart-transaction.png" alt="Historical balance chart with a transaction summary tooltip open" width="820"></p>
+
+### Unspent Outputs
+
+<p align="center"><img src="docs/utxos.png" alt="Desktop UTXO table showing addresses, outpoints, Bitcoin values and confirmations" width="820"></p>
+
+### Receive Address
+
+<p align="center"><img src="docs/receive.png" alt="Enlarged QR code for the synthetic wallet receive address" width="820"></p>
+
+### Network Fee Estimates
+
+<p align="center"><img src="docs/network-fees.png" alt="Mocked network fee estimates for fast, medium, slow and economy confirmation targets" width="320"></p>
+
+</details>
 
 ## Features
 
