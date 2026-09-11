@@ -18,11 +18,10 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     permissions:
       contents: write # commit the version bumps and push the release tag
-    outputs:
-      tag: ${{ steps.version.outputs.tag }}
+      packages: write
     steps:
       - name: Compute versions
         id: version
@@ -64,18 +63,61 @@ jobs:
           java-version: 25
           cache: maven
 
+      - name: Cache Quinoa Node install
+        uses: actions/cache@v6
+        with:
+          path: .quinoa
+          key: quinoa-${{ hashFiles('src/main/resources/application.properties') }}
+          restore-keys: quinoa-
+
+      - name: Cache npm downloads
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('src/main/webui/package-lock.json') }}
+          restore-keys: npm-
+
       - name: Configure git identity
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Set release version and tag
+      - name: Prepare release version locally
+        env:
+          RELEASE: ${{ steps.version.outputs.release }}
+        run: mvn -B -q versions:set -DnewVersion="$RELEASE" -DgenerateBackupPoms=false
+
+      - name: Build and verify native runner
+        run: mvn -B --no-transfer-progress verify -Dnative -Dquarkus.native.container-build=true -Dquarkus.quinoa.ci=true
+
+      - name: Build release Docker image locally
+        id: image
+        env:
+          REPOSITORY: ${{ github.repository }}
+          RELEASE: ${{ steps.version.outputs.release }}
+        run: |
+          name="ghcr.io/${REPOSITORY,,}"
+          docker build --platform linux/amd64 -f Dockerfile.native -t "$name:$RELEASE" -t "$name:latest" .
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Upload released OpenAPI schema
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-openapi
+          path: |
+            target/generated/openapi/openapi.yaml
+            target/generated/openapi/openapi.json
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+      - name: Commit verified release and create tag
         env:
           RELEASE: ${{ steps.version.outputs.release }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
-          mvn -B -q versions:set -DnewVersion="$RELEASE" -DgenerateBackupPoms=false
-          git commit -am "Release $RELEASE"
+          git add pom.xml
+          git commit -m "Release $RELEASE"
           git tag -a "$TAG" -m "Release $RELEASE"
 
       - name: Set next development version
@@ -83,29 +125,41 @@ jobs:
           NEXT: ${{ steps.version.outputs.next }}
         run: |
           mvn -B -q versions:set -DnewVersion="$NEXT" -DgenerateBackupPoms=false
-          git commit -am "Prepare next development iteration $NEXT"
+          git add pom.xml
+          git commit -m "Prepare next development iteration $NEXT"
 
       - name: Push branch and tag
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
-          git push origin HEAD:main
-          git push origin "refs/tags/$TAG"
+          git push --atomic origin HEAD:main "refs/tags/$TAG"
 
-  # Builds/publishes the image and creates the GitHub Release in the same run.
-  publish:
-    needs: release
-    permissions:
-      contents: write # create the GitHub Release
-      packages: write # push the image to GHCR
-    uses: ./.github/workflows/publish-image.yml
-    with:
-      tag: ${{ needs.release.outputs.tag }}
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish verified Docker image
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          RELEASE: ${{ steps.version.outputs.release }}
+        run: |
+          docker push "$IMAGE:$RELEASE"
+          docker push "$IMAGE:latest"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          prerelease: false
 
   # Publishes the released OpenAPI doc (Redoc) to GitHub Pages, after the image/release are out.
   # One-time setup: repository Settings > Pages > Build and deployment > Source: "GitHub Actions".
   openapi:
-    needs: [release, publish]
+    needs: release
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -117,7 +171,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download released OpenAPI schema
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: release-openapi
           path: site

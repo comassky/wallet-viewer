@@ -36,11 +36,11 @@ Prefer a release tag or digest; private GHCR images require authentication.
 
 The [Docker - Build and Publish Dev](../.github/workflows/docker.yml) workflow runs Java/frontend tests, TypeScript checks and a linux/amd64 build on PRs, and publishes the `dev` image on `main`.
 
-Cut a release from **Actions → [Release - Create and Publish](../.github/workflows/release.yml)** (manual): in a single run it sets the version, tags `X.Y.Z`, bumps `main` to the next `-SNAPSHOT`, then calls the reusable [Release - Publish Tag](../.github/workflows/publish-image.yml) workflow to build the image (running the full test suite), push `X.Y.Z` and `latest` to GHCR and create the GitHub Release.
+Cut a release from **Actions → [Release - Create and Publish](../.github/workflows/release.yml)** (manual): it prepares the version locally, runs native verification and builds the Docker image before creating any version commit or Git tag. Only after those steps succeed does it commit and tag `X.Y.Z`, bump `main` to the next `-SNAPSHOT`, and push the branch and tag atomically. It then pushes the already-built image as `X.Y.Z` and `latest` to GHCR and creates the GitHub Release, without a second native build.
 
 Publication runs `mvn verify -Dnative` so packaged native integration tests must pass before the image is pushed. The generated OpenAPI schema is uploaded as an artifact and reused by the Pages job, without another Maven or frontend build.
 
-Pushing a tag alone does not publish an image. To publish or retry an existing tag, run **Actions → Release - Publish Tag** manually with that tag. This avoids duplicate native builds when Release pushes its tag using `RELEASE_TOKEN`; Release calls publication directly regardless of which token is used.
+Pushing a tag alone does not publish an image. To publish or retry an existing tag, run **Actions → [Release - Publish Tag](../.github/workflows/publish-image.yml)** manually with that tag. A build failure leaves no release tag or version commits on the remote. A later registry or GitHub Release publication failure can leave the verified tag in place; use the existing-tag workflow to retry publication.
 
 Image tags:
 

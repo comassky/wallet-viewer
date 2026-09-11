@@ -7,7 +7,7 @@ on:
         description: 'Existing tag to build and release, e.g. 1.0.2'
         required: true
         type: string
-  # Called by the Release workflow so the image builds in the same run (no PAT needed).
+  # Can also be called by automation to publish an existing tag.
   workflow_call:
     inputs:
       tag:
@@ -103,7 +103,7 @@ jobs:
         run: mvn -B --no-transfer-progress verify -Dnative -Dquarkus.native.container-build=true -Dquarkus.quinoa.ci=true
 
       - name: Upload released OpenAPI schema
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: release-openapi
           path: |
