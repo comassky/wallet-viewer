@@ -3,191 +3,95 @@
 # ₿ Bitcoin Wallet Viewer
 
 <p align="center">
-  <img alt="Bitcoin: read-only" src="https://img.shields.io/badge/Bitcoin-read--only-F7931A?style=flat-square&logo=bitcoin&logoColor=white">
-  <img alt="Java 25" src="https://img.shields.io/badge/Java-25-ED8B00?style=flat-square&logo=openjdk&logoColor=white">
-  <img alt="Quarkus 3.39" src="https://img.shields.io/badge/Quarkus-3.39-4695EB?style=flat-square&logo=quarkus&logoColor=white">
-  <img alt="GraalVM native" src="https://img.shields.io/badge/GraalVM-native-3776AB?style=flat-square&logo=graalvm&logoColor=white">
-  <img alt="Startup ~20ms" src="https://img.shields.io/badge/startup-~20ms-44CC11?style=flat-square&logo=rocket&logoColor=white">
-  <img alt="Memory ~55MB" src="https://img.shields.io/badge/RSS-~55MB-44CC11?style=flat-square&logo=speedtest&logoColor=white">
-  <img alt="bitcoinj 0.17" src="https://img.shields.io/badge/bitcoinj-0.17-F7931A?style=flat-square&logo=bitcoin&logoColor=white">
-  <img alt="Vue 3.5" src="https://img.shields.io/badge/Vue-3.5-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white">
-  <img alt="Vite 8" src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white">
-  <img alt="TypeScript 5.9" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white">
-  <img alt="Tailwind CSS 4" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white">
-  <img alt="Docker: self-hosted" src="https://img.shields.io/badge/Docker-self--hosted-2496ED?style=flat-square&logo=docker&logoColor=white">
-  <img alt="License: GPL-3.0" src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square&logo=gnu&logoColor=white">
+	<img alt="Bitcoin: read-only" src="https://img.shields.io/badge/Bitcoin-read--only-F7931A?style=flat-square&logo=bitcoin&logoColor=white">
+	<img alt="GraalVM native" src="https://img.shields.io/badge/GraalVM-native-3776AB?style=flat-square&logo=graalvm&logoColor=white">
+	<img alt="Vue 3.5" src="https://img.shields.io/badge/Vue-3.5-4FC08D?style=flat-square&logo=vuedotjs&logoColor=white">
+	<img alt="Docker: self-hosted" src="https://img.shields.io/badge/Docker-self--hosted-2496ED?style=flat-square&logo=docker&logoColor=white">
+	<img alt="License: GPL-3.0" src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square&logo=gnu&logoColor=white">
 </p>
 
 **A self-hosted, read-only Bitcoin dashboard powered by Electrum.** One extended public key, one application. No database, signing or spending.
 
 > [!WARNING]
-> **No built-in authentication.** This application ships no login or access control of its own. Never expose it directly to the internet — always place it behind a secure, authenticated reverse proxy (HTTPS, with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90s). The built-in origin checks are hardening, not access control.
->
-> 🔒 Supply only an extended **public** key at runtime. Never provide a seed phrase or private key, or expose the API directly to the Internet.
+> **No built-in authentication.** Keep the app local or behind an authenticated HTTPS reverse proxy. Never expose the app or API directly to the internet, and never supply a seed phrase or private key. See [Security and limitations](#security-and-limitations).
 
 ### Why I built this
 
-Like many people, I run an Electrum node that I deliberately keep **off the public internet**. I just wanted to check my wallet and balance from anywhere — without the usual trade-offs:
+I wanted to check my wallet remotely while keeping my Electrum node off the public internet and my xpub out of third-party dashboards. Wallet Viewer provides a watch-only interface that I host behind my own authenticated proxy.
 
-- 🚫 **No VPN** to tunnel back home.
-- 🔒 **No public key** pasted into third-party websites.
+[Quick start](#docker) · [Features](#features) · [Demo](#demo-mode) · [Configuration](#configuration) · [Documentation](#documentation) · [Development](#development) · [Security](#security-and-limitations)
 
-**Wallet Viewer does exactly that:** point it at your own Electrum server, feed it a watch-only xpub, and get a dashboard you fully host and control.
-
-### Why you'll love it
-
-- 🛡️ **Watch, never touch.** The app only ever sees a public key — nothing to sign, nothing to spend, nothing to steal.
-- 🚀 **Up in one command.** A single self-contained container. No database, no accounts, no background jobs to babysit.
-- ⚡ **Truly live.** Electrum notifications stream balance and transaction updates the instant they land — no refresh, no polling.
-- 🔎 **See everything.** Fees, UTXOs, input/output graphs and derivation paths in a fast, responsive Bitcoin-orange dark UI.
-- 🕵️ **Your node, your privacy.** Point it at your own Electrum server; only script hashes ever leave home, never your xpub.
-
-[Features](#features) · [Architecture](#architecture) · [Stack](#stack) · [Native](#native-vs-jvm) · [Docker](#docker) · [Demo](#demo-mode) · [Configuration](#configuration) · [Logs](#logs) · [Security](#security-and-limitations) · [License](#license)
-
-<div align="center">
-
-### 🧪 DEMO SCREENSHOTS ONLY
-
-**The wallet, balance, addresses and transactions below are _entirely synthetic_.**<br>
-**This wallet does NOT exist and holds NO REAL FUNDS.**<br>
-**Nothing shown here corresponds to any real Bitcoin wallet, address or transaction.**
-
-_Screenshots from [demo mode](#demo-mode). Network fee estimates, EUR/USD quotes and historical fiat values are mocked for these captures; they are not live market data._
-
-</div>
+> [!NOTE]
+> Screenshots use a synthetic demo wallet, with no real funds. Fee estimates, EUR/USD quotes and historical fiat values are mocked, not live market data.
 
 <p align="center"><img src="docs/dashboard.png" alt="Demo dashboard with Bitcoin balance, EUR valuation, network fee estimate and transaction activity" width="820"></p>
-
-<p align="center"><img src="docs/balance-history.png" alt="Demo balance history with Bitcoin balance, portfolio value and mocked historical BTC price in EUR" width="820"></p>
 
 <details>
 <summary>More Desktop Screenshots</summary>
 
-Captured in headless Chrome with a 1920 × 1080 desktop viewport. The UTXO table and network fee panel are cropped to focus on their content.
+Click a thumbnail to open the full image. See [Refresh README screenshots](docs/DEMO.md#refresh-readme-screenshots) to regenerate them in headless Chrome.
 
-### Transaction Details
-
-<p align="center"><img src="docs/transaction.png" alt="Synthetic outgoing transaction with its input/output graph and transaction fee" width="820"></p>
-
-### Internal Consolidation
-
-<p align="center"><img src="docs/consolidation.png" alt="Self-transfer combining multiple wallet inputs into one output" width="820"></p>
-
-### Inputs And Outputs
-
-<p align="center"><img src="docs/inputs-outputs.png" alt="Detailed input and output addresses and amounts for a synthetic consolidation" width="820"></p>
-
-### Chart Transaction Summary
-
-<p align="center"><img src="docs/chart-transaction.png" alt="Historical balance chart with a transaction summary tooltip open" width="820"></p>
-
-### Unspent Outputs
-
-<p align="center"><img src="docs/utxos.png" alt="Desktop UTXO table showing addresses, outpoints, Bitcoin values and confirmations" width="820"></p>
-
-### Receive Address
-
-<p align="center"><img src="docs/receive.png" alt="Enlarged QR code for the synthetic wallet receive address" width="820"></p>
-
-### Network Fee Estimates
-
-<p align="center"><img src="docs/network-fees.png" alt="Mocked network fee estimates for fast, medium, slow and economy confirmation targets" width="320"></p>
+<p align="center">
+	<a href="docs/balance-history.png" title="Balance and price history"><img src="docs/balance-history.png" alt="Demo balance history with Bitcoin balance, portfolio value and mocked historical BTC price in EUR" width="240"></a>
+	<a href="docs/transaction.png" title="Transaction details"><img src="docs/transaction.png" alt="Synthetic outgoing transaction with its input/output graph and transaction fee" width="240"></a>
+	<a href="docs/consolidation.png" title="Internal consolidation"><img src="docs/consolidation.png" alt="Self-transfer combining multiple wallet inputs into one output" width="240"></a>
+	<a href="docs/inputs-outputs.png" title="Inputs and outputs"><img src="docs/inputs-outputs.png" alt="Detailed input and output addresses and amounts for a synthetic consolidation" width="240"></a>
+	<a href="docs/chart-transaction.png" title="Chart transaction summary"><img src="docs/chart-transaction.png" alt="Historical balance chart with a transaction summary tooltip open" width="240"></a>
+	<a href="docs/utxos.png" title="Unspent outputs"><img src="docs/utxos.png" alt="Desktop UTXO table showing addresses, outpoints, Bitcoin values and confirmations" width="240"></a>
+	<a href="docs/receive.png" title="Receive address"><img src="docs/receive.png" alt="Enlarged QR code for the synthetic wallet receive address" width="240"></a>
+	<a href="docs/network-fees.png" title="Network fee estimates"><img src="docs/network-fees.png" alt="Mocked network fee estimates for fast, medium, slow and economy confirmation targets" width="240"></a>
+</p>
 
 </details>
 
-## Features
-
-- 💰 **Live wallet:** balances, confirmations, Activity / UTXO tabs, sorting and click-to-copy identifiers.
-- 🔍 **Transaction details:** a full-width dialog with **Graph** and **Inputs / Outputs** tabs, fees and compact input/output graphs with independent pagination (five items per side).
-- 📈 **Balance history:** an interactive balance-over-time chart (lightweight-charts) with an optional fiat-value curve, selectable periods and per-curve visibility saved locally, plus a live mempool fee gauge in the header.
-- 💱 **Display units:** BTC, SAT, EUR and USD; switch beside the balance, with the preference saved locally.
-- 📥 **Receive:** next address, derivation path and enlargeable QR code; BIP44, BIP49, BIP84 and BIP86 support.
-- 🎨 **Bitcoin dark theme:** responsive layout, keyboard controls and a live badge with Electrum server details.
-
-## Architecture
-
-```mermaid
-flowchart LR
-	E[Electrum] -->|Notifications| S
-	subgraph Backend[Quarkus backend]
-		S[Serialized wallet scan] --> C[Versioned Caffeine state]
-		C --> A[REST API / WebSocket]
-		P[Fiat / fee / history services] --> A
-	end
-	S -->|Script-hash queries| E
-	M[mempool.space] -->|Public quotes via REST client| P
-	A <-->|REST / live snapshots| V[Vue dashboard]
-```
-
-- Addresses are derived locally; only script hashes reach Electrum, never the extended public key. Notifications trigger serialized scans, not periodic wallet polling.
-- WebSocket pushes versioned snapshots; REST reads the same cache. Refresh replays cached data, and transaction details load on demand via native `fetch`, with cancellation and request deadlines.
-- State is in memory and rebuilt after restart. During outages, the UI keeps the last snapshot with a stale/offline warning. Fiat quotes, fee estimates and price history come separately from [mempool.space](https://mempool.space/api/v1/prices), fetched by a declarative reactive REST client (MicroProfile REST Client) and shared/cached per TTL, without wallet identifiers.
-- Receive-address QR codes use a small vendored, dependency-free encoder (adapted from [Project Nayuki's QR-Code-generator](https://www.nayuki.io/page/qr-code-generator-library), MIT) and are served as **SVG** (crisp at any zoom, no image library); an address's QR is immutable, so results are memoized in a bounded cache.
-
-## Stack
-
-| Component | Version / source |
-| --- | --- |
-| Java / Maven builder | Java **25**; Maven **3.9.16**, Eclipse Temurin 25 Docker build image |
-| Backend | Quarkus **3.39.3**, SmallRye OpenAPI, Quinoa **2.9.0**, bitcoinj **0.17.1** (QR codes via a vendored, dependency-free encoder) — [pom.xml](pom.xml) |
-| Reactive transport / cache | Vert.x (TCP client for Electrum), MicroProfile REST Client (mempool.space), Mutiny and Caffeine — versions managed by the Quarkus BOM |
-| Node.js | **24.21.0**, installed by Quinoa — [src/main/resources/application.properties](src/main/resources/application.properties) |
-| Frontend (locked) | Vue **3.5.42**, Vite **8.3.0**, @vitejs/plugin-vue **6.0.8**, vue-tsc **3.3.11**, TypeScript **5.9.3**, Tailwind CSS **4.3.3** (via @tailwindcss/vite), @types/node **24.13.4** — [src/main/webui/package-lock.json](src/main/webui/package-lock.json) |
-| UI libraries | Material Design Icons (@mdi/js) **7.4.47**, @formkit/auto-animate **0.10.0**, lightweight-charts **5.2.1** |
-| Runtime image | **Native (GraalVM)** on Distroless Debian **13**, `nonroot` — [Dockerfile.native](Dockerfile.native); JVM variant on Distroless Java **25** — [Dockerfile](Dockerfile) |
-
-Versions reflect declarations and the npm lockfile. For local development, use JDK 25 and `mvn quarkus:dev`; Quinoa manages Node automatically.
-
-Frontend TypeScript enables `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, and `erasableSyntaxOnly`. Run `npm run build` from `src/main/webui` to execute tests, type checking, and the production build. Vite targets `esnext`: use an up-to-date browser with native `toSorted()` and `Map.groupBy()` support. No legacy-browser fallback or polyfill is included.
-
-API responses are validated at runtime before reaching Vue, with shared snapshot and transaction validators for REST and WebSocket. API snapshots use `shallowRef` and are replaced as a whole. Template references use Vue 3.5 `useTemplateRef`; obsolete dialog watchers are invalidated before opening. HTTP cancellation uses native `AbortSignal.any()` with a deadline that covers reading the response body and is cleared when the request finishes.
-
-## Native vs JVM
-
-Backend RPC responses are decoded explicitly into validated Electrum records before use; malformed or missing values fail the scan instead of becoming zero balances. Wallet and Electrum settings use validated SmallRye `@ConfigMapping` interfaces. Local derivation data is immutable (`AddressInfo` record), hex conversion uses Java `HexFormat`, and business timestamps use an injectable UTC `Clock`; elapsed-time deadlines remain monotonic.
-
-Live updates use Quarkus WebSockets Next with isolated per-connection state, one pending snapshot at most, a 10-second send deadline, and a 30-second ping / 90-second pong timeout. The HTTP upgrade rejects missing, ambiguous or foreign origins with 403. WebSocket traffic logging and Dev UI message retention are disabled.
-
-Every published Docker image (`dev`, `latest`, `X.Y.Z`) is compiled to a **GraalVM native** executable: CI builds the runner with `-Dnative` and ships it on a distroless base ([Dockerfile.native](Dockerfile.native)). A classic JVM image stays available via [Dockerfile](Dockerfile).
-
-| Metric | Native (GraalVM) | JVM (HotSpot) |
-| --- | --- | --- |
-| Startup time | **~20 ms** | ~1–2 s |
-| Memory (RSS, idle) | **~50–70 MB** | ~150–250 MB |
-| Container image | Smaller (no JRE) | Larger (bundled JRE) |
-| Peak throughput | Slightly lower | Higher under sustained load (JIT) |
-| Build time | Slow (native compilation, minutes) | Fast |
-| Runtime dependency | None (self-contained binary) | JRE |
-
-Figures are indicative for this application on `linux/amd64` (native startup measured at ~18 ms, ~55 MB RSS). Native fits a small, always-on self-hosted dashboard well: near-instant restarts and a low, stable footprint, at the cost of longer build times. Build the native runner locally with:
-
-```sh
-mvn verify -Dnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25
-docker build -f Dockerfile.native -t wallet-viewer:native .
-```
-
-See **[Docker & deployment](docs/DOCKER.md#native-image-graalvm)** for the full native workflow.
-
-`mvn verify` also runs the live-wallet integration scenario against the packaged application (native when `-Dnative` is enabled), using a loopback-only Electrum fixture: REST/WebSocket consistency, credit notifications, cache replay, reconnection and origin rejection. It does not query a real wallet.
-
 ## Docker
 
-Requires Docker with Compose v2 — no local Java, Maven or Node needed.
+Requires Docker with Compose v2. From a checkout of this repository, copy [.env.example](.env.example) to `.env` and set your account-level `WALLET_XPUB`, Electrum server and network. For BIP86/Taproot, set `WALLET_SCRIPT_TYPE=p2tr` explicitly. Keep `.env` out of Git.
 
-1. Copy [.env.example](.env.example) to **.env** and set `WALLET_XPUB` to your account-level extended public key (keep it out of Git).
-2. Build, start, then open <http://localhost:8080>:
+### Run the published native image
+
+No local Java, Maven or Node installation is needed. Set this in `.env`:
+
+```dotenv
+WALLET_VIEWER_IMAGE=ghcr.io/comassky/wallet-viewer:latest
+```
+
+Then pull and start the image without building:
+
+```sh
+docker compose pull
+docker compose up -d --no-build
+```
+
+Published images target `linux/amd64`. Prefer a fixed release tag or digest for repeatable deployments; see [Docker & deployment](docs/DOCKER.md).
+
+### Build the JVM image from source
+
+Leave `WALLET_VIEWER_IMAGE` unset in `.env`, then:
 
 ```sh
 docker compose up -d --build
 ```
 
-See **[Docker & deployment](docs/DOCKER.md)** for GHCR images, the **native (GraalVM)** build, script-type/network options, security hardening, custom ports and releases.
+This uses [Dockerfile](Dockerfile) and includes a JVM; it is not a native build. For a local native build, follow the [native image guide](docs/DOCKER.md#native-image-graalvm).
+
+Both paths serve the app at <http://localhost:8080>, bound to loopback by default. Follow logs with `docker compose logs -f wallet-viewer`; stop with `docker compose down`.
+
+## Features
+
+- **Watch-only:** derives addresses locally from an account-level public key. No private keys, signing or spending.
+- **Live activity:** Electrum notifications update balances, transactions and UTXOs, with search, sorting and explicit stale/reconnecting states.
+- **Transaction details:** received, sent and self-transfer labels, input/output graphs, paginated details and transaction fees.
+- **Balance history:** Bitcoin balance, optional portfolio value and BTC price curves, transaction markers and selectable periods. Curve visibility is remembered.
+- **Units and quotes:** independent BTC/SAT and EUR/USD selectors, browser-localized amounts and network fee estimates. Missing market data does not hide Bitcoin balances.
+- **Receive:** next address, derivation path and enlargeable SVG QR code; BIP44, BIP49, BIP84 and BIP86 support.
+- **Responsive interface:** desktop tables, mobile layouts, keyboard navigation and an amount-hiding preference.
 
 ## Demo mode
 
 Set **`WALLET_DEMO=true`** for a synthetic wallet with varied transactions and evolving confirmations, without an Electrum connection. Remove real wallet overrides before sharing screenshots.
 
-See **[Demo mode guide](docs/DEMO.md)** for setup, simulation behaviour, privacy precautions and tests.
+See the **[Demo mode guide](docs/DEMO.md)** for setup, simulation behaviour and privacy precautions, or [regenerate the screenshots](docs/DEMO.md#refresh-readme-screenshots).
 
 ## Configuration
 
@@ -210,33 +114,46 @@ Supply wallet settings **at runtime**, never as build arguments or in source. De
 
 Inside Docker, `localhost` means the container: use a reachable server hostname. Compose forwards only declared variables and does not mount local Java configuration.
 
-## API
+## Documentation
 
-The REST API is documented with OpenAPI 3.1.
+| Guide | Contents |
+| --- | --- |
+| [Docker & deployment](docs/DOCKER.md) | Published images, native/JVM builds, runtime trade-offs and releases |
+| [Demo mode](docs/DEMO.md) | Synthetic ledger, privacy precautions and screenshot generation |
+| [Development](docs/DEVELOPMENT.md) | Setup, tests, stack, architecture and API contracts |
+| [Logging](docs/LOGS.md) | Log levels, diagnostics and redaction |
 
-- **Hosted docs (ReDoc):** https://comassky.github.io/wallet-viewer/ (published on each release).
-- **Swagger UI (development only, `mvn quarkus:dev`):** `/q/swagger-ui`. Disabled in tests and excluded from production builds; `/q/openapi` remains available in production.
-- **OpenAPI spec (running app):** `/q/openapi` (add `?format=json` for JSON).
+### API
 
-`GET /api/wallet/state` returns the same versioned envelope as the WebSocket: `status`, `message`, `snapshot` and `updatedAt` (Unix seconds of the last successful snapshot, or `null` before the first scan). The timestamp is retained through outages. Existing snapshot endpoints keep their response shape and may return cached data; use `/state` when freshness matters.
+[Hosted API reference](https://comassky.github.io/wallet-viewer/) is updated on releases. A running app exposes OpenAPI at `/q/openapi` (`?format=json` for JSON); Swagger UI is available only in development at `/q/swagger-ui`.
 
-Real scan snapshots include `discovery`: `complete`, `receiveScanned`, `changeScanned`, `addressLimit` and `gapLimit`. Complete means both configured unused-address gaps were reached and the receive address is covered, not that addresses beyond those gaps were searched. Synthetic snapshots may omit discovery metadata.
-
-Balance-history points retain `balanceSats` when market data is unavailable. `valueEur` and `valueUsd` are nullable, with `priceTime` identifying the quote used and `priceStale` indicating a failed provider refresh. No future quote is substituted for dates before price history begins. Successful price history is cached for 30 minutes; failed refreshes retain the last valid quotes and can retry after 30 seconds. The balance-history endpoint itself has a 60-second cache.
+Use `/api/wallet/state` when snapshot freshness matters. See [API contracts](docs/DEVELOPMENT.md#api-contracts) for cache, discovery and nullable historical price fields.
 
 ## Logs
 
 Control verbosity with **`LOG_LEVEL`** (default `INFO`; set `DEBUG` for Electrum connection, notification and scan-lifecycle logs). See **[Logging](docs/LOGS.md)** for levels and privacy details.
 
-**⚠️ Logs contain wallet addresses:** keep them private and redact them before sharing.
+**Logs can contain wallet addresses:** keep them private and redact them before sharing.
+
+## Development
+
+Use JDK 25 and Maven. Configure a wallet at runtime, or use a demo instance without real wallet overrides:
+
+```sh
+WALLET_DEMO=true mvn quarkus:dev
+```
+
+Quinoa installs Node and starts the frontend. Open <http://localhost:8080>. Use a current browser with native `toSorted()` and `Map.groupBy()` support; older browsers are not supported.
+
+Run `mvn verify` for the JVM build and tests. For frontend-only tests, type checking and the production build, run `npm ci` followed by `npm run build` in `src/main/webui`. See [Development](docs/DEVELOPMENT.md) for tooling, architecture and native integration tests.
 
 ## Security and limitations
 
-- 🔓 **No authentication:** keep access local or use an authenticated HTTPS proxy with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90 seconds. Origin checks are not access control.
-- 🕵️ **Privacy:** public keys expose account history; Electrum can correlate scripts. Use a trusted server and never provide spending secrets.
+- **No authentication:** keep access local or use an authenticated HTTPS proxy with WebSocket support, preserved `Host`/`Origin` headers and timeouts above 90 seconds. Origin checks are not access control.
+- **Privacy:** an xpub exposes account history, even though it cannot authorize spending. The xpub stays in this application; Electrum receives script hashes and transaction IDs and can correlate requests. Use a trusted server. Public market-data requests go to mempool.space without wallet identifiers.
 - **Hide amounts:** replaces displayed wallet amounts, including dialogue values, with a neutral label and clears the history chart. Notifications never include amounts. This is a display preference, not access control: identifiers and API data remain available to authorized users of the browser.
-- 🎯 **Bounded discovery:** funds beyond the gap/address limits may be missed. An extra receive address beyond the cap is watched without history; raise `WALLET_MAX_ADDRESSES` before relying on its balance.
-- 📊 **Estimates:** missing parent transactions prevent fee calculation; graph edges do not allocate inputs to outputs. Fiat on balances and transactions uses current quotes; only the balance-history chart values each day at its historical price.
+- **Bounded discovery:** funds beyond the gap/address limits may be missed. An extra receive address beyond the cap is watched without history; raise `WALLET_MAX_ADDRESSES` before relying on its balance.
+- **Estimates:** missing parent transactions prevent fee calculation; graph edges do not allocate inputs to outputs. Fiat on balances and transactions uses current quotes; only the balance-history chart values each day at its historical price.
 
 ## License
 
