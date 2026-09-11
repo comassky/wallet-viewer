@@ -45,7 +45,7 @@ function navigateTabs(event: KeyboardEvent, index: number): void {
   <section class="min-w-0" aria-label="Receive Bitcoin">
     <div class="flex flex-wrap items-start gap-3 lg:hidden">
       <button type="button" aria-haspopup="dialog" aria-controls="receive-qr-dialog" class="button-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold" @click="enlarge"><UiIcon name="qr-code" />Receive</button>
-      <details class="mobile-address-check min-w-0 flex-1">
+      <details class="mobile-address-check min-w-0 flex-1 open:basis-full">
         <summary class="button-secondary cursor-pointer rounded-xl px-4 py-3 text-center text-sm font-semibold">Check address</summary>
         <div class="wallet-panel mt-3 p-4"><AddressCheckForm /></div>
       </details>

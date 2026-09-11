@@ -66,7 +66,7 @@ const formatShare = (value: number) => shareFormatter.format(valueShare(value) /
           <dt class="text-slate-400">Address</dt>
           <dd class="text-right"><CopyValue :value="u.address" :display="shortId(u.address)" label="address" /></dd>
           <dt class="text-slate-400">Outpoint</dt>
-          <dd class="text-right"><CopyValue :value="u.txid" :display="shortId(u.txid)" label="transaction ID" /><span class="ml-1 inline-block rounded border border-sky-400/20 bg-sky-400/5 px-1.5 font-mono text-xs text-sky-300">:{{ u.vout }}</span></dd>
+          <dd class="text-right"><CopyValue :value="u.txid" :display="shortId(u.txid)" label="transaction ID" /><span class="ml-1 inline-block rounded border border-slate-700 bg-slate-800/50 px-1.5 font-mono text-xs text-slate-400">:{{ u.vout }}</span></dd>
           <dt class="text-slate-400">Confirmations</dt>
           <dd class="text-right"><ConfirmationStatus :confirmations="u.confirmations" icon-only /></dd>
           <dt class="text-slate-400">Confirmation date</dt>
@@ -76,7 +76,7 @@ const formatShare = (value: number) => shareFormatter.format(valueShare(value) /
     </ul>
     <div v-if="utxos.length" class="wallet-panel hidden xl:block">
       <table class="w-full table-fixed text-sm">
-        <colgroup><col class="w-[24%]" /><col class="w-[24%]" /><col class="w-[15%]" /><col class="w-[14%]" /><col class="w-[10%]" /><col class="w-[13%]" /></colgroup>
+        <colgroup><col class="w-[38%]" /><col class="w-[14%]" /><col class="w-[13%]" /><col class="w-[13%]" /><col class="w-[9%]" /><col class="w-[13%]" /></colgroup>
         <thead class="border-b border-slate-600/50 bg-slate-800/80">
           <tr class="text-xs uppercase text-slate-300">
             <th v-for="column in columns" :key="column.key" scope="col" :aria-sort="ariaSort(column.key)" class="px-4 py-2 font-medium" :class="column.key === 'confirmations' ? 'text-center' : column.numeric ? 'text-right' : 'text-left'">
@@ -89,8 +89,8 @@ const formatShare = (value: number) => shareFormatter.format(valueShare(value) /
         </thead>
         <tbody>
           <tr v-for="u in sorted" :key="`${u.txid}:${u.vout}`" class="group border-t border-slate-700/40 transition-colors hover:bg-slate-700/35 focus-within:bg-slate-700/35" :class="u.confirmations === 0 ? 'bg-amber-400/[0.04]' : 'even:bg-slate-800/30'">
-            <td class="border-l-2 px-4 py-4" :class="u.confirmations === 0 ? 'border-l-amber-400/70' : 'border-l-emerald-400/50'"><div class="flex min-w-0 items-center gap-3"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border" :class="u.confirmations === 0 ? 'border-amber-400/25 bg-amber-400/10 text-amber-300' : 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300'"><UiIcon name="coins" /></span><CopyValue :value="u.address" :display="shortId(u.address)" label="address" /></div></td>
-            <td class="px-4 py-4"><div class="flex items-center gap-2"><CopyValue :value="u.txid" :display="shortId(u.txid)" label="transaction ID" /><span class="shrink-0 rounded border border-sky-400/25 bg-sky-400/10 px-1.5 font-mono text-xs text-sky-300">:{{ u.vout }}</span></div></td>
+            <td class="border-l-2 px-4 py-4" :class="u.confirmations === 0 ? 'border-l-amber-400/70' : 'border-l-emerald-400/50'"><div class="flex min-w-0 items-center gap-3"><span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border" :class="u.confirmations === 0 ? 'border-amber-400/25 bg-amber-400/10 text-amber-300' : 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300'"><UiIcon name="coins" /></span><CopyValue :value="u.address" label="address"><span class="2xl:hidden">{{ u.address.length > 26 ? `${u.address.slice(0, 16)}…${u.address.slice(-10)}` : u.address }}</span><span class="hidden 2xl:inline">{{ u.address.length > 36 ? `${u.address.slice(0, 24)}…${u.address.slice(-12)}` : u.address }}</span></CopyValue></div></td>
+            <td class="px-4 py-4"><div class="flex min-w-0 items-center gap-1 text-xs"><CopyValue :value="u.txid" label="transaction ID"><span class="2xl:hidden">{{ u.txid.slice(0, 6) }}…{{ u.txid.slice(-4) }}</span><span class="hidden 2xl:inline">{{ u.txid.slice(0, 8) }}…{{ u.txid.slice(-4) }}</span></CopyValue><span class="shrink-0 rounded border border-slate-700 bg-slate-800/50 px-1 font-mono text-xs text-slate-400">:{{ u.vout }}</span></div></td>
             <td class="px-4 py-4 text-slate-300">{{ formatDate(confirmationDate(u)) }}</td>
             <td class="sensitive px-4 py-4 text-right tabular-nums">
               <div class="break-all text-base font-semibold text-slate-100">{{ amount(u.value) }}</div>
