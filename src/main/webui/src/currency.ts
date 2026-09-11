@@ -50,12 +50,22 @@ export function validRates(rates: PriceRates): boolean {
     && Number.isFinite(rates.timestamp) && rates.timestamp > 0;
 }
 
-const formatters = {
-  BTC: new Intl.NumberFormat('en-US', { minimumFractionDigits: 8, maximumFractionDigits: 8 }),
-  SATS: new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }),
-  EUR: new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-  USD: new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-};
+const formatters = new Map<string, Intl.NumberFormat>();
+
+export function formatNumber(value: number, decimals = 0, signed = false): string {
+  const locales = typeof navigator === 'undefined' ? undefined
+    : navigator.languages?.length ? [...navigator.languages] : navigator.language || undefined;
+  const key = JSON.stringify([locales, decimals, signed]);
+  let formatter = formatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locales, {
+      minimumFractionDigits: decimals, maximumFractionDigits: decimals,
+      signDisplay: signed ? 'always' : 'auto',
+    });
+    formatters.set(key, formatter);
+  }
+  return formatter.format(value);
+}
 
 /** All source values remain integer satoshis; switching never changes wallet data. */
 export function formatAmount(sats: number, currency: Currency, rates: PriceRates | null, signed = false): string {
@@ -66,8 +76,5 @@ export function formatAmount(sats: number, currency: Currency, rates: PriceRates
     if (!rates || !validRates(rates)) return '—';
     value = sats / 1e8 * (currency === 'EUR' ? rates.eur : rates.usd);
   }
-  if (signed) {
-    return `${sats < 0 ? '−' : '+'}${formatters[currency].format(Math.abs(value))}`;
-  }
-  return formatters[currency].format(value);
+  return formatNumber(value, currency === 'BTC' ? 8 : currency === 'SATS' ? 0 : 2, signed);
 }

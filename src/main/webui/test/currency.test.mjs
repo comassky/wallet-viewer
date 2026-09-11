@@ -1,6 +1,27 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatAmount, isCurrency, isFiat, validRates, currencyStorageKey, fiatCurrencyStorageKey, readDisplayPreferences, saveCurrency, saveFiatCurrency } from '../src/currency.ts';
+import { formatAmount, formatNumber, isCurrency, isFiat, validRates, currencyStorageKey, fiatCurrencyStorageKey, readDisplayPreferences, saveCurrency, saveFiatCurrency } from '../src/currency.ts';
+
+test.beforeEach(t => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { languages: ['en-US'], language: 'en-US' } });
+  t.after(() => descriptor ? Object.defineProperty(globalThis, 'navigator', descriptor) : delete globalThis.navigator);
+});
+
+test('numbers and amounts follow browser regional preferences without changing the currency', () => {
+  for (const locale of ['fr-FR', 'de-DE', 'en-US', 'ar-EG']) {
+    navigator.languages = [locale, 'en-US'];
+    for (const [unit, value, decimals] of [['BTC', 1.23456789, 8], ['SATS', 123456789, 0], ['EUR', 74074.0734, 2], ['USD', 86419.7523, 2]]) {
+      for (const signed of [false, true]) {
+        const expected = new Intl.NumberFormat([locale, 'en-US'], {
+          minimumFractionDigits: decimals, maximumFractionDigits: decimals, signDisplay: signed ? 'always' : 'auto',
+        }).format(-value);
+        assert.equal(formatAmount(-123456789, unit, rates, signed), expected);
+      }
+    }
+    assert.equal(formatNumber(12345), new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(12345));
+  }
+});
 
 const rates = { eur: 60_000, usd: 70_000, timestamp: 1_788_948_611 };
 const normalize = value => value.replace(/,/g, '');
@@ -20,9 +41,9 @@ test('EUR and USD are computed directly from satoshis', () => {
 });
 
 test('transactions preserve signs in every unit', () => {
-  assert.equal(formatAmount(-100_000_000, 'BTC', rates, true), '−1.00000000');
+  assert.equal(formatAmount(-100_000_000, 'BTC', rates, true), '-1.00000000');
   assert.equal(formatAmount(1, 'SATS', rates, true), '+1');
-  assert.equal(normalize(formatAmount(-100_000_000, 'USD', rates, true)), '−70000.00');
+  assert.equal(normalize(formatAmount(-100_000_000, 'USD', rates, true)), '-70000.00');
   assert.equal(normalize(formatAmount(100_000_000, 'EUR', rates, true)), '+60000.00');
 });
 
