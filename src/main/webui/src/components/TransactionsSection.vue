@@ -99,7 +99,7 @@ function clearSearch(): void {
           <span class="text-slate-400">Date</span>
           <span class="text-right text-slate-300">{{ formatDate(tx.timestamp) }}</span>
           <span class="text-slate-400">Confirmations</span>
-          <span class="text-right"><span class="inline-flex items-center gap-1.5"><UiIcon v-if="tx.confirmations >= 5" name="circle-check" class="text-emerald-400" /><ConfirmationStatus :confirmations="tx.confirmations" /></span></span>
+          <span class="text-right"><ConfirmationStatus :confirmations="tx.confirmations" icon-only /></span>
         </span>
         <button type="button" data-tx-details aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="mt-3 flex w-full items-center justify-end gap-2 rounded-lg text-xs text-accent" @click.stop="openDetails(tx.txid, $event)">
           Show details
@@ -132,7 +132,7 @@ function clearSearch(): void {
               <span :class="tx.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ amount(tx.amount, true) }}</span>
               <span class="mt-1 block text-xs text-slate-400">{{ rates ? '≈ ' : '' }}{{ conceal(formatAmount(tx.amount, fiatCurrency, rates, true)) }} {{ fiatCurrency }}</span>
             </td>
-            <td class="px-3 py-2.5 text-right"><span class="inline-flex items-center gap-1.5"><UiIcon v-if="tx.confirmations >= 5" name="circle-check" class="text-emerald-400" /><ConfirmationStatus :confirmations="tx.confirmations" compact /></span></td>
+            <td class="px-3 py-2.5 text-right"><ConfirmationStatus :confirmations="tx.confirmations" compact icon-only /></td>
             <td class="px-3 py-2.5 text-right"><button type="button" data-tx-details aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="inline-flex items-center justify-center rounded-lg px-2 py-1 text-accent hover:bg-accent/10" @click.stop="openDetails(tx.txid, $event)"><UiIcon name="chevron-right" /></button></td>
           </tr>
         </tbody>

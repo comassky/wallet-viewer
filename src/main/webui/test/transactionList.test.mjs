@@ -6,13 +6,24 @@ import { compile } from '@vue/compiler-dom';
 import { parse } from '@vue/compiler-sfc';
 import { renderToString } from '@vue/server-renderer';
 import { effectScope, ref } from 'vue';
-import { transactionPageSize, useTransactionList } from '@/composables/useTransactionList.ts';
+import { transactionPageSize, useTransactionList } from '../src/composables/useTransactionList.ts';
 
 test('confirmation status shows a static pending badge at zero and spins only from one to four', async () => {
   const source = readFileSync(new URL('../src/components/ConfirmationStatus.vue', import.meta.url), 'utf8');
   const { descriptor } = parse(source);
   const { code } = compile(descriptor.template.content, { mode: 'function', prefixIdentifiers: true });
-  const component = { props: ['confirmations', 'compact'], render: new Function('Vue', code)(Vue) };
+  const tooltipSource = readFileSync(new URL('../src/components/AppTooltip.vue', import.meta.url), 'utf8');
+  const tooltipTemplate = parse(tooltipSource).descriptor.template.content;
+  const tooltipCode = compile(tooltipTemplate, { mode: 'function', prefixIdentifiers: true }).code;
+  const component = {
+    props: ['confirmations', 'compact', 'iconOnly'],
+    setup: () => ({ dismissed: ref(false) }),
+    components: {
+      AppTooltip: { props: ['text', 'alignEnd'], render: new Function('Vue', tooltipCode)(Vue) },
+      UiIcon: { props: ['name'], render() { return Vue.h('svg', { 'data-icon': this.name }); } },
+    },
+    render: new Function('Vue', code)(Vue),
+  };
   for (const compact of [false, true]) {
     for (const confirmations of [0, 1, 4, 5, 6]) {
       const html = await renderToString(Vue.createSSRApp(component, { confirmations, compact }));
@@ -20,6 +31,19 @@ test('confirmation status shows a static pending badge at zero and spins only fr
       assert.equal(html.includes('animate-spin'), confirmations >= 1 && confirmations < 5);
       if (confirmations === 0) assert.ok(html.includes('border-amber-400/20'));
       else assert.match(html, new RegExp(`>\\s*${confirmations}\\s*<`));
+    }
+  }
+  for (const confirmations of [0, 1, 4, 5, 6]) {
+    const html = await renderToString(Vue.createSSRApp(component, { confirmations, iconOnly: true }));
+    assert.equal(html.includes('data-icon="circle-check"'), confirmations >= 5);
+    assert.equal(html.includes('role="tooltip"'), confirmations > 0);
+    assert.equal(html.includes('Pending'), confirmations === 0);
+    assert.equal(html.includes('animate-spin'), confirmations >= 1 && confirmations < 5);
+    if (confirmations > 0) {
+      const label = `${confirmations} confirmation${confirmations === 1 ? '' : 's'}`;
+      assert.ok(html.includes(`aria-label="${label}"`));
+      assert.ok(html.includes(`${label}</span>`));
+      assert.doesNotMatch(html, new RegExp(`>\\s*${confirmations}\\s*<`));
     }
   }
 });

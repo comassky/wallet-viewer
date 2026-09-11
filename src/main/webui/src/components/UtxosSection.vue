@@ -59,11 +59,11 @@ const valueShare = (value: number) => totalValue.value > 0 ? value / totalValue.
           <dt class="text-slate-400">Outpoint</dt>
           <dd class="text-right"><CopyValue :value="u.txid" :display="shortId(u.txid)" label="transaction ID" /><span class="ml-1 inline-block rounded border border-sky-400/20 bg-sky-400/5 px-1.5 font-mono text-xs text-sky-300">:{{ u.vout }}</span></dd>
           <dt class="text-slate-400">Confirmations</dt>
-          <dd class="text-right"><span class="inline-flex items-center gap-1.5"><UiIcon v-if="u.confirmations >= 5" name="circle-check" class="text-emerald-400" /><ConfirmationStatus :confirmations="u.confirmations" /></span></dd>
+          <dd class="text-right"><ConfirmationStatus :confirmations="u.confirmations" icon-only /></dd>
         </dl>
       </li>
     </ul>
-    <div v-if="utxos.length" class="wallet-panel hidden overflow-hidden lg:block">
+    <div v-if="utxos.length" class="wallet-panel hidden lg:block">
       <table class="w-full table-fixed text-sm">
         <colgroup><col class="w-[28%]" /><col class="w-[29%]" /><col class="w-[25%]" /><col class="w-[18%]" /></colgroup>
         <thead class="border-b border-slate-600/50 bg-slate-800/80">
@@ -84,7 +84,7 @@ const valueShare = (value: number) => totalValue.value > 0 ? value / totalValue.
               <div class="break-all text-base font-semibold text-slate-100">{{ amount(u.value) }}</div>
               <div class="mt-2 ml-auto h-1 w-full max-w-40 overflow-hidden rounded-full bg-slate-700/60" aria-hidden="true"><div class="ml-auto h-full rounded-full" :class="u.confirmations === 0 ? 'bg-amber-400' : 'bg-emerald-400'" :style="{ width: `${valueShare(u.value)}%` }" /></div>
             </td>
-            <td class="px-4 py-4 text-right"><span class="inline-flex items-center gap-1.5"><UiIcon v-if="u.confirmations >= 5" name="circle-check" class="text-emerald-400" /><ConfirmationStatus :confirmations="u.confirmations" /></span></td>
+            <td class="px-4 py-4 text-right"><ConfirmationStatus :confirmations="u.confirmations" icon-only /></td>
           </tr>
         </tbody>
       </table>
