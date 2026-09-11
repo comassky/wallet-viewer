@@ -101,7 +101,7 @@ jobs:
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
       - name: Upload released OpenAPI schema
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-openapi
           path: |
@@ -171,7 +171,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download released OpenAPI schema
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-openapi
           path: site
