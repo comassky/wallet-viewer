@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { effectScope } from 'vue';
-import { walletApi } from '../src/services/walletApi.ts';
-import { useElectrumServer } from '../src/composables/useElectrumServer.ts';
+import { walletApi } from '@/services/walletApi.ts';
+import { useElectrumServer } from '@/composables/useElectrumServer.ts';
 
 const server = { host: 'localhost', port: 50002, tls: true, connected: true, serverVersion: 'electrs 1.0', protocolVersion: '1.4' };
 function fixture(t, request) {

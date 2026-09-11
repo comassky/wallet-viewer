@@ -1,6 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue';
-import type { Transaction } from '../types/wallet';
-import { useTableSort, type SortColumn } from './useTableSort.ts';
+import type { Transaction } from '@/types/wallet';
+import { useTableSort, type SortColumn } from '@/composables/useTableSort.ts';
 
 export const transactionFilters = [
   { id: 'all', label: 'All' },

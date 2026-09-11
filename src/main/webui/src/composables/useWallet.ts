@@ -1,5 +1,5 @@
 import { computed, onMounted, onScopeDispose, shallowRef } from 'vue';
-import { createWalletStream, type WalletStreamOptions, type WalletStreamState } from '../services/walletStream.ts';
+import { createWalletStream, type WalletStreamOptions, type WalletStreamState } from '@/services/walletStream.ts';
 
 /** Vue owns the stream lifecycle; all wallet data comes from its server cache envelopes. */
 export function useWallet(options: Omit<WalletStreamOptions, 'onState'> = {}) {

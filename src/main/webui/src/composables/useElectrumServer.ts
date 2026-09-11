@@ -1,6 +1,6 @@
 import { onScopeDispose, ref, shallowRef } from 'vue';
-import type { ElectrumServer } from '../types/wallet';
-import { walletApi } from '../services/walletApi.ts';
+import type { ElectrumServer } from '@/types/wallet';
+import { walletApi } from '@/services/walletApi.ts';
 
 /** Fetch local backend metadata on demand, never poll Electrum or the wallet. */
 export function useElectrumServer() {

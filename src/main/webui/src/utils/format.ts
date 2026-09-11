@@ -1,4 +1,4 @@
-import type { TxType } from '../types/wallet';
+import type { TxType } from '@/types/wallet';
 
 export function shortId(id: string): string {
   return id ? `${id.slice(0, 10)}…${id.slice(-6)}` : '';

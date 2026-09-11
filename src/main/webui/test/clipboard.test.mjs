@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { effectScope } from 'vue';
-import { useClipboard } from '../src/composables/useClipboard.ts';
+import { useClipboard } from '@/composables/useClipboard.ts';
 
 function fixture(t, writeText) {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');

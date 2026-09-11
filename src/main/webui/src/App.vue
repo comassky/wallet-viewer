@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import { computed, useTemplateRef, watch } from 'vue';
-import { useWallet } from './composables/useWallet';
-import { useCurrency } from './composables/useCurrency';
-import type { ReceiveAddress } from './types/wallet';
-import DashboardHeader from './components/DashboardHeader.vue';
-import BalanceCard from './components/BalanceCard.vue';
-import BalanceChart from './components/BalanceChart.vue';
-import ReceiveAddressCard from './components/ReceiveAddressCard.vue';
-import TransactionsSection from './components/TransactionsSection.vue';
-import UtxosSection from './components/UtxosSection.vue';
-import ReceiveQrDialog from './components/ReceiveQrDialog.vue';
-import UiIcon from './components/UiIcon.vue';
-import ToastHost from './components/ToastHost.vue';
-import WalletSkeleton from './components/WalletSkeleton.vue';
-import { useIncomingNotifications } from './composables/useIncomingNotifications';
-import { useRovingTabs } from './composables/useRovingTabs';
-import { useMediaQuery } from './composables/useMediaQuery';
+import { useWallet } from '@/composables/useWallet';
+import { useCurrency } from '@/composables/useCurrency';
+import type { ReceiveAddress } from '@/types/wallet';
+import DashboardHeader from '@/components/DashboardHeader.vue';
+import BalanceCard from '@/components/BalanceCard.vue';
+import BalanceChart from '@/components/BalanceChart.vue';
+import ReceiveAddressCard from '@/components/ReceiveAddressCard.vue';
+import TransactionsSection from '@/components/TransactionsSection.vue';
+import UtxosSection from '@/components/UtxosSection.vue';
+import ReceiveQrDialog from '@/components/ReceiveQrDialog.vue';
+import UiIcon from '@/components/UiIcon.vue';
+import ToastHost from '@/components/ToastHost.vue';
+import WalletSkeleton from '@/components/WalletSkeleton.vue';
+import { useIncomingNotifications } from '@/composables/useIncomingNotifications';
+import { useRovingTabs } from '@/composables/useRovingTabs';
+import { useMediaQuery } from '@/composables/useMediaQuery';
 
 const { data, loading, error, refresh, connection, status, message } = useWallet();
 const { currency, fiatCurrency, rates, ratesLoading, ratesError, amount } = useCurrency();

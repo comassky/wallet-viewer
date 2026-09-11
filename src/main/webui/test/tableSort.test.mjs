@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ref } from 'vue';
-import { useTableSort } from '../src/composables/useTableSort.ts';
+import { useTableSort } from '@/composables/useTableSort.ts';
 
 const columns = [
   { key: 'amount', label: 'Amount', value: row => row.amount },

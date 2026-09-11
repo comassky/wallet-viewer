@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onScopeDispose, ref, useTemplateRef } from 'vue';
-import { useFees } from '../composables/useFees';
-import { formatDate } from '../utils/format';
-import UiIcon from './UiIcon.vue';
+import { useFees } from '@/composables/useFees';
+import { formatDate } from '@/utils/format';
+import UiIcon from '@/components/UiIcon.vue';
 
 const { fees, loading, error } = useFees();
 const root = useTemplateRef<HTMLElement>('root');

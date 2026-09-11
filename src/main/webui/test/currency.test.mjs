@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatAmount, formatNumber, isCurrency, isFiat, validRates, currencyStorageKey, fiatCurrencyStorageKey, readDisplayPreferences, saveCurrency, saveFiatCurrency } from '../src/currency.ts';
+import { formatAmount, formatNumber, isCurrency, isFiat, validRates, currencyStorageKey, fiatCurrencyStorageKey, readDisplayPreferences, saveCurrency, saveFiatCurrency } from '@/currency.ts';
 
 test.beforeEach(t => {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');

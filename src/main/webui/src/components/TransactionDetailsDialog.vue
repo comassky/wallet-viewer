@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { computed, nextTick, onWatcherCleanup, ref, useTemplateRef, watch } from 'vue';
-import { currencyLabel, type Currency } from '../currency';
-import type { Transaction, TransactionDetails } from '../types/wallet';
-import { formatDate } from '../utils/format';
-import { paginateItems, paginationRange } from '../utils/transactionGraph';
-import { useModalDialog } from '../composables/useModalDialog';
-import { useRovingTabs } from '../composables/useRovingTabs';
-import { useMediaQuery } from '../composables/useMediaQuery';
-import { usePrivacy } from '../composables/usePrivacy';
-import TransactionGraph from './TransactionGraph.vue';
-import TransactionBadge from './TransactionBadge.vue';
-import ConfirmationStatus from './ConfirmationStatus.vue';
-import CopyValue from './CopyValue.vue';
-import UiIcon from './UiIcon.vue';
+import { currencyLabel, type Currency } from '@/currency';
+import type { Transaction, TransactionDetails } from '@/types/wallet';
+import { formatDate } from '@/utils/format';
+import { paginateItems, paginationRange } from '@/utils/transactionGraph';
+import { useModalDialog } from '@/composables/useModalDialog';
+import { useRovingTabs } from '@/composables/useRovingTabs';
+import { useMediaQuery } from '@/composables/useMediaQuery';
+import { usePrivacy } from '@/composables/usePrivacy';
+import TransactionGraph from '@/components/TransactionGraph.vue';
+import TransactionBadge from '@/components/TransactionBadge.vue';
+import ConfirmationStatus from '@/components/ConfirmationStatus.vue';
+import CopyValue from '@/components/CopyValue.vue';
+import UiIcon from '@/components/UiIcon.vue';
 
 const props = defineProps<{
   transaction: Transaction | null;

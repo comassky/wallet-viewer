@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createRenderer } from 'vue';
-import { createWalletStream, parseWalletEnvelope, walletStreamUrl } from '../src/services/walletStream.ts';
-import { useWallet } from '../src/composables/useWallet.ts';
+import { createWalletStream, parseWalletEnvelope, walletStreamUrl } from '@/services/walletStream.ts';
+import { useWallet } from '@/composables/useWallet.ts';
 
 class FakeTimers {
   jobs = new Map();

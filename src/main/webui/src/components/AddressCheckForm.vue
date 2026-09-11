@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onScopeDispose, ref, useId, watch } from 'vue';
-import { walletApi } from '../services/walletApi';
-import type { AddressCheck } from '../types/wallet';
-import UiIcon from './UiIcon.vue';
+import { walletApi } from '@/services/walletApi';
+import type { AddressCheck } from '@/types/wallet';
+import UiIcon from '@/components/UiIcon.vue';
 
 const inputId = useId();
 const query = ref('');

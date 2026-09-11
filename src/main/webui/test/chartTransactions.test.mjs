@@ -4,7 +4,7 @@ import test from 'node:test';
 import * as Vue from 'vue';
 import { compileScript, parse } from '@vue/compiler-sfc';
 import ts from 'typescript';
-import { groupChartTransactions } from '../src/utils/chartTransactions.ts';
+import { groupChartTransactions } from '@/utils/chartTransactions.ts';
 
 const day = 86_400;
 const point = time => ({ time, balanceSats: 100, valueEur: null, valueUsd: null });
@@ -34,12 +34,12 @@ test('BTC price series follows fiat currency, visibility and privacy independent
       createChart: () => chart, createSeriesMarkers: () => ({ setMarkers() {}, detach() {} }),
       AreaSeries: {}, LineSeries: {}, ColorType: { Solid: 'solid' }, CrosshairMode: { Magnet: 1 }, LineStyle: { Dashed: 2 },
     },
-    '../currency': {},
-    '../composables/useBalanceHistory': { useBalanceHistory: () => ({ history, loading: Vue.ref(false), error: Vue.ref(null), refresh() {} }) },
-    '../composables/usePrivacy': { usePrivacy: () => ({ hidden, conceal: value => value }) },
-    '../utils/chartTransactions': { groupChartTransactions },
-    '../utils/storage.ts': { readStorage: key => storage.get(key) ?? null, writeStorage: (key, value) => storage.set(key, value) },
-    './UiIcon.vue': {}, '../utils/format': {},
+    '@/currency': {},
+    '@/composables/useBalanceHistory': { useBalanceHistory: () => ({ history, loading: Vue.ref(false), error: Vue.ref(null), refresh() {} }) },
+    '@/composables/usePrivacy': { usePrivacy: () => ({ hidden, conceal: value => value }) },
+    '@/utils/chartTransactions': { groupChartTransactions },
+    '@/utils/storage.ts': { readStorage: key => storage.get(key) ?? null, writeStorage: (key, value) => storage.set(key, value) },
+    '@/components/UiIcon.vue': {}, '@/utils/format': {},
   };
   const source = readFileSync(new URL('../src/components/BalanceChart.vue', import.meta.url), 'utf8');
   const { descriptor } = parse(source);

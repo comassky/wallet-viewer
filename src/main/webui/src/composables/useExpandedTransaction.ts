@@ -1,6 +1,6 @@
 import { ref, watch, type Ref } from 'vue';
-import type { Transaction } from '../types/wallet';
-import { useTransactionDetails } from './useTransactionDetails.ts';
+import type { Transaction } from '@/types/wallet';
+import { useTransactionDetails } from '@/composables/useTransactionDetails.ts';
 
 /** One shared request for both responsive views; collapsing cancels pending work. */
 export function useExpandedTransaction(transactions: Ref<Transaction[]>) {

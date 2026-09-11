@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm test && vue-tsc --noEmit && vite build",
-    "test": "node --experimental-strip-types --test test/*.test.mjs",
+    "test": "node --import tsx --test test/*.test.mjs",
     "typecheck": "vue-tsc --noEmit",
     "preview": "vite preview",
     "screenshots": "node scripts/screenshots.mjs"

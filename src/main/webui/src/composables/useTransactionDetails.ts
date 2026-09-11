@@ -1,6 +1,6 @@
 import { onScopeDispose, ref, shallowRef } from 'vue';
-import { walletApi } from '../services/walletApi.ts';
-import type { TransactionDetails } from '../types/wallet';
+import { walletApi } from '@/services/walletApi.ts';
+import type { TransactionDetails } from '@/types/wallet';
 
 /** Detail requests are independent of the live wallet stream and cancelled on close. */
 export function useTransactionDetails() {

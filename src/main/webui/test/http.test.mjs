@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { requestJson } from '../src/services/http.ts';
-import { walletApi } from '../src/services/walletApi.ts';
-import { parseWalletEnvelope } from '../src/services/walletStream.ts';
+import { requestJson } from '@/services/http.ts';
+import { walletApi } from '@/services/walletApi.ts';
+import { parseWalletEnvelope } from '@/services/walletStream.ts';
 
 const balance = { confirmed: 50, unconfirmed: -8, total: 42 };
 const receive = { index: 0, address: 'bc1-test', path: 'm/0/0' };

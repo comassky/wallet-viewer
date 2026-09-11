@@ -1,5 +1,5 @@
 import { readonly, ref, watch } from 'vue';
-import { readStorage, writeStorage } from '../utils/storage.ts';
+import { readStorage, writeStorage } from '@/utils/storage.ts';
 
 const storageKey = 'wallet-viewer.privacy';
 

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { createChart, createSeriesMarkers, AreaSeries, LineSeries, ColorType, CrosshairMode, LineStyle, type IChartApi, type ISeriesApi, type ISeriesMarkersPluginApi, type MouseEventParams, type Time, type AreaData, type BusinessDay } from 'lightweight-charts';
-import { currencyLabel, type BitcoinUnit, type FiatCurrency } from '../currency';
-import { useBalanceHistory } from '../composables/useBalanceHistory';
-import { usePrivacy } from '../composables/usePrivacy';
-import type { BalancePoint, Transaction } from '../types/wallet';
-import { groupChartTransactions, type ChartTransactionGroup } from '../utils/chartTransactions';
-import { readStorage, writeStorage } from '../utils/storage.ts';
-import UiIcon from './UiIcon.vue';
-import { formatDate, transactionClasses, transactionLabels } from '../utils/format';
+import { currencyLabel, type BitcoinUnit, type FiatCurrency } from '@/currency';
+import { useBalanceHistory } from '@/composables/useBalanceHistory';
+import { usePrivacy } from '@/composables/usePrivacy';
+import type { BalancePoint, Transaction } from '@/types/wallet';
+import { groupChartTransactions, type ChartTransactionGroup } from '@/utils/chartTransactions';
+import { readStorage, writeStorage } from '@/utils/storage.ts';
+import UiIcon from '@/components/UiIcon.vue';
+import { formatDate, transactionClasses, transactionLabels } from '@/utils/format';
 
 const props = defineProps<{
   currency: BitcoinUnit;

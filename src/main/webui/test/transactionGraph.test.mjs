@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   TRANSACTION_PAGE_SIZE, summarizeValues, transactionGraphLayout, transactionGraphPage,
-} from '../src/utils/transactionGraph.ts';
+} from '@/utils/transactionGraph.ts';
 
 test('small transactions are complete and every branch connects only to the transaction', () => {
   const graph = transactionGraphLayout(3, 2);

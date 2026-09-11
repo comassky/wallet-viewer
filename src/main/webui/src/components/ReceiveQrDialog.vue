@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { nextTick, shallowRef, useTemplateRef } from 'vue';
-import { walletApi } from '../services/walletApi';
-import type { ReceiveAddress } from '../types/wallet';
-import { useModalDialog } from '../composables/useModalDialog';
-import UiIcon from './UiIcon.vue';
-import CopyValue from './CopyValue.vue';
+import { walletApi } from '@/services/walletApi';
+import type { ReceiveAddress } from '@/types/wallet';
+import { useModalDialog } from '@/composables/useModalDialog';
+import UiIcon from '@/components/UiIcon.vue';
+import CopyValue from '@/components/CopyValue.vue';
 
 const dialog = useTemplateRef<HTMLDialogElement>('dialog');
 const receive = shallowRef<(ReceiveAddress & { url: string }) | null>(null);

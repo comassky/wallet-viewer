@@ -1,6 +1,6 @@
 import { watch, type Ref } from 'vue';
-import type { WalletSnapshot } from '../types/wallet';
-import { showToast } from './useToast.ts';
+import type { WalletSnapshot } from '@/types/wallet';
+import { showToast } from '@/composables/useToast.ts';
 
 /** Show an in-app toast when a new transaction appears in the wallet snapshot. */
 export function useIncomingNotifications(data: Ref<WalletSnapshot | null>): void {

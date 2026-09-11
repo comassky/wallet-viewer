@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { WalletConnection } from '../services/walletStream';
-import type { WalletStatus } from '../types/wallet';
-import { usePrivacy } from '../composables/usePrivacy';
-import WalletLiveStatus from './WalletLiveStatus.vue';
-import FeeGauge from './FeeGauge.vue';
-import UiIcon from './UiIcon.vue';
+import type { WalletConnection } from '@/services/walletStream';
+import type { WalletStatus } from '@/types/wallet';
+import { usePrivacy } from '@/composables/usePrivacy';
+import WalletLiveStatus from '@/components/WalletLiveStatus.vue';
+import FeeGauge from '@/components/FeeGauge.vue';
+import UiIcon from '@/components/UiIcon.vue';
 
 defineProps<{
   connection: WalletConnection;

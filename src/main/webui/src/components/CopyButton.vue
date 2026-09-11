@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watch } from 'vue';
-import { useClipboard } from '../composables/useClipboard';
-import UiIcon from './UiIcon.vue';
+import { useClipboard } from '@/composables/useClipboard';
+import UiIcon from '@/components/UiIcon.vue';
 
 const props = defineProps<{ value: string }>();
 const { copied, error, copy, reset } = useClipboard();

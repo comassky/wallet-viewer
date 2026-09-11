@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { effectScope, nextTick, ref } from 'vue';
-import { walletApi } from '../src/services/walletApi.ts';
-import { useExpandedTransaction } from '../src/composables/useExpandedTransaction.ts';
+import { walletApi } from '@/services/walletApi.ts';
+import { useExpandedTransaction } from '@/composables/useExpandedTransaction.ts';
 
 function fixture(t) {
   const original = walletApi.transactionDetails;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watch } from 'vue';
-import { useClipboard } from '../composables/useClipboard';
-import UiIcon from './UiIcon.vue';
+import { useClipboard } from '@/composables/useClipboard';
+import UiIcon from '@/components/UiIcon.vue';
 
 const props = withDefaults(defineProps<{ value: string; display?: string; label?: string; statusRight?: boolean }>(), { label: 'value' });
 const { copied, error, copy, reset } = useClipboard();

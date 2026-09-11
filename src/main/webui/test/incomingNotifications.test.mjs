@@ -6,8 +6,8 @@ import { compile } from '@vue/compiler-dom';
 import { parse } from '@vue/compiler-sfc';
 import { renderToString } from '@vue/server-renderer';
 import { effectScope, nextTick, ref } from 'vue';
-import { useIncomingNotifications } from '../src/composables/useIncomingNotifications.ts';
-import { useToasts } from '../src/composables/useToast.ts';
+import { useIncomingNotifications } from '@/composables/useIncomingNotifications.ts';
+import { useToasts } from '@/composables/useToast.ts';
 
 test('reconnection toast has a spinner, coexists with action feedback and disappears after reconnecting', async () => {
   const source = readFileSync(new URL('../src/components/ToastHost.vue', import.meta.url), 'utf8');

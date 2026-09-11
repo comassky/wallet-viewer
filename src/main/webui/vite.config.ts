@@ -12,6 +12,9 @@ const appVersion = pom.match(/<artifactId>wallet-viewer<\/artifactId>\s*<version
 // the Vite dev server and forwards /api calls to the backend on port 8080.
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   base: './',
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),

@@ -1,8 +1,8 @@
 import { onMounted, onScopeDispose, ref, watch } from 'vue';
-import { walletApi } from '../services/walletApi';
-import { usePrivacy } from './usePrivacy.ts';
-import type { PriceRates } from '../types/wallet';
-import { formatAmount, readDisplayPreferences, saveCurrency, saveFiatCurrency, validRates, type BitcoinUnit, type FiatCurrency } from '../currency';
+import { walletApi } from '@/services/walletApi';
+import { usePrivacy } from '@/composables/usePrivacy.ts';
+import type { PriceRates } from '@/types/wallet';
+import { formatAmount, readDisplayPreferences, saveCurrency, saveFiatCurrency, validRates, type BitcoinUnit, type FiatCurrency } from '@/currency';
 
 /** Display preference and fiat quote lifecycle, independent of wallet snapshot loading. */
 export function useCurrency() {

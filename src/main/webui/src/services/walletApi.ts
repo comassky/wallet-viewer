@@ -1,5 +1,5 @@
-import { requestJson, type RequestOptions } from './http.ts';
-import { arrayOf, validAddressCheck, validBalance, validBalancePoint, validFees, validPrices, validReceiveAddress, validServer, validSnapshot, validTransaction, validTransactionDetails, validUtxo, type Validator } from './walletValidation.ts';
+import { requestJson, type RequestOptions } from '@/services/http.ts';
+import { arrayOf, validAddressCheck, validBalance, validBalancePoint, validFees, validPrices, validReceiveAddress, validServer, validSnapshot, validTransaction, validTransactionDetails, validUtxo, type Validator } from '@/services/walletValidation.ts';
 
 const BASE = '/api/wallet';
 

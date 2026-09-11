@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createRenderer, isProxy } from 'vue';
-import { usePolledResource } from '../src/composables/usePolledResource.ts';
+import { usePolledResource } from '@/composables/usePolledResource.ts';
 
 function fixture(context, fetcher, initial = []) {
   const renderer = createRenderer({

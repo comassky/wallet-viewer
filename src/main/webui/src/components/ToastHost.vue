@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTemplateRef, watch } from 'vue';
-import { useToasts } from '../composables/useToast';
-import UiIcon from './UiIcon.vue';
+import { useToasts } from '@/composables/useToast';
+import UiIcon from '@/components/UiIcon.vue';
 
 const { toasts } = useToasts();
 const props = defineProps<{ reconnecting?: boolean }>();

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, onScopeDispose, ref, useTemplateRef, watch } from 'vue';
-import type { WalletConnection } from '../services/walletStream';
-import type { WalletStatus } from '../types/wallet';
-import { useElectrumServer } from '../composables/useElectrumServer';
-import UiIcon from './UiIcon.vue';
+import type { WalletConnection } from '@/services/walletStream';
+import type { WalletStatus } from '@/types/wallet';
+import { useElectrumServer } from '@/composables/useElectrumServer';
+import UiIcon from '@/components/UiIcon.vue';
 
 const props = defineProps<{
   connection: WalletConnection;

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { currencies, currencyLabel, currencyStorageKey, readCurrency, saveCurrency } from '../src/currency.ts';
-import { usePrivacy } from '../src/composables/usePrivacy.ts';
+import { currencies, currencyLabel, currencyStorageKey, readCurrency, saveCurrency } from '@/currency.ts';
+import { usePrivacy } from '@/composables/usePrivacy.ts';
 import { computed } from 'vue';
 
 test('privacy replaces values reactively and persists without requiring a DOM', t => {

@@ -1,6 +1,6 @@
-import { usePolledResource } from './usePolledResource.ts';
-import { walletApi } from '../services/walletApi.ts';
-import type { BalancePoint } from '../types/wallet';
+import { usePolledResource } from '@/composables/usePolledResource.ts';
+import { walletApi } from '@/services/walletApi.ts';
+import type { BalancePoint } from '@/types/wallet';
 
 /** Daily balance valued in fiat, computed and cached by the backend. */
 export function useBalanceHistory() {

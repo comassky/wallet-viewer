@@ -1,6 +1,6 @@
-import { usePolledResource } from './usePolledResource.ts';
-import { walletApi } from '../services/walletApi.ts';
-import type { FeeRates } from '../types/wallet';
+import { usePolledResource } from '@/composables/usePolledResource.ts';
+import { walletApi } from '@/services/walletApi.ts';
+import type { FeeRates } from '@/types/wallet';
 
 /** Recommended mempool fee estimates, refreshed on an interval; proxied by the backend. */
 export function useFees() {

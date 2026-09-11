@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { computed, createRenderer, ref } from 'vue';
-import { useMediaQuery } from '../src/composables/useMediaQuery.ts';
-import { useRovingTabs } from '../src/composables/useRovingTabs.ts';
+import { useMediaQuery } from '@/composables/useMediaQuery.ts';
+import { useRovingTabs } from '@/composables/useRovingTabs.ts';
 
 test('media query tracks viewport changes and removes its listener on unmount', context => {
   const listeners = new Set();

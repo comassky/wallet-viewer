@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { currencyLabel, type Currency } from '../currency';
-import type { TransactionDetails } from '../types/wallet';
-import { shortId } from '../utils/format';
-import { paginationRange, summarizeValues, transactionGraphLayout, transactionGraphPage } from '../utils/transactionGraph';
-import CopyValue from './CopyValue.vue';
-import UiIcon from './UiIcon.vue';
+import { currencyLabel, type Currency } from '@/currency';
+import type { TransactionDetails } from '@/types/wallet';
+import { shortId } from '@/utils/format';
+import { paginationRange, summarizeValues, transactionGraphLayout, transactionGraphPage } from '@/utils/transactionGraph';
+import CopyValue from '@/components/CopyValue.vue';
+import UiIcon from '@/components/UiIcon.vue';
 
 const props = defineProps<{
   idPrefix: string;

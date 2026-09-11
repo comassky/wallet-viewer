@@ -1,5 +1,5 @@
-import type { WalletEnvelope, WalletSnapshot, WalletStatus } from '../types/wallet';
-import { validEnvelope } from './walletValidation.ts';
+import type { WalletEnvelope, WalletSnapshot, WalletStatus } from '@/types/wallet';
+import { validEnvelope } from '@/services/walletValidation.ts';
 
 export type WalletConnection = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 

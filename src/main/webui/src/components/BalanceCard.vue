@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { usePrivacy } from '../composables/usePrivacy';
-import { currencyLabel, formatAmount, type BitcoinUnit, type FiatCurrency } from '../currency';
-import type { Balance, PriceRates } from '../types/wallet';
-import { formatDate } from '../utils/format';
-import AppTooltip from './AppTooltip.vue';
-import UiIcon from './UiIcon.vue';
+import { usePrivacy } from '@/composables/usePrivacy';
+import { currencyLabel, formatAmount, type BitcoinUnit, type FiatCurrency } from '@/currency';
+import type { Balance, PriceRates } from '@/types/wallet';
+import { formatDate } from '@/utils/format';
+import AppTooltip from '@/components/AppTooltip.vue';
+import UiIcon from '@/components/UiIcon.vue';
 
 const props = defineProps<{
   balance: Balance;

@@ -1,4 +1,4 @@
-import type { BalancePoint, Transaction } from '../types/wallet.ts';
+import type { BalancePoint, Transaction } from '@/types/wallet.ts';
 
 export interface ChartTransactionGroup {
   time: number;

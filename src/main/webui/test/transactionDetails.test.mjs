@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { effectScope, isProxy } from 'vue';
-import { walletApi } from '../src/services/walletApi.ts';
-import { useTransactionDetails } from '../src/composables/useTransactionDetails.ts';
+import { walletApi } from '@/services/walletApi.ts';
+import { useTransactionDetails } from '@/composables/useTransactionDetails.ts';
 
 function fixture(t, request) {
   const original = walletApi.transactionDetails;

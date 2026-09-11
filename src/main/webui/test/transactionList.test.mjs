@@ -6,7 +6,7 @@ import { compile } from '@vue/compiler-dom';
 import { parse } from '@vue/compiler-sfc';
 import { renderToString } from '@vue/server-renderer';
 import { effectScope, ref } from 'vue';
-import { transactionPageSize, useTransactionList } from '../src/composables/useTransactionList.ts';
+import { transactionPageSize, useTransactionList } from '@/composables/useTransactionList.ts';
 
 test('confirmation status shows a static pending badge at zero and spins only from one to four', async () => {
   const source = readFileSync(new URL('../src/components/ConfirmationStatus.vue', import.meta.url), 'utf8');

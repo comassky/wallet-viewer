@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { TxType } from '../types/wallet';
-import { transactionClasses, transactionDotClasses, transactionLabels } from '../utils/format';
+import type { TxType } from '@/types/wallet';
+import { transactionClasses, transactionDotClasses, transactionLabels } from '@/utils/format';
 
 defineProps<{ type: TxType }>();
 </script>

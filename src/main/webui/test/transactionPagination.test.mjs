@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { TRANSACTION_PAGE_SIZE, paginateItems, paginationRange } from '../src/utils/transactionGraph.ts';
+import { TRANSACTION_PAGE_SIZE, paginateItems, paginationRange } from '@/utils/transactionGraph.ts';
 
 test('default size, zero-based page state and one-based display counters', () => {
   assert.equal(TRANSACTION_PAGE_SIZE, 5);

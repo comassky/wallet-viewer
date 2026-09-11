@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue';
-import { walletApi } from '../services/walletApi';
-import type { ReceiveAddress } from '../types/wallet';
-import { useClipboard } from '../composables/useClipboard';
-import AddressCheckForm from './AddressCheckForm.vue';
-import UiIcon from './UiIcon.vue';
+import { walletApi } from '@/services/walletApi';
+import type { ReceiveAddress } from '@/types/wallet';
+import { useClipboard } from '@/composables/useClipboard';
+import AddressCheckForm from '@/components/AddressCheckForm.vue';
+import UiIcon from '@/components/UiIcon.vue';
 
 const props = defineProps<{ receive: ReceiveAddress }>();
 const emit = defineEmits<{ enlarge: [address: ReceiveAddress, trigger: HTMLButtonElement] }>();

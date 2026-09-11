@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { computed, toRef, useTemplateRef } from 'vue';
-import { usePrivacy } from '../composables/usePrivacy';
-import { currencyLabel, formatAmount, type Currency, type FiatCurrency } from '../currency';
-import type { PriceRates, Transaction } from '../types/wallet';
-import { shortId, formatDate, transactionLabels } from '../utils/format';
-import { useExpandedTransaction } from '../composables/useExpandedTransaction';
-import type { SortColumn } from '../composables/useTableSort';
-import { transactionFilters, transactionPageSize, useTransactionList } from '../composables/useTransactionList';
-import CopyValue from './CopyValue.vue';
-import ConfirmationStatus from './ConfirmationStatus.vue';
-import TransactionBadge from './TransactionBadge.vue';
-import TransactionDetailsDialog from './TransactionDetailsDialog.vue';
-import UiIcon from './UiIcon.vue';
+import { usePrivacy } from '@/composables/usePrivacy';
+import { currencyLabel, formatAmount, type Currency, type FiatCurrency } from '@/currency';
+import type { PriceRates, Transaction } from '@/types/wallet';
+import { shortId, formatDate, transactionLabels } from '@/utils/format';
+import { useExpandedTransaction } from '@/composables/useExpandedTransaction';
+import type { SortColumn } from '@/composables/useTableSort';
+import { transactionFilters, transactionPageSize, useTransactionList } from '@/composables/useTransactionList';
+import CopyValue from '@/components/CopyValue.vue';
+import ConfirmationStatus from '@/components/ConfirmationStatus.vue';
+import TransactionBadge from '@/components/TransactionBadge.vue';
+import TransactionDetailsDialog from '@/components/TransactionDetailsDialog.vue';
+import UiIcon from '@/components/UiIcon.vue';
 
 const props = defineProps<{
   transactions: Transaction[];

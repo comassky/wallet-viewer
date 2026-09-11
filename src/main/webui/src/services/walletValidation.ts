@@ -1,4 +1,4 @@
-import type { AddressCheck, Balance, BalancePoint, ElectrumServer, FeeRates, PriceRates, ReceiveAddress, Transaction, TransactionDetails, TransactionInput, TransactionOutput, Utxo, WalletEnvelope, WalletSnapshot, WalletStatus } from '../types/wallet.ts';
+import type { AddressCheck, Balance, BalancePoint, ElectrumServer, FeeRates, PriceRates, ReceiveAddress, Transaction, TransactionDetails, TransactionInput, TransactionOutput, Utxo, WalletEnvelope, WalletSnapshot, WalletStatus } from '@/types/wallet.ts';
 
 export type Validator<T> = (value: unknown) => value is T;
 
