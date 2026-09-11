@@ -79,8 +79,8 @@ const formatShare = (value: number) => shareFormatter.format(valueShare(value) /
         <colgroup><col class="w-[24%]" /><col class="w-[24%]" /><col class="w-[15%]" /><col class="w-[14%]" /><col class="w-[10%]" /><col class="w-[13%]" /></colgroup>
         <thead class="border-b border-slate-600/50 bg-slate-800/80">
           <tr class="text-xs uppercase text-slate-300">
-            <th v-for="column in columns" :key="column.key" scope="col" :aria-sort="ariaSort(column.key)" class="px-4 py-2 font-medium" :class="column.numeric ? 'text-right' : 'text-left'">
-              <button type="button" class="w-full rounded-sm py-2 text-inherit transition hover:text-accent" :class="column.numeric ? 'text-right' : 'text-left'" @click="toggleSort(column.key)">
+            <th v-for="column in columns" :key="column.key" scope="col" :aria-sort="ariaSort(column.key)" class="px-4 py-2 font-medium" :class="column.key === 'confirmations' ? 'text-center' : column.numeric ? 'text-right' : 'text-left'">
+              <button type="button" class="w-full rounded-sm py-2 text-inherit transition hover:text-accent" :class="column.key === 'confirmations' ? 'text-center' : column.numeric ? 'text-right' : 'text-left'" @click="toggleSort(column.key)">
                 {{ column.label }}{{ column.key === 'value' ? ` (${currencyLabel(currency)})` : '' }}
                 <span aria-hidden="true" class="ml-1" :class="sortKey === column.key ? 'text-accent' : 'text-slate-600'">{{ sortKey === column.key ? (descending ? '↓' : '↑') : '↕' }}</span>
               </button>
@@ -99,7 +99,7 @@ const formatShare = (value: number) => shareFormatter.format(valueShare(value) /
               <div class="font-medium text-slate-200">{{ formatShare(u.value) }}</div>
               <div class="mt-2 ml-auto h-1 w-full max-w-40 overflow-hidden rounded-full bg-slate-700/60" aria-hidden="true"><div class="ml-auto h-full rounded-full" :class="u.confirmations === 0 ? 'bg-amber-400' : 'bg-emerald-400'" :style="{ width: `${valueShare(u.value)}%` }" /></div>
             </td>
-            <td class="px-4 py-4 text-right"><ConfirmationStatus :confirmations="u.confirmations" icon-only /></td>
+            <td class="px-4 py-4 text-center"><ConfirmationStatus :confirmations="u.confirmations" icon-only /></td>
           </tr>
         </tbody>
       </table>

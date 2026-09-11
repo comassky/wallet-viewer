@@ -112,8 +112,8 @@ function clearSearch(): void {
       <table class="w-full table-fixed text-sm">
         <thead>
           <tr class="text-xs uppercase text-slate-400">
-            <th v-for="column in columns" :key="column.key" scope="col" :aria-sort="ariaSort(column.key)" class="px-3 py-1 font-medium" :class="column.numeric ? 'text-right' : 'text-left'">
-              <button type="button" class="w-full rounded-sm py-2 text-inherit transition hover:text-accent" :class="column.numeric ? 'text-right' : 'text-left'" @click="toggleSort(column.key)">
+            <th v-for="column in columns" :key="column.key" scope="col" :aria-sort="ariaSort(column.key)" class="px-3 py-1 font-medium" :class="column.key === 'confirmations' ? 'text-center' : column.numeric ? 'text-right' : 'text-left'">
+              <button type="button" class="w-full rounded-sm py-2 text-inherit transition hover:text-accent" :class="column.key === 'confirmations' ? 'text-center' : column.numeric ? 'text-right' : 'text-left'" @click="toggleSort(column.key)">
                 {{ column.label }}{{ column.key === 'amount' ? ` (${currencyLabel(currency)})` : '' }}
                 <span aria-hidden="true" class="ml-1" :class="sortKey === column.key ? 'text-accent' : 'text-slate-600'">{{ sortKey === column.key ? (descending ? '↓' : '↑') : '↕' }}</span>
               </button>
@@ -132,7 +132,7 @@ function clearSearch(): void {
               <span :class="tx.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'">{{ amount(tx.amount, true) }}</span>
               <span class="mt-1 block text-xs text-slate-400">{{ rates ? '≈ ' : '' }}{{ conceal(formatAmount(tx.amount, fiatCurrency, rates, true)) }} {{ fiatCurrency }}</span>
             </td>
-            <td class="px-3 py-2.5 text-right"><ConfirmationStatus :confirmations="tx.confirmations" compact icon-only /></td>
+            <td class="px-3 py-2.5 text-center"><ConfirmationStatus :confirmations="tx.confirmations" compact icon-only /></td>
             <td class="px-3 py-2.5 text-right"><button type="button" data-tx-details aria-haspopup="dialog" aria-controls="transaction-details-dialog" :aria-label="`Show details for transaction ${tx.txid}`" class="inline-flex items-center justify-center rounded-lg px-2 py-1 text-accent hover:bg-accent/10" @click.stop="openDetails(tx.txid, $event)"><UiIcon name="chevron-right" /></button></td>
           </tr>
         </tbody>
