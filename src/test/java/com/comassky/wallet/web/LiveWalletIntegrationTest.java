@@ -154,7 +154,7 @@ class LiveWalletIntegrationTest {
             assertEquals(200, response.statusCode());
             assertEquals(JSON.createObjectNode().put("host", "127.0.0.1").put("port", electrum.port())
                     .put("tls", false).put("connected", true).put("serverVersion", "fixture 1.0")
-                    .put("protocolVersion", "1.4"), JSON.readTree(response.body()));
+                    .put("protocolVersion", "1.4").put("blockHeight", 100), JSON.readTree(response.body()));
         }
         assertEquals(1, electrum.versionCount(), "REST reads must never renegotiate metadata");
     }
