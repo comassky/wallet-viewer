@@ -4,7 +4,7 @@ import { effectScope } from 'vue';
 import { walletApi } from '@/services/walletApi.ts';
 import { useElectrumServer } from '@/composables/useElectrumServer.ts';
 
-const server = { host: 'localhost', port: 50002, tls: true, connected: true, serverVersion: 'electrs 1.0', protocolVersion: '1.4' };
+const server = { host: 'localhost', port: 50002, tls: true, connected: true, serverVersion: 'electrs 1.0', protocolVersion: '1.4', blockHeight: 900000 };
 function fixture(t, request) {
   const original = walletApi.server;
   walletApi.server = request;
@@ -62,6 +62,16 @@ test('errors are generic, retriable and cannot reveal backend response content',
   await state.load();
   assert.equal(state.error.value, null);
   assert.equal(state.server.value.serverVersion, null);
+});
+
+test('refresh updates the latest block and preserves unknown and genesis heights', async t => {
+  let blockHeight = 900000;
+  const { state } = fixture(t, async () => ({ ...server, blockHeight }));
+  for (const height of [900000, 900001, null, 0]) {
+    blockHeight = height;
+    await state.load();
+    assert.equal(state.server.value.blockHeight, height);
+  }
 });
 
 test('disposal cancels outstanding work and prevents further metadata loads', async t => {

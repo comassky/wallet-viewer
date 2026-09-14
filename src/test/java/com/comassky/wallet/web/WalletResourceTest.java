@@ -26,7 +26,7 @@ class WalletResourceTest {
         setField(ElectrumClient.class, resource.electrum, "host", "configured-host");
         setField(ElectrumClient.class, resource.electrum, "port", 50002);
         setField(ElectrumClient.class, resource.electrum, "ssl", true);
-        ElectrumServerDto expected = new ElectrumServerDto("configured-host", 50002, true, false, null, null);
+        ElectrumServerDto expected = new ElectrumServerDto("configured-host", 50002, true, false, null, null, null);
         for (int i = 0; i < 10; i++) assertEquals(expected, resource.server());
     }
 
@@ -35,10 +35,11 @@ class WalletResourceTest {
         ObjectMapper mapper = new ObjectMapper();
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         var tree = mapper.readTree(mapper.writeValueAsString(
-                new ElectrumServerDto("host", 50002, true, false, null, null)));
-        assertEquals(6, tree.size());
+                new ElectrumServerDto("host", 50002, true, false, null, null, null)));
+        assertEquals(7, tree.size());
         assertEquals(true, tree.has("serverVersion") && tree.get("serverVersion").isNull());
         assertEquals(true, tree.has("protocolVersion") && tree.get("protocolVersion").isNull());
+        assertEquals(true, tree.has("blockHeight") && tree.get("blockHeight").isNull());
     }
 
     @Test

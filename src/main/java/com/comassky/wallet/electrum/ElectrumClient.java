@@ -83,6 +83,7 @@ public class ElectrumClient {
         boolean retired;
         String serverVersion;
         String protocolVersion;
+        Integer blockHeight;
     }
 
     private record Pending(Connection connection, UniEmitter<? super JsonObject> emitter) { }
@@ -132,7 +133,8 @@ public class ElectrumClient {
         Connection current = connection;
         boolean ready = !stopped && current != null && current.socket != null && !current.retired;
         return new ElectrumServerDto(host, port, ssl, ready,
-                ready ? current.serverVersion : null, ready ? current.protocolVersion : null);
+            ready ? current.serverVersion : null, ready ? current.protocolVersion : null,
+            ready ? current.blockHeight : null);
     }
 
     /** Registers a non-blocking notification callback. Closing the registration removes it. */
@@ -263,6 +265,9 @@ public class ElectrumClient {
         valid |= ElectrumMethod.HEADERS_SUBSCRIBE.wire().equals(method)
                 && params.size() == 1 && params.getValue(0) instanceof JsonObject;
         if (!valid) return;
+        if (ElectrumMethod.HEADERS_SUBSCRIBE.wire().equals(method)) {
+            cacheBlockHeight(owner, params.getValue(0));
+        }
         LOG.debug(ElectrumMethod.SCRIPTHASH_SUBSCRIBE.wire().equals(method)
             ? "Electrum notification: address changed" : "Electrum notification: new block");
         notificationListeners.forEach(listener -> {
@@ -272,6 +277,15 @@ public class ElectrumClient {
                 // Isolate both listener exceptions and mutations from the other listeners.
             }
         });
+    }
+
+    private synchronized void cacheBlockHeight(Connection owner, Object result) {
+        if (stopped || connection != owner || owner.retired || !(result instanceof JsonObject header)) return;
+        if (header.getValue("height") instanceof Number height
+                && height.doubleValue() >= 0 && height.doubleValue() <= Integer.MAX_VALUE
+                && height.doubleValue() == height.intValue()) {
+            owner.blockHeight = height.intValue();
+        }
     }
 
     private synchronized void lost(Connection owner, Throwable failure) {
@@ -409,7 +423,11 @@ public class ElectrumClient {
                             sock.write(payload).onFailure(failure -> lost(owner, failure));
                         }
                     })
-            ).ifNoItem().after(requestTimeout).fail()
+            ).onItem().invoke(response -> {
+                if (ElectrumMethod.HEADERS_SUBSCRIBE.wire().equals(method)) {
+                    cacheBlockHeight(owner, response.getValue("result"));
+                }
+            }).ifNoItem().after(requestTimeout).fail()
                     .onFailure(TimeoutException.class).invoke(failure -> {
                         LOG.warnf("Electrum RPC timeout: method=%s id=%d type=TimeoutException", safeMethod(method), id);
                         synchronized (ElectrumClient.this) {

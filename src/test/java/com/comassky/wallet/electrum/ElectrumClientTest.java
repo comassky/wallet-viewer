@@ -366,13 +366,13 @@ class ElectrumClientTest {
     void serverInfoIsPureCacheAndNegotiatesExactlyOncePerSocket() throws Exception {
         WalletResource resource = new WalletResource();
         setField(WalletResource.class, resource, "electrum", client);
-        ElectrumServerDto disconnected = new ElectrumServerDto("127.0.0.1", client.port, false, false, null, null);
+        ElectrumServerDto disconnected = new ElectrumServerDto("127.0.0.1", client.port, false, false, null, null, null);
         for (int i = 0; i < 10; i++) assertEquals(disconnected, resource.server());
         assertTrue(sockets.isEmpty());
         assertTrue(versionRequests.isEmpty());
 
         client.call("server.ping").await().atMost(Duration.ofSeconds(5));
-        ElectrumServerDto expected = new ElectrumServerDto("127.0.0.1", client.port, false, true, "fixture 1.0", "1.4");
+        ElectrumServerDto expected = new ElectrumServerDto("127.0.0.1", client.port, false, true, "fixture 1.0", "1.4", null);
         for (int i = 0; i < 10; i++) assertEquals(expected, resource.server());
         client.startMonitoring();
         client.startMonitoring();
@@ -382,8 +382,33 @@ class ElectrumClientTest {
         assertFalse(ids.contains(versionRequests.getFirst().getInteger("id")));
         assertEquals(2, ids.size());
         assertTrue(pending().isEmpty());
+        sockets.getFirst().write(new JsonObject().put("method", "blockchain.headers.subscribe")
+            .put("params", new JsonArray().add(new JsonObject().put("height", 900000))).encode() + "\n");
+        awaitCondition(() -> Integer.valueOf(900000).equals(client.serverInfo().blockHeight()));
         client.close();
         assertEquals(disconnected, resource.server());
+    }
+
+    @Test
+    void blockHeightTracksSubscriptionAndNotificationsOnlyForCurrentConnection() throws Exception {
+        respond = (socket, request) -> reply(socket, request, new JsonObject().put("height", 899999));
+        client.call("blockchain.headers.subscribe").await().atMost(Duration.ofSeconds(5));
+        assertEquals(899999, client.serverInfo().blockHeight());
+        sockets.getFirst().write(new JsonObject().put("method", "blockchain.headers.subscribe")
+                .put("params", new JsonArray().add(new JsonObject().put("height", 900000))).encode() + "\n");
+        awaitCondition(() -> Integer.valueOf(900000).equals(client.serverInfo().blockHeight()));
+        respond = (socket, request) -> reply(socket, request, new JsonObject().put("height", -1));
+        client.call("blockchain.headers.subscribe").await().atMost(Duration.ofSeconds(5));
+        assertEquals(900000, client.serverInfo().blockHeight());
+        sockets.getFirst().close();
+        awaitCondition(() -> !client.serverInfo().connected());
+        assertNull(client.serverInfo().blockHeight());
+        client.call("server.ping").await().atMost(Duration.ofSeconds(5));
+        assertTrue(client.serverInfo().connected());
+        assertNull(client.serverInfo().blockHeight());
+        respond = (socket, request) -> reply(socket, request, new JsonObject().put("height", 0));
+        client.call("blockchain.headers.subscribe").await().atMost(Duration.ofSeconds(5));
+        assertEquals(0, client.serverInfo().blockHeight());
     }
 
     @Test

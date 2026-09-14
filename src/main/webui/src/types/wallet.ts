@@ -122,4 +122,5 @@ export interface ElectrumServer {
   connected: boolean;
   serverVersion: string | null;
   protocolVersion: string | null;
+  blockHeight: number | null;
 }

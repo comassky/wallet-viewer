@@ -76,6 +76,7 @@ onScopeDispose(() => document.removeEventListener('pointerdown', outside));
         <dl v-else-if="server" class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-xs">
           <dt class="text-slate-500">Server</dt><dd class="break-all text-right font-mono">{{ server.host }}:{{ server.port }}</dd>
           <dt class="text-slate-500">Connection</dt><dd class="text-right" :class="server.connected ? 'text-accent' : 'text-amber-300'">{{ server.connected ? 'Connected' : 'Disconnected' }}</dd>
+          <dt class="text-slate-500">Latest block</dt><dd class="break-all text-right font-mono">{{ server.blockHeight ?? 'Not available' }}</dd>
           <dt class="text-slate-500">Software</dt><dd class="break-all text-right">{{ server.serverVersion || 'Not available' }}</dd>
           <dt class="text-slate-500">Protocol</dt><dd class="break-all text-right font-mono">{{ server.protocolVersion || 'Not available' }}</dd>
           <dt class="text-slate-500">Transport</dt><dd class="text-right">{{ server.tls ? 'TLS · certificate verified' : 'TCP · unencrypted' }}</dd>
