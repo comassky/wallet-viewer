@@ -12,6 +12,7 @@ export type TransactionFilter = typeof transactionFilters[number]['id'];
 export const transactionPageSize = 25;
 
 function matches(tx: Transaction, filter: TransactionFilter): boolean {
+  if (filter === 'sent') return tx.type === 'sent' || tx.type === 'self';
   return filter === 'all' || (filter === 'pending' ? tx.confirmations === 0 : tx.type === filter);
 }
 
@@ -27,7 +28,8 @@ export function useTransactionList(transactions: Ref<readonly Transaction[]>, co
   const counts = computed(() => {
     const totals = { all: searched.value.length, received: 0, sent: 0, pending: 0 } satisfies Record<TransactionFilter, number>;
     searched.value.forEach(transaction => {
-      if (transaction.type === 'received' || transaction.type === 'sent') totals[transaction.type]++;
+      if (transaction.type === 'received') totals.received++;
+      if (matches(transaction, 'sent')) totals.sent++;
       if (transaction.confirmations === 0) totals.pending++;
     });
     return totals;

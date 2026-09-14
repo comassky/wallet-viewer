@@ -56,22 +56,23 @@ function fixture(t, transactions) {
   return { rows, state: scope.run(() => useTransactionList(rows, columns)) };
 }
 
-test('filters include self transfers in all and every unconfirmed type in pending', t => {
+test('sent includes confirmed and pending self transfers while pending includes every unconfirmed type', t => {
   const { state } = fixture(t, [
     { txid: 'a', type: 'received', confirmations: 1 },
     { txid: 'b', type: 'sent', confirmations: 0 },
     { txid: 'c', type: 'self', confirmations: 0 },
     { txid: 'd', type: 'received', confirmations: 0 },
+    { txid: 'e', type: 'self', confirmations: 6 },
   ]);
-  assert.deepEqual(state.counts.value, { all: 4, received: 2, sent: 1, pending: 3 });
+  assert.deepEqual(state.counts.value, { all: 5, received: 2, sent: 3, pending: 3 });
   state.filter.value = 'received';
   assert.deepEqual(state.visible.value.map(tx => tx.txid), ['a', 'd']);
   state.filter.value = 'sent';
-  assert.deepEqual(state.visible.value.map(tx => tx.txid), ['b']);
+  assert.deepEqual(state.visible.value.map(tx => tx.txid), ['b', 'c', 'e']);
   state.filter.value = 'pending';
   assert.deepEqual(state.visible.value.map(tx => tx.txid), ['b', 'c', 'd']);
   state.resetFilters();
-  assert.equal(state.visible.value.length, 4);
+  assert.equal(state.visible.value.length, 5);
 });
 
 test('search trims and ignores case, combines with filters and can be reset', t => {
