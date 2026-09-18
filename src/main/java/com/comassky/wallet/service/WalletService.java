@@ -257,9 +257,9 @@ public class WalletService {
                 .map(a -> electrum.call(ElectrumMethod.SCRIPTHASH_GET_BALANCE, a.scripthash())
                         .map(ElectrumResult::balance).map(balance -> new BalanceDto(balance.confirmed(), balance.unconfirmed())))
                 .toList();
-        return join(unis).map(list -> new BalanceDto(
-                list.stream().mapToLong(BalanceDto::confirmed).sum(),
-                list.stream().mapToLong(BalanceDto::unconfirmed).sum()));
+        return join(unis).map(list -> list.stream()
+                .reduce(new BalanceDto(0, 0), (a, b) -> new BalanceDto(
+                        a.confirmed() + b.confirmed(), a.unconfirmed() + b.unconfirmed())));
     }
 
     // ---- UTXOs ------------------------------------------------------------
@@ -360,9 +360,10 @@ public class WalletService {
             // One hash per output: our outputs give both received totals and the outpoints we can spend.
             List<OwnedOutput> owned = parsed.entrySet().stream()
                     .flatMap(e -> e.getValue().getOutputs().stream()
-                            .filter(o -> ourScripts.contains(HexFormat.of().formatHex(o.getScriptBytes())))
-                            .map(o -> new OwnedOutput(e.getKey(), o.getIndex(), o.getValue().value,
-                                    addressByScript.get(HexFormat.of().formatHex(o.getScriptBytes())))))
+                            .map(o -> Map.entry(o, HexFormat.of().formatHex(o.getScriptBytes())))
+                            .filter(o -> ourScripts.contains(o.getValue()))
+                            .map(o -> new OwnedOutput(e.getKey(), o.getKey().getIndex(), o.getKey().getValue().value,
+                                    addressByScript.get(o.getValue()))))
                     .toList();
             Map<String, Long> receivedByTx = owned.stream()
                     .collect(Collectors.groupingBy(OwnedOutput::txid, Collectors.summingLong(OwnedOutput::value)));
