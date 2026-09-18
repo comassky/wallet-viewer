@@ -76,10 +76,19 @@ public class HdWallet {
     // Derivation is deterministic for a fixed key, so memoize the immutable result by (chain, index).
     private final Cache<Long, AddressInfo> addressCache = Caffeine.newBuilder().maximumSize(20_000).build();
 
-    private synchronized void ensureInit() {
+    private void ensureInit() {
         if (initialized) {
             return;
         }
+        synchronized (this) {
+            if (initialized) {
+                return;
+            }
+            init();
+        }
+    }
+
+    private void init() {
         params = "testnet".equalsIgnoreCase(network) ? TestNet3Params.get() : MainNetParams.get();
         final String p = extPub.trim();
         final String prefix = p.substring(0, 4).toLowerCase();
