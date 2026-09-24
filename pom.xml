@@ -14,9 +14,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <quarkus.platform.version>3.39.4</quarkus.platform.version>
+        <quarkus.platform.version>3.39.5</quarkus.platform.version>
 
-        <quinoa.version>2.9.0</quinoa.version>
+        <quinoa.version>2.9.1</quinoa.version>
         <bitcoinj.version>0.17.1</bitcoinj.version>
 
         <maven.compiler.parameters>true</maven.compiler.parameters>
