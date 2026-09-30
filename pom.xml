@@ -16,7 +16,7 @@
 
         <quarkus.platform.version>3.39.5</quarkus.platform.version>
 
-        <quinoa.version>2.9.1</quinoa.version>
+        <quinoa.version>2.9.2</quinoa.version>
         <bitcoinj.version>0.17.1</bitcoinj.version>
 
         <maven.compiler.parameters>true</maven.compiler.parameters>
