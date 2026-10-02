@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "24.19.0",
+    "@types/node": "24.19.1",
     "@vitejs/plugin-vue": "^6.0.9",
     "playwright": "1.63.0",
     "tailwindcss": "^4.3.3",
