@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
-FROM maven:3.10.0-eclipse-temurin-25@sha256:0396dcd8cd0d46a0d2026449b714b2a5bbe53cce030975b5a41f8ffa3f5f0525 AS build
+FROM maven:3.10.0-eclipse-temurin-25@sha256:9b5f82b7166db6112eb123ba310a9e010ec3fe95022ac0728f491121563dfbab AS build
 WORKDIR /workspace
 
 COPY pom.xml ./
@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     --mount=type=cache,target=/root/.npm \
     mvn --batch-mode --no-transfer-progress verify -Dquarkus.quinoa.ci=true
 
-FROM gcr.io/distroless/java25-debian13:nonroot@sha256:28a3986989d7d74cb5cfd6ba369e64d3d634f83ac9fa562dac8db2d20827f90e AS runtime
+FROM gcr.io/distroless/java25-debian13:nonroot@sha256:bb5fd2c016691aef1cf9ff376294c1eeaa5b635af240a0a3ed3242e2877f7866 AS runtime
 WORKDIR /app
 
 # Keep dependencies separate from application code for efficient image layers.
