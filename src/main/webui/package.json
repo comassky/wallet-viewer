@@ -12,20 +12,20 @@
     "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
-    "@formkit/auto-animate": "^0.10.0",
+    "@formkit/auto-animate": "^0.10.2",
     "@mdi/js": "7.4.47",
     "lightweight-charts": "5.2.1",
-    "vue": "^3.5.44"
+    "vue": "^3.5.45"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.4",
+    "@tailwindcss/vite": "^4.3.5",
     "@types/node": "26.6.6",
     "@vitejs/plugin-vue": "^6.0.10",
-    "playwright": "1.64.1",
-    "tailwindcss": "^4.3.4",
+    "playwright": "1.65.0",
+    "tailwindcss": "^4.3.5",
     "tsx": "4.23.15",
     "typescript": "^5.9.3",
-    "vite": "^8.3.5",
+    "vite": "^8.3.6",
     "vue-tsc": "^3.3.14"
   }
 }
