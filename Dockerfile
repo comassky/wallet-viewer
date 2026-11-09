@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     --mount=type=cache,target=/root/.npm \
     mvn --batch-mode --no-transfer-progress verify -Dquarkus.quinoa.ci=true
 
-FROM gcr.io/distroless/java25-debian13:nonroot@sha256:a90a5fadd78dc37b643da72dca2f744ef67eba625eca7227a5b375b548e6b1c2 AS runtime
+FROM gcr.io/distroless/java25-debian13:nonroot@sha256:8ac5525549d14b8ddd34562f9fc8e6ba4840c995363a1507b17cadf8bb7ab57e AS runtime
 WORKDIR /app
 
 # Keep dependencies separate from application code for efficient image layers.
