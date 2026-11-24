@@ -12,7 +12,7 @@
     "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
-    "@formkit/auto-animate": "^0.10.3",
+    "@formkit/auto-animate": "^0.11.0",
     "@mdi/js": "7.4.47",
     "lightweight-charts": "5.3.0",
     "vue": "^3.5.46"
